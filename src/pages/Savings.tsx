@@ -455,7 +455,7 @@ const Savings = () => {
                     </div>
                     <div className="min-w-0">
                       <label className="block text-sm font-medium mb-1.5">Date de base</label>
-                      <input type="date" value={accDate} onChange={e => setAccDate(e.target.value)} className="w-full min-w-0 px-3 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                      <input type="date" value={accDate} onChange={e => setAccDate(e.target.value)} className="w-full min-w-0 px-2 py-2.5 rounded-xl border border-input bg-background text-xs focus:outline-none focus:ring-2 focus:ring-ring [&::-webkit-datetime-edit]:text-xs" />
                     </div>
                   </div>
                 </div>
