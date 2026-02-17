@@ -182,10 +182,10 @@ const StartOfMonth = () => {
         {/* Success */}
         <AnimatePresence>
           {allDone && (
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card-elevated p-6 text-center border-2 border-primary/30">
-              <p className="text-3xl mb-2">🎉</p>
-              <p className="font-bold text-lg">Ton mois est prêt !</p>
-              <p className="text-sm text-muted-foreground mt-1">Toutes les étapes sont complétées pour {monthLabel}.</p>
+            <motion.div initial={{ opacity: 0, scale: 0.9, y: -10 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: 'spring', damping: 12 }} className="card-elevated p-6 text-center border-2 border-primary/30 bg-primary/5">
+              <motion.p initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: 'spring', damping: 8 }} className="text-4xl mb-3">🚀</motion.p>
+              <p className="font-bold text-lg">Tu gères comme un(e) pro !</p>
+              <p className="text-sm text-muted-foreground mt-1.5">Tout est en ordre pour {monthLabel}. Profite bien de ton mois 💪</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -208,6 +208,13 @@ const StartOfMonth = () => {
             {recurringIncomes.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-3">Aucun revenu récurrent configuré</p>
             ) : recurringIncomes.map(t => renderRecurringItem(t, 'income'))}
+            <AnimatePresence>
+              {step1Done && recurringIncomes.length > 0 && (
+                <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-center text-xs font-medium text-primary pt-2">
+                  ✨ Revenus vérifiés, nickel !
+                </motion.p>
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
 
@@ -229,6 +236,13 @@ const StartOfMonth = () => {
             {recurringExpenses.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-3">Aucune dépense récurrente configurée</p>
             ) : recurringExpenses.map(t => renderRecurringItem(t, 'expense'))}
+            <AnimatePresence>
+              {step2Done && recurringExpenses.length > 0 && (
+                <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-center text-xs font-medium text-primary pt-2">
+                  💸 Charges sous contrôle, bien joué !
+                </motion.p>
+              )}
+            </AnimatePresence>
           </div>
         </motion.div>
 
@@ -250,11 +264,11 @@ const StartOfMonth = () => {
             {savingsGoals.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-3">Aucun objectif d'épargne créé</p>
             ) : step3Done ? (
-              <div className="text-center py-3">
-                <p className="text-sm text-muted-foreground">
-                  {savingsSkipped ? "Pas d'épargne ce mois-ci" : 'Épargne planifiée pour ce mois ✓'}
+              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-center py-3">
+                <p className="text-sm font-medium text-primary">
+                  {savingsSkipped ? '👍 Pas de souci, le mois prochain sera le bon !' : '🐷 Épargne planifiée, futur toi te remerciera !'}
                 </p>
-              </div>
+              </motion.div>
             ) : (
               <>
                 {savingsGoals.map(g => {
