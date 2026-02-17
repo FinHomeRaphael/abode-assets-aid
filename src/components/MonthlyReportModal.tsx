@@ -55,7 +55,7 @@ function generateReportAdvice(
 }
 
 const MonthlyReportModal = ({ open, onClose }: Props) => {
-  const { getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getMonthSavings, savingsGoals, getGoalSaved } = useApp();
+  const { getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getMonthSavings, savingsGoals, getGoalSaved, getActiveAccounts, getAccountBalance } = useApp();
   const { formatAmount, currency } = useCurrency();
   const [month, setMonth] = useState(new Date());
 
@@ -126,31 +126,61 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
               <MonthSelector currentMonth={month} onChange={setMonth} />
             </div>
 
-            {/* Financial summary - 4 columns */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-              <div className="bg-secondary/50 rounded-xl p-3 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Revenus</p>
-                <p className="font-mono font-bold text-success text-sm">+{formatAmount(income)}</p>
-                {diffPct(income, prevIncome) !== null && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{diffPct(income, prevIncome)! >= 0 ? '+' : ''}{diffPct(income, prevIncome)!.toFixed(0)}%</p>
-                )}
-              </div>
-              <div className="bg-secondary/50 rounded-xl p-3 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Dépenses</p>
-                <p className="font-mono font-bold text-destructive text-sm">-{formatAmount(expenses)}</p>
-                {diffPct(expenses, prevExpenses) !== null && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{diffPct(expenses, prevExpenses)! >= 0 ? '+' : ''}{diffPct(expenses, prevExpenses)!.toFixed(0)}%</p>
-                )}
-              </div>
-              <div className="bg-secondary/50 rounded-xl p-3 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Enveloppes</p>
-                <p className="font-mono font-bold text-primary text-sm">-{formatAmount(savings)}</p>
-              </div>
-              <div className="bg-secondary/50 rounded-xl p-3 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Disponible</p>
-                <p className={`font-mono font-bold text-sm ${available >= 0 ? 'text-success' : 'text-destructive'}`}>{available >= 0 ? '+' : ''}{formatAmount(available)}</p>
-              </div>
-            </div>
+            {/* Financial summary */}
+            {(() => {
+              const activeAccounts = getActiveAccounts();
+              const totalAccountsBalance = activeAccounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
+              return (
+                <>
+                  {/* Solde instantané des comptes */}
+                  {activeAccounts.length > 0 && (
+                    <div className="mb-4">
+                      <div className="bg-primary/10 rounded-xl p-4 text-center mb-2">
+                        <p className="text-xs text-muted-foreground mb-1">Solde total des comptes</p>
+                        <p className={`text-xl font-bold font-mono ${totalAccountsBalance >= 0 ? 'text-primary' : 'text-destructive'}`}>{formatAmount(totalAccountsBalance)}</p>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {activeAccounts.map(acc => {
+                          const bal = getAccountBalance(acc.id);
+                          return (
+                            <div key={acc.id} className="bg-secondary/50 rounded-lg p-2.5 text-center">
+                              <p className="text-[10px] text-muted-foreground truncate">{acc.name}</p>
+                              <p className={`font-mono font-semibold text-xs ${bal >= 0 ? 'text-primary' : 'text-destructive'}`}>{formatAmount(bal, acc.currency)}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mois en cours */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                    <div className="bg-secondary/50 rounded-xl p-3 text-center">
+                      <p className="text-xs text-muted-foreground mb-1">Revenus</p>
+                      <p className="font-mono font-bold text-success text-sm">+{formatAmount(income)}</p>
+                      {diffPct(income, prevIncome) !== null && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{diffPct(income, prevIncome)! >= 0 ? '+' : ''}{diffPct(income, prevIncome)!.toFixed(0)}%</p>
+                      )}
+                    </div>
+                    <div className="bg-secondary/50 rounded-xl p-3 text-center">
+                      <p className="text-xs text-muted-foreground mb-1">Dépenses</p>
+                      <p className="font-mono font-bold text-destructive text-sm">-{formatAmount(expenses)}</p>
+                      {diffPct(expenses, prevExpenses) !== null && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{diffPct(expenses, prevExpenses)! >= 0 ? '+' : ''}{diffPct(expenses, prevExpenses)!.toFixed(0)}%</p>
+                      )}
+                    </div>
+                    <div className="bg-secondary/50 rounded-xl p-3 text-center">
+                      <p className="text-xs text-muted-foreground mb-1">Enveloppes</p>
+                      <p className="font-mono font-bold text-primary text-sm">-{formatAmount(savings)}</p>
+                    </div>
+                    <div className="bg-secondary/50 rounded-xl p-3 text-center">
+                      <p className="text-xs text-muted-foreground mb-1">Disponible (mois en cours)</p>
+                      <p className={`font-mono font-bold text-sm ${available >= 0 ? 'text-success' : 'text-destructive'}`}>{available >= 0 ? '+' : ''}{formatAmount(available)}</p>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
 
             {/* Expense breakdown */}
             {expensesByCategory.length > 0 && (
