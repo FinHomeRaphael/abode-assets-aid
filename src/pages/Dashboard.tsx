@@ -133,8 +133,17 @@ const Dashboard = () => {
         {/* Quick Actions */}
         <motion.div variants={fadeUp}>
           <h2 className="font-semibold text-base mb-3">Actions rapides</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => setShowScan(true)} className="card-elevated p-4 flex items-center gap-3 card-hover text-left">
+          <div className="grid grid-cols-3 gap-3">
+            <button onClick={() => navigate('/start-of-month')} className="card-elevated p-4 flex flex-col items-center gap-2 card-hover text-center">
+              <div className="w-11 h-11 rounded-2xl bg-accent/10 flex items-center justify-center">
+                <span className="text-xl">🗓️</span>
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Préparer mon mois</p>
+                <p className="text-xs text-muted-foreground">Checklist guidée</p>
+              </div>
+            </button>
+            <button onClick={() => setShowScan(true)} className="card-elevated p-4 flex flex-col items-center gap-2 card-hover text-center">
               <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center">
                 <span className="text-xl">📸</span>
               </div>
@@ -143,7 +152,7 @@ const Dashboard = () => {
                 <p className="text-xs text-muted-foreground">Ajouter via photo</p>
               </div>
             </button>
-            <button onClick={() => setShowReport(true)} className="card-elevated p-4 flex items-center gap-3 card-hover text-left">
+            <button onClick={() => setShowReport(true)} className="card-elevated p-4 flex flex-col items-center gap-2 card-hover text-center">
               <div className="w-11 h-11 rounded-2xl bg-success/10 flex items-center justify-center">
                 <span className="text-xl">📊</span>
               </div>
