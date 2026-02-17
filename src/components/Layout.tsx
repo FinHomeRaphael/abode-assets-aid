@@ -1,5 +1,6 @@
 import React, { ReactNode, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { getInitials } from '@/utils/format';
 import AddTransactionModal from '@/components/AddTransactionModal';
@@ -15,11 +16,27 @@ const navItems = [
   { path: '/savings', label: 'Épargne', emoji: '🐷' },
 ];
 
+const fabActions = [
+  { label: 'Transaction', emoji: '💳', action: 'transaction' },
+  { label: 'Budget', emoji: '🎯', action: 'budget' },
+  { label: 'Épargne', emoji: '🐷', action: 'savings' },
+  { label: 'Conseiller IA', emoji: '✨', action: 'chat' },
+];
+
 const Layout = ({ children }: LayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { household, currentUser } = useApp();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
+
+  const handleFabAction = (action: string) => {
+    setFabOpen(false);
+    if (action === 'transaction') setShowAddModal(true);
+    else if (action === 'budget') navigate('/budgets');
+    else if (action === 'savings') navigate('/savings');
+    else if (action === 'chat') navigate('/chat');
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -58,8 +75,39 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </header>
 
+      {/* FAB overlay */}
+      <AnimatePresence>
+        {fabOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="md:hidden fixed inset-0 z-40 bg-background/80 backdrop-blur-sm"
+            onClick={() => setFabOpen(false)}
+          >
+            <div className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-3" onClick={e => e.stopPropagation()}>
+              {fabActions.map((item, i) => (
+                <motion.button
+                  key={item.action}
+                  initial={{ opacity: 0, y: 20, scale: 0.8 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.8 }}
+                  transition={{ delay: i * 0.05, duration: 0.2 }}
+                  onClick={() => handleFabAction(item.action)}
+                  className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-card shadow-lg border border-border/50 active:scale-95 transition-transform"
+                >
+                  <span className="text-xl">{item.emoji}</span>
+                  <span className="text-sm font-semibold text-foreground">{item.label}</span>
+                </motion.button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 glass border-t border-border/50 safe-area-bottom">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass border-t border-border/50 safe-area-bottom">
         <div className="flex justify-around items-center py-2 px-2">
           {navItems.slice(0, 2).map(item => {
             const isActive = location.pathname === item.path;
@@ -78,12 +126,18 @@ const Layout = ({ children }: LayoutProps) => {
           })}
 
           {/* FAB center button */}
-          <div className="relative -mt-8">
+          <div className="relative -mt-7">
             <button
-              onClick={() => setShowAddModal(true)}
-              className="w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center text-2xl font-light hover:bg-primary/90 active:scale-95 transition-all"
+              onClick={() => setFabOpen(prev => !prev)}
+              className="w-14 h-14 rounded-full bg-primary shadow-[0_4px_16px_-2px_hsl(var(--primary)/0.5)] flex items-center justify-center active:scale-90 transition-all"
             >
-              +
+              <motion.span
+                animate={{ rotate: fabOpen ? 45 : 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-primary-foreground text-3xl font-light leading-none"
+              >
+                +
+              </motion.span>
             </button>
           </div>
 
@@ -104,7 +158,6 @@ const Layout = ({ children }: LayoutProps) => {
           })}
         </div>
       </nav>
-
 
       <main className="container max-w-5xl mx-auto px-4 md:px-6 py-6 pb-36 md:pb-8">
         {children}
