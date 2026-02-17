@@ -37,6 +37,7 @@ export interface SavingsGoal {
   name: string;
   emoji: string;
   target: number;
+  currency: string;
   targetDate?: string;
 }
 

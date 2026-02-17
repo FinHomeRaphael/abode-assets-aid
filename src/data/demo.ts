@@ -56,9 +56,9 @@ export const demoBudgets: Budget[] = [
 ];
 
 export const demoSavingsGoals: SavingsGoal[] = [
-  { id: 'sg1', name: 'Mariage', emoji: '💒', target: 15000, targetDate: `${y + 1}-09-15` },
-  { id: 'sg2', name: 'Vacances été', emoji: '🏖️', target: 2000, targetDate: `${y}-07-01` },
-  { id: 'sg3', name: 'Impôts 2026', emoji: '📋', target: 3000, targetDate: `${y}-09-30` },
+  { id: 'sg1', name: 'Mariage', emoji: '💒', target: 15000, currency: 'EUR', targetDate: `${y + 1}-09-15` },
+  { id: 'sg2', name: 'Vacances été', emoji: '🏖️', target: 2000, currency: 'EUR', targetDate: `${y}-07-01` },
+  { id: 'sg3', name: 'Impôts 2026', emoji: '📋', target: 3000, currency: 'EUR', targetDate: `${y}-09-30` },
 ];
 
 export const demoSavingsDeposits: SavingsDeposit[] = [

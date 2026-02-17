@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatDateLong } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
-import { EMOJI_LIST } from '@/types/finance';
+import { EMOJI_LIST, CURRENCIES, CURRENCY_SYMBOLS } from '@/types/finance';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
@@ -19,6 +19,7 @@ const Savings = () => {
   const [goalEmoji, setGoalEmoji] = useState('🎯');
   const [goalTarget, setGoalTarget] = useState('');
   const [goalDate, setGoalDate] = useState('');
+  const [goalCurrency, setGoalCurrency] = useState(household.currency);
 
   const [depositGoalId, setDepositGoalId] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
@@ -30,10 +31,11 @@ const Savings = () => {
 
   const handleCreateGoal = () => {
     if (!goalName.trim() || !goalTarget) { toast.error('Remplissez les champs obligatoires'); return; }
-    addSavingsGoal({ name: goalName.trim(), emoji: goalEmoji, target: parseFloat(goalTarget), targetDate: goalDate || undefined });
+    addSavingsGoal({ name: goalName.trim(), emoji: goalEmoji, target: parseFloat(goalTarget), currency: goalCurrency, targetDate: goalDate || undefined });
     toast.success('Objectif créé ✓');
     setShowCreateGoal(false);
     setGoalName(''); setGoalTarget(''); setGoalDate('');
+    setGoalCurrency(household.currency);
   };
 
   const handleAddDeposit = () => {
@@ -83,17 +85,21 @@ const Savings = () => {
             {savingsGoals.map(g => {
               const saved = getGoalSaved(g.id);
               const pct = Math.min((saved / g.target) * 100, 100);
+              const goalCurrencySymbol = CURRENCY_SYMBOLS[g.currency] || g.currency;
               return (
                 <div key={g.id} className="card-elevated p-5 card-hover">
                   <div className="flex items-center justify-between mb-3">
                     <span className="font-semibold text-lg">{g.emoji} {g.name}</span>
-                    <span className="text-sm font-mono-amount font-bold text-primary">{Math.round(pct)}%</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-lg bg-muted text-muted-foreground font-medium">{g.currency}</span>
+                      <span className="text-sm font-mono-amount font-bold text-primary">{Math.round(pct)}%</span>
+                    </div>
                   </div>
                   <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-2">
                     <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className="h-full rounded-full bg-primary" />
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="font-mono-amount text-muted-foreground">{formatAmount(saved)} / {formatAmount(g.target)}</span>
+                    <span className="font-mono-amount text-muted-foreground">{formatAmount(saved, g.currency)} / {formatAmount(g.target, g.currency)}</span>
                     {g.targetDate && <span className="text-xs text-muted-foreground">{formatDateLong(g.targetDate)}</span>}
                   </div>
                 </div>
@@ -121,9 +127,17 @@ const Savings = () => {
                       ))}
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">Montant cible</label>
-                    <input type="number" value={goalTarget} onChange={e => setGoalTarget(e.target.value)} placeholder="5000" className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono-amount focus:outline-none focus:ring-2 focus:ring-ring" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">Montant cible</label>
+                      <input type="number" value={goalTarget} onChange={e => setGoalTarget(e.target.value)} placeholder="5000" className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono-amount focus:outline-none focus:ring-2 focus:ring-ring" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">Devise</label>
+                      <select value={goalCurrency} onChange={e => setGoalCurrency(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                        {CURRENCIES.map(c => <option key={c} value={c}>{CURRENCY_SYMBOLS[c] || c} {c}</option>)}
+                      </select>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Date cible (optionnel)</label>
@@ -150,7 +164,7 @@ const Savings = () => {
                     <label className="block text-sm font-medium mb-1.5">Objectif</label>
                     <select value={depositGoalId} onChange={e => setDepositGoalId(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm">
                       <option value="">Sélectionner...</option>
-                      {savingsGoals.map(g => <option key={g.id} value={g.id}>{g.emoji} {g.name}</option>)}
+                      {savingsGoals.map(g => <option key={g.id} value={g.id}>{g.emoji} {g.name} ({g.currency})</option>)}
                     </select>
                   </div>
                   <div>

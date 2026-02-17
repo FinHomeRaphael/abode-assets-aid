@@ -25,7 +25,10 @@ function loadState(): AppState {
       return {
         ...defaultState,
         ...parsed,
-        savingsGoals: parsed.savingsGoals || demoSavingsGoals,
+        savingsGoals: (parsed.savingsGoals || demoSavingsGoals).map((g: any) => ({
+          ...g,
+          currency: g.currency || parsed.household?.currency || 'EUR',
+        })),
         savingsDeposits: parsed.savingsDeposits || demoSavingsDeposits,
         customCategories: parsed.customCategories || [],
       };
