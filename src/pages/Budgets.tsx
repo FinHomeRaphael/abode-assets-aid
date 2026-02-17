@@ -9,7 +9,7 @@ import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 
 const Budgets = () => {
-  const { budgets, addBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth } = useApp();
+  const { budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth } = useApp();
   const { formatAmount } = useCurrency();
   const [showCreate, setShowCreate] = useState(false);
   const [newCategory, setNewCategory] = useState('');
@@ -19,6 +19,12 @@ const Budgets = () => {
   const [newIsRecurring, setNewIsRecurring] = useState(true);
   const [viewPeriod, setViewPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  // Edit modal state
+  const [editTarget, setEditTarget] = useState<typeof budgets[0] | null>(null);
+  const [editLimit, setEditLimit] = useState('');
+  const [editIsRecurring, setEditIsRecurring] = useState(true);
+  const [editAlerts, setEditAlerts] = useState(true);
 
   // Delete modal state
   const [deleteTarget, setDeleteTarget] = useState<typeof budgets[0] | null>(null);
@@ -49,8 +55,28 @@ const Budgets = () => {
 
   const currentMonthYear = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
 
-  const handleDeleteClick = (b: typeof budgets[0]) => {
-    setDeleteTarget(b);
+  const openEditModal = (b: typeof budgets[0]) => {
+    setEditTarget(b);
+    setEditLimit(String(b.limit));
+    setEditIsRecurring(b.isRecurring);
+    setEditAlerts(b.alertsEnabled);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editTarget || !editLimit) return;
+    updateBudget(editTarget.id, {
+      limit: parseFloat(editLimit),
+      isRecurring: editIsRecurring,
+      alertsEnabled: editAlerts,
+    });
+    toast.success('Budget modifié ✓');
+    setEditTarget(null);
+  };
+
+  const handleDeleteFromEdit = () => {
+    if (!editTarget) return;
+    setDeleteTarget(editTarget);
+    setEditTarget(null);
   };
 
   const handleSoftDelete = () => {
@@ -105,7 +131,7 @@ const Budgets = () => {
               const pct = Math.min((spent / b.limit) * 100, 100);
               const isStopped = !!b.endMonth && b.endMonth <= currentMonthYear;
               return (
-                <div key={b.id} className="card-elevated p-5 card-hover group">
+                <div key={b.id} className="card-elevated p-5 card-hover cursor-pointer" onClick={() => openEditModal(b)}>
                   <div className="flex items-center justify-between mb-3">
                     <span className="font-semibold">{b.emoji} {b.category}</span>
                     <div className="flex items-center gap-2">
@@ -120,14 +146,6 @@ const Budgets = () => {
                       )}
                       {status === 'over' && <span className="text-[10px] px-2 py-1 rounded-lg bg-destructive/10 text-destructive font-semibold">Dépassé</span>}
                       {status === 'warning' && <span className="text-[10px] px-2 py-1 rounded-lg bg-warning/10 text-warning font-semibold">Attention</span>}
-                      {!isStopped && (
-                        <button
-                          onClick={() => handleDeleteClick(b)}
-                          className="text-xs text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          ✕
-                        </button>
-                      )}
                     </div>
                   </div>
                   <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-2">
@@ -168,7 +186,6 @@ const Budgets = () => {
                       <button onClick={() => setNewPeriod('yearly')} className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-all ${newPeriod === 'yearly' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>📆 Annuel</button>
                     </div>
                   </div>
-                  {/* Recurring vs One-time */}
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Type de budget</label>
                     <div className="flex gap-2">
@@ -191,6 +208,67 @@ const Budgets = () => {
                 <div className="flex gap-3 mt-6">
                   <button onClick={() => setShowCreate(false)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Annuler</button>
                   <button onClick={handleCreate} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">Créer</button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Edit budget modal */}
+        <AnimatePresence>
+          {editTarget && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setEditTarget(null)}>
+              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={e => e.stopPropagation()} className="bg-card w-full max-w-md rounded-2xl shadow-card-lg p-6">
+                <h2 className="text-lg font-bold mb-5">{editTarget.emoji} {editTarget.category}</h2>
+
+                {/* Stats */}
+                {(() => {
+                  const spent = getBudgetSpent(editTarget, currentMonth);
+                  const status = getBudgetStatus(spent, editTarget.limit);
+                  const pct = Math.min((spent / editTarget.limit) * 100, 100);
+                  const remaining = Math.max(editTarget.limit - spent, 0);
+                  return (
+                    <div className="bg-secondary/50 rounded-xl p-4 mb-5">
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <span className="text-muted-foreground">Dépensé</span>
+                        <span className="font-mono-amount font-semibold">{formatAmount(spent)} / {formatAmount(editTarget.limit)}</span>
+                      </div>
+                      <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-2">
+                        <div className={`h-full rounded-full ${status === 'ok' ? 'bg-primary' : status === 'warning' ? 'bg-warning' : 'bg-destructive'}`} style={{ width: `${pct}%` }} />
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>{Math.round(pct)}% utilisé</span>
+                        <span>Reste : {formatAmount(remaining)}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Montant limite</label>
+                    <input type="number" value={editLimit} onChange={e => setEditLimit(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono-amount focus:outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Type</label>
+                    <div className="flex gap-2">
+                      <button onClick={() => setEditIsRecurring(true)} className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-all ${editIsRecurring ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>🔄 Récurrent</button>
+                      <button onClick={() => setEditIsRecurring(false)} className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-all ${!editIsRecurring ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>📌 Ponctuel</button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" checked={editAlerts} onChange={e => setEditAlerts(e.target.checked)} id="editAlerts" className="rounded" />
+                    <label htmlFor="editAlerts" className="text-sm">Activer les alertes</label>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 mt-6">
+                  <button onClick={handleDeleteFromEdit} className="py-2.5 px-4 rounded-xl bg-destructive/10 text-destructive text-sm font-semibold hover:bg-destructive/20 transition-colors">
+                    🗑️ Supprimer
+                  </button>
+                  <div className="flex-1" />
+                  <button onClick={() => setEditTarget(null)} className="py-2.5 px-5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Annuler</button>
+                  <button onClick={handleSaveEdit} className="py-2.5 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">Sauvegarder</button>
                 </div>
               </motion.div>
             </motion.div>
