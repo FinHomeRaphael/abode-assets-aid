@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CURRENCIES, CATEGORY_EMOJIS } from '@/types/finance';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CURRENCIES, CATEGORY_EMOJIS, EMOJI_LIST } from '@/types/finance';
 import { toast } from 'sonner';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -15,7 +15,7 @@ interface Props {
 }
 
 const AddTransactionModal = ({ open, onClose }: Props) => {
-  const { addTransaction, household } = useApp();
+  const { addTransaction, household, customCategories, addCustomCategory } = useApp();
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [label, setLabel] = useState('');
   const [amount, setAmount] = useState('');
@@ -25,13 +25,22 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
   const [memberId, setMemberId] = useState(household.members[0]?.id || '');
   const [notes, setNotes] = useState('');
 
-  const categories = type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+  // Custom category creation
+  const [showCreateCat, setShowCreateCat] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatEmoji, setNewCatEmoji] = useState('📌');
+  const [newCatType, setNewCatType] = useState<'expense' | 'income'>('expense');
+
+  const baseCategories = type === 'expense' ? [...EXPENSE_CATEGORIES] : [...INCOME_CATEGORIES];
+  const customs = customCategories.filter(c => c.type === type);
+  const allCategories = [...baseCategories, ...customs.map(c => c.name)];
 
   const handleSubmit = () => {
     if (!label.trim() || !amount || !category) {
       toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
+    const customCat = customCategories.find(c => c.name === category);
     addTransaction({
       type,
       label: label.trim(),
@@ -41,10 +50,26 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
       memberId,
       date: date.toISOString().split('T')[0],
       notes: notes.trim() || undefined,
-      emoji: CATEGORY_EMOJIS[category] || '📌',
+      emoji: customCat?.emoji || CATEGORY_EMOJIS[category] || '📌',
     });
     toast.success('Transaction ajoutée ✓');
     resetAndClose();
+  };
+
+  const handleCreateCategory = () => {
+    if (!newCatName.trim() || newCatName.length > 30) {
+      toast.error('Nom invalide (max 30 caractères)');
+      return;
+    }
+    if (allCategories.includes(newCatName.trim())) {
+      toast.error('Cette catégorie existe déjà');
+      return;
+    }
+    addCustomCategory({ name: newCatName.trim(), emoji: newCatEmoji, type: newCatType });
+    setCategory(newCatName.trim());
+    setShowCreateCat(false);
+    setNewCatName('');
+    toast.success('Catégorie créée ✓');
   };
 
   const resetAndClose = () => {
@@ -53,6 +78,7 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
     setCategory('');
     setNotes('');
     setDate(new Date());
+    setShowCreateCat(false);
     onClose();
   };
 
@@ -60,34 +86,17 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
 
   return (
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
-        onClick={resetAndClose}
-      >
-        <motion.div
-          initial={{ y: 50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 50, opacity: 0 }}
-          onClick={e => e.stopPropagation()}
-          className="bg-card w-full sm:max-w-lg rounded-t-2xl sm:rounded-lg border border-border shadow-lg max-h-[90vh] overflow-y-auto"
-        >
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={resetAndClose}>
+        <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} onClick={e => e.stopPropagation()} className="bg-card w-full sm:max-w-lg rounded-t-2xl sm:rounded-lg border border-border shadow-lg max-h-[90vh] overflow-y-auto">
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold">Nouvelle transaction</h2>
               <button onClick={resetAndClose} className="text-muted-foreground hover:text-foreground text-lg">✕</button>
             </div>
 
-            {/* Type toggle */}
             <div className="flex mb-5 bg-secondary rounded-md p-1">
-              <button onClick={() => { setType('expense'); setCategory(''); }} className={`flex-1 py-2 rounded-sm text-sm font-medium transition-colors ${type === 'expense' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}>
-                Dépense
-              </button>
-              <button onClick={() => { setType('income'); setCategory(''); }} className={`flex-1 py-2 rounded-sm text-sm font-medium transition-colors ${type === 'income' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}>
-                Revenu
-              </button>
+              <button onClick={() => { setType('expense'); setCategory(''); }} className={`flex-1 py-2 rounded-sm text-sm font-medium transition-colors ${type === 'expense' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}>Dépense</button>
+              <button onClick={() => { setType('income'); setCategory(''); }} className={`flex-1 py-2 rounded-sm text-sm font-medium transition-colors ${type === 'income' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}>Revenu</button>
             </div>
 
             <div className="space-y-4">
@@ -111,9 +120,15 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
 
               <div>
                 <label className="block text-sm font-medium mb-1.5">Catégorie *</label>
-                <select value={category} onChange={e => setCategory(e.target.value)} className="w-full px-4 py-2.5 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                <select value={category} onChange={e => {
+                  if (e.target.value === '__create__') { setShowCreateCat(true); }
+                  else setCategory(e.target.value);
+                }} className="w-full px-4 py-2.5 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
                   <option value="">Sélectionner...</option>
-                  {categories.map(c => <option key={c} value={c}>{CATEGORY_EMOJIS[c]} {c}</option>)}
+                  {baseCategories.map(c => <option key={c} value={c}>{CATEGORY_EMOJIS[c]} {c}</option>)}
+                  {customs.length > 0 && <option disabled>── Personnalisées ──</option>}
+                  {customs.map(c => <option key={c.name} value={c.name}>{c.emoji} {c.name}</option>)}
+                  <option value="__create__">➕ Créer une catégorie</option>
                 </select>
               </div>
 
@@ -135,13 +150,7 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
                 <label className="block text-sm font-medium mb-1.5">Membre</label>
                 <div className="flex gap-2">
                   {household.members.map(m => (
-                    <button
-                      key={m.id}
-                      onClick={() => setMemberId(m.id)}
-                      className={`px-3 py-2 rounded-md border text-sm transition-colors ${
-                        memberId === m.id ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-secondary'
-                      }`}
-                    >
+                    <button key={m.id} onClick={() => setMemberId(m.id)} className={`px-3 py-2 rounded-md border text-sm transition-colors ${memberId === m.id ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-secondary'}`}>
                       {m.name}
                     </button>
                   ))}
@@ -155,16 +164,46 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
             </div>
 
             <div className="flex gap-3 mt-6">
-              <button onClick={resetAndClose} className="flex-1 py-2.5 rounded-md border border-border text-sm font-medium hover:bg-secondary transition-colors">
-                Annuler
-              </button>
-              <button onClick={handleSubmit} className="flex-1 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
-                Enregistrer
-              </button>
+              <button onClick={resetAndClose} className="flex-1 py-2.5 rounded-md border border-border text-sm font-medium hover:bg-secondary transition-colors">Annuler</button>
+              <button onClick={handleSubmit} className="flex-1 py-2.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">Enregistrer</button>
             </div>
           </div>
         </motion.div>
       </motion.div>
+
+      {/* Create category mini-modal */}
+      {showCreateCat && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[60] bg-foreground/30 flex items-center justify-center p-4" onClick={() => setShowCreateCat(false)}>
+          <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()} className="bg-card w-full max-w-sm rounded-lg border border-border shadow-lg p-5">
+            <h3 className="font-semibold mb-4">Créer une catégorie</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Nom (max 30 car.)</label>
+                <input value={newCatName} onChange={e => setNewCatName(e.target.value.slice(0, 30))} placeholder="Ma catégorie" className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Emoji</label>
+                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-2 bg-secondary/50 rounded-md">
+                  {EMOJI_LIST.map(e => (
+                    <button key={e} onClick={() => setNewCatEmoji(e)} className={`w-8 h-8 rounded flex items-center justify-center text-lg transition-colors ${newCatEmoji === e ? 'bg-primary/20 ring-2 ring-primary' : 'hover:bg-secondary'}`}>{e}</button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Type</label>
+                <div className="flex gap-2">
+                  <button onClick={() => setNewCatType('expense')} className={`flex-1 py-2 rounded-md border text-sm ${newCatType === 'expense' ? 'border-primary bg-primary/5 text-primary' : 'border-border'}`}>Dépense</button>
+                  <button onClick={() => setNewCatType('income')} className={`flex-1 py-2 rounded-md border text-sm ${newCatType === 'income' ? 'border-primary bg-primary/5 text-primary' : 'border-border'}`}>Revenu</button>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => setShowCreateCat(false)} className="flex-1 py-2 rounded-md border border-border text-sm font-medium hover:bg-secondary">Annuler</button>
+              <button onClick={handleCreateCategory} className="flex-1 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">Créer</button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </AnimatePresence>
   );
 };

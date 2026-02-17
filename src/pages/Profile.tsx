@@ -1,13 +1,12 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
-import { formatDateLong } from '@/utils/format';
-import { getInitials } from '@/utils/format';
+import { formatDateLong, getInitials } from '@/utils/format';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 
 const Profile = () => {
-  const { household, currentUser, logout, resetDemo } = useApp();
+  const { household, currentUser, logout, resetDemo, customCategories, deleteCustomCategory } = useApp();
 
   return (
     <Layout>
@@ -31,9 +30,7 @@ const Profile = () => {
             {household.members.map(m => (
               <div key={m.id} className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-sm font-medium">
-                    {getInitials(m.name)}
-                  </div>
+                  <div className="w-9 h-9 rounded-full bg-secondary flex items-center justify-center text-sm font-medium">{getInitials(m.name)}</div>
                   <div>
                     <p className="text-sm font-medium">{m.name} {m.id === currentUser?.id && <span className="text-xs text-muted-foreground">(vous)</span>}</p>
                     <p className="text-xs text-muted-foreground">{m.email}</p>
@@ -45,6 +42,27 @@ const Profile = () => {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Custom Categories */}
+        <div className="bg-card border border-border rounded-lg p-5 mb-4">
+          <h2 className="font-semibold mb-3">Gérer les catégories</h2>
+          {customCategories.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Aucune catégorie personnalisée. Créez-en une depuis le formulaire d'ajout de transaction.</p>
+          ) : (
+            <div className="space-y-2">
+              {customCategories.map(c => (
+                <div key={c.name} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                  <div className="flex items-center gap-2">
+                    <span>{c.emoji}</span>
+                    <span className="text-sm font-medium">{c.name}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">{c.type === 'expense' ? 'Dépense' : 'Revenu'}</span>
+                  </div>
+                  <button onClick={() => { deleteCustomCategory(c.name); toast.success('Catégorie supprimée'); }} className="text-xs text-destructive hover:underline">Supprimer</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Settings */}
@@ -62,24 +80,9 @@ const Profile = () => {
 
         {/* Actions */}
         <div className="space-y-2">
-          <button
-            onClick={() => { toast.info('Export en cours...'); setTimeout(() => toast.success('Données exportées ✓'), 1500); }}
-            className="w-full py-2.5 rounded-md border border-border text-sm font-medium hover:bg-secondary transition-colors"
-          >
-            📁 Exporter mes données
-          </button>
-          <button
-            onClick={resetDemo}
-            className="w-full py-2.5 rounded-md border border-border text-sm font-medium hover:bg-secondary transition-colors"
-          >
-            🔄 Réinitialiser les données de démo
-          </button>
-          <button
-            onClick={logout}
-            className="w-full py-2.5 rounded-md bg-destructive text-destructive-foreground text-sm font-medium hover:opacity-90 transition-opacity"
-          >
-            Déconnexion
-          </button>
+          <button onClick={() => { toast.info('Export en cours...'); setTimeout(() => toast.success('Données exportées ✓'), 1500); }} className="w-full py-2.5 rounded-md border border-border text-sm font-medium hover:bg-secondary transition-colors">📁 Exporter mes données</button>
+          <button onClick={resetDemo} className="w-full py-2.5 rounded-md border border-border text-sm font-medium hover:bg-secondary transition-colors">🔄 Réinitialiser les données de démo</button>
+          <button onClick={logout} className="w-full py-2.5 rounded-md bg-destructive text-destructive-foreground text-sm font-medium hover:opacity-90 transition-opacity">Déconnexion</button>
         </div>
       </motion.div>
     </Layout>

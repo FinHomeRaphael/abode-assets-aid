@@ -28,13 +28,26 @@ export interface Budget {
   alertsEnabled: boolean;
 }
 
-export interface Investment {
+export interface SavingsGoal {
   id: string;
   name: string;
-  type: string;
-  value: number;
-  variation: number;
   emoji: string;
+  target: number;
+  targetDate?: string;
+}
+
+export interface SavingsDeposit {
+  id: string;
+  goalId: string;
+  amount: number;
+  memberId: string;
+  date: string;
+}
+
+export interface CustomCategory {
+  name: string;
+  emoji: string;
+  type: 'expense' | 'income';
 }
 
 export interface Household {
@@ -51,7 +64,9 @@ export interface AppState {
   household: Household;
   transactions: Transaction[];
   budgets: Budget[];
-  investments: Investment[];
+  savingsGoals: SavingsGoal[];
+  savingsDeposits: SavingsDeposit[];
+  customCategories: CustomCategory[];
 }
 
 export const EXPENSE_CATEGORIES = [
@@ -85,3 +100,8 @@ export const CATEGORY_EMOJIS: Record<string, string> = {
   Allocation: '🏛️',
   Autre: '📌',
 };
+
+export const EMOJI_LIST = [
+  '🛒','🏠','🚗','💊','🎬','🛍️','📱','📚','✈️','🍽️','🔧','📄','💰','💻','📈','🏛️','📌',
+  '🎮','🏋️','🐾','👶','🎁','💇','🧹','🔌','📦','🎵','☕','🍕','🎂','💍','🏥','🚌','🚲','⛽','🧾',
+];
