@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
-import { formatAmount, getBudgetStatus } from '@/utils/format';
+import { getBudgetStatus } from '@/utils/format';
+import { useCurrency } from '@/hooks/useCurrency';
 import { EXPENSE_CATEGORIES, CATEGORY_EMOJIS } from '@/types/finance';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
@@ -9,6 +10,7 @@ import MonthSelector from '@/components/MonthSelector';
 
 const Budgets = () => {
   const { budgets, addBudget, getBudgetSpent, deleteBudget } = useApp();
+  const { formatAmount } = useCurrency();
   const [showCreate, setShowCreate] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [newLimit, setNewLimit] = useState('');

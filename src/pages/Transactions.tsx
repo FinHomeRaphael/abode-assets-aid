@@ -1,13 +1,15 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
-import { formatAmount, formatDate } from '@/utils/format';
+import { formatDate } from '@/utils/format';
+import { useCurrency } from '@/hooks/useCurrency';
 import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import AddTransactionModal from '@/components/AddTransactionModal';
 
 const Transactions = () => {
   const { transactions, getMemberById, household, getTransactionsForMonth, toggleRecurring } = useApp();
+  const { formatAmount } = useCurrency();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [filterMember, setFilterMember] = useState('all');
@@ -102,7 +104,7 @@ const Transactions = () => {
                     </div>
                   </div>
                   <span className={`font-mono-amount text-sm font-bold ${t.type === 'income' ? 'text-success' : ''}`}>
-                    {t.type === 'income' ? '+' : '-'}{formatAmount(t.amount)}
+                    {t.type === 'income' ? '+' : '-'}{formatAmount(t.amount, t.currency)}
                   </span>
                 </div>
               );

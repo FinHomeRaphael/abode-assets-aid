@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
+import { formatAmount as rawFormatAmount, formatDate, getBudgetStatus, getInitials } from '@/utils/format';
+import { useCurrency } from '@/hooks/useCurrency';
 import { useNavigate } from 'react-router-dom';
-import { formatAmount, formatDate, getBudgetStatus, getInitials } from '@/utils/format';
 import Layout from '@/components/Layout';
 import ScanTicketModal from '@/components/ScanTicketModal';
 import MonthlyReportModal from '@/components/MonthlyReportModal';
@@ -14,39 +15,42 @@ function generateAIAdvice(
   monthSavings: number,
   totalSavings: number,
   savingsGoals: { name: string; emoji: string; target: number; saved: number }[],
+  currency: string,
 ) {
+  const fmt = (amount: number) => rawFormatAmount(amount, currency);
   const overBudgets = budgets.filter(b => b.spent > b.limit);
   if (overBudgets.length > 0) {
     const b = overBudgets[0];
     const over = b.spent - b.limit;
-    return `Votre budget ${b.emoji} ${b.category} est dépassé de ${formatAmount(over)}. En réduisant cette catégorie, vous pourriez épargner ${formatAmount(over * 12)} par an.`;
+    return `Votre budget ${b.emoji} ${b.category} est dépassé de ${fmt(over)}. En réduisant cette catégorie, vous pourriez épargner ${fmt(over * 12)} par an.`;
   }
   const warningBudgets = budgets.filter(b => b.spent / b.limit > 0.8 && b.spent <= b.limit);
   if (warningBudgets.length > 0) {
     const b = warningBudgets[0];
     const pct = Math.round((b.spent / b.limit) * 100);
-    return `Attention, votre budget ${b.emoji} ${b.category} est à ${pct}% (${formatAmount(b.spent)} / ${formatAmount(b.limit)}). Surveillez vos dépenses cette fin de mois.`;
+    return `Attention, votre budget ${b.emoji} ${b.category} est à ${pct}% (${fmt(b.spent)} / ${fmt(b.limit)}). Surveillez vos dépenses cette fin de mois.`;
   }
   const closeGoals = savingsGoals.filter(g => g.saved / g.target >= 0.8 && g.saved < g.target);
   if (closeGoals.length > 0) {
     const g = closeGoals[0];
     const remaining = g.target - g.saved;
-    return `${g.emoji} Votre objectif "${g.name}" est presque atteint ! Plus que ${formatAmount(remaining)} pour atteindre votre cible de ${formatAmount(g.target)}.`;
+    return `${g.emoji} Votre objectif "${g.name}" est presque atteint ! Plus que ${fmt(remaining)} pour atteindre votre cible de ${fmt(g.target)}.`;
   }
   if (prevTotalExpense > 0 && totalExpense > prevTotalExpense) {
     const pct = Math.round(((totalExpense - prevTotalExpense) / prevTotalExpense) * 100);
     if (pct > 5) {
-      return `Vos dépenses ont augmenté de ${pct}% par rapport au mois dernier (${formatAmount(totalExpense)} vs ${formatAmount(prevTotalExpense)}). Revoyez vos catégories les plus coûteuses.`;
+      return `Vos dépenses ont augmenté de ${pct}% par rapport au mois dernier (${fmt(totalExpense)} vs ${fmt(prevTotalExpense)}). Revoyez vos catégories les plus coûteuses.`;
     }
   }
   if (monthSavings > 0) {
-    return `Bravo ! 🎉 Vous avez épargné ${formatAmount(monthSavings)} ce mois-ci, pour un total cumulé de ${formatAmount(totalSavings)}. Continuez sur cette lancée !`;
+    return `Bravo ! 🎉 Vous avez épargné ${fmt(monthSavings)} ce mois-ci, pour un total cumulé de ${fmt(totalSavings)}. Continuez sur cette lancée !`;
   }
   return `Vos finances sont en bonne santé ce mois-ci. Pensez à mettre de côté pour vos objectifs d'épargne ! 💪`;
 }
 
 const Dashboard = () => {
   const { transactions, budgets, household, getMemberById, getBudgetSpent, getMonthSavings, getTotalSavings, savingsGoals, getGoalSaved, getTransactionsForMonth, currentUser } = useApp();
+  const { formatAmount, currency } = useCurrency();
   const navigate = useNavigate();
   const [showScan, setShowScan] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -64,8 +68,6 @@ const Dashboard = () => {
   const prevTx = useMemo(() => getTransactionsForMonth(prevMonth), [getTransactionsForMonth]);
   const prevExpense = prevTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
-  const expenseDiff = prevExpense > 0 ? Math.round(((totalExpense - prevExpense) / prevExpense) * 100) : 0;
-
   const budgetData = budgets.filter(b => b.period === 'monthly').map(b => ({
     ...b,
     spent: getBudgetSpent(b),
@@ -73,7 +75,7 @@ const Dashboard = () => {
 
   const goalsData = savingsGoals.map(g => ({ ...g, saved: getGoalSaved(g.id) }));
 
-  const aiAdvice = useMemo(() => generateAIAdvice(budgetData, totalExpense, prevExpense, monthSavings, totalSavings, goalsData), [budgetData, totalExpense, prevExpense, monthSavings, totalSavings, goalsData]);
+  const aiAdvice = useMemo(() => generateAIAdvice(budgetData, totalExpense, prevExpense, monthSavings, totalSavings, goalsData, currency), [budgetData, totalExpense, prevExpense, monthSavings, totalSavings, goalsData, currency]);
 
   const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
   const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
@@ -170,7 +172,7 @@ const Dashboard = () => {
                       </div>
                     </div>
                     <span className={`font-mono-amount text-sm font-bold ${t.type === 'income' ? 'text-success' : ''}`}>
-                      {t.type === 'income' ? '+' : '-'}{formatAmount(t.amount)}
+                      {t.type === 'income' ? '+' : '-'}{formatAmount(t.amount, t.currency)}
                     </span>
                   </div>
                 );
