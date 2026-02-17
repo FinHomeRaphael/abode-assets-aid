@@ -23,7 +23,7 @@ function generateAIAdvice(
   if (overBudgets.length > 0) {
     const b = overBudgets[0];
     const over = b.spent - b.limit;
-    return `Votre budget ${b.emoji} ${b.category} est dépassé de ${fmt(over)}. En réduisant cette catégorie, vous pourriez épargner ${fmt(over * 12)} par an.`;
+    return `Votre budget ${b.emoji} ${b.category} est dépassé de ${fmt(over)}. En réduisant cette catégorie, vous pourriez mettre de côté ${fmt(over * 12)} par an.`;
   }
   const warningBudgets = budgets.filter(b => b.spent / b.limit > 0.8 && b.spent <= b.limit);
   if (warningBudgets.length > 0) {
@@ -44,9 +44,9 @@ function generateAIAdvice(
     }
   }
   if (monthSavings > 0) {
-    return `Bravo ! 🎉 Vous avez épargné ${fmt(monthSavings)} ce mois-ci, pour un total cumulé de ${fmt(totalSavings)}. Continuez sur cette lancée !`;
+    return `Bravo ! 🎉 Vous avez mis de côté ${fmt(monthSavings)} ce mois-ci, pour un total cumulé de ${fmt(totalSavings)}. Continuez sur cette lancée !`;
   }
-  return `Vos finances sont en bonne santé ce mois-ci. Pensez à mettre de côté pour vos objectifs d'épargne ! 💪`;
+  return `Vos finances sont en bonne santé ce mois-ci. Pensez à mettre de côté pour vos objectifs ! 💪`;
 }
 
 const Dashboard = () => {
@@ -111,7 +111,7 @@ const Dashboard = () => {
               <p className="font-semibold font-mono-amount text-sm">-{formatAmount(totalExpense)}</p>
             </div>
             <div className="flex-1 bg-primary-foreground/10 rounded-2xl p-3 text-center">
-              <p className="text-primary-foreground/60 text-xs mb-0.5">Épargne</p>
+              <p className="text-primary-foreground/60 text-xs mb-0.5">Enveloppes</p>
               <p className="font-semibold font-mono-amount text-sm">{formatAmount(monthSavings)}</p>
             </div>
           </div>
@@ -226,7 +226,7 @@ const Dashboard = () => {
             {/* Savings */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold text-base">Épargne</h2>
+                <h2 className="font-semibold text-base">Enveloppes</h2>
                 <button onClick={() => navigate('/savings')} className="text-sm text-primary font-medium hover:underline">Voir</button>
               </div>
               <div className="card-elevated p-4 space-y-3">

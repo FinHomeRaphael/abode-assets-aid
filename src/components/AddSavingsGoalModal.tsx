@@ -34,7 +34,7 @@ const AddSavingsGoalModal = ({ open, onClose }: Props) => {
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={onClose} />
           <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} className="relative w-full max-w-md mx-4 mb-4 md:mb-0 card-elevated p-6 space-y-4 max-h-[80vh] overflow-y-auto">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold">Nouvel objectif d'épargne</h2>
+              <h2 className="text-lg font-bold">Nouvel objectif d'enveloppe</h2>
               <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl">✕</button>
             </div>
 

@@ -111,8 +111,8 @@ const StartOfMonth = () => {
       }
     }
     setSavingsConfirmed(true);
-    if (deposited) toast.success('Épargne du mois enregistrée ✓');
-    else toast.info('Aucune épargne enregistrée ce mois');
+    if (deposited) toast.success('Enveloppe du mois enregistrée ✓');
+    else toast.info('Aucune enveloppe enregistrée ce mois');
   };
 
   const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
@@ -206,7 +206,7 @@ const StartOfMonth = () => {
             <motion.div className="h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${progressPct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} />
           </div>
           <div className="flex justify-between mt-2">
-            {['Revenus', 'Charges', 'Épargne'].map((label, i) => (
+            {['Revenus', 'Charges', 'Enveloppes'].map((label, i) => (
               <span key={label} className={`text-xs font-medium ${[step1Done, step2Done, step3Done][i] ? 'text-primary' : 'text-muted-foreground'}`}>
                 {[step1Done, step2Done, step3Done][i] ? '✓ ' : ''}{label}
               </span>
@@ -289,7 +289,7 @@ const StartOfMonth = () => {
                 {step3Done ? '✓' : '3'}
               </div>
               <div>
-                <p className="font-semibold text-sm">Planifier ton épargne du mois</p>
+                <p className="font-semibold text-sm">Planifier tes enveloppes du mois</p>
                 <p className="text-xs text-muted-foreground">Définis combien mettre de côté ce mois-ci</p>
               </div>
             </div>
@@ -297,11 +297,11 @@ const StartOfMonth = () => {
           </div>
           <div className="p-4 space-y-3">
             {savingsGoals.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-3">Aucun objectif d'épargne créé</p>
+              <p className="text-sm text-muted-foreground text-center py-3">Aucun objectif d'enveloppe créé</p>
             ) : step3Done ? (
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-center py-3">
                 <p className="text-sm font-medium text-primary">
-                  {savingsSkipped ? '👍 Pas de souci, le mois prochain sera le bon !' : '🐷 Épargne planifiée, futur toi te remerciera !'}
+                  {savingsSkipped ? '👍 Pas de souci, le mois prochain sera le bon !' : '🐷 Enveloppes planifiées, futur toi te remerciera !'}
                 </p>
               </motion.div>
             ) : (
@@ -319,7 +319,7 @@ const StartOfMonth = () => {
                         <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
                       </div>
                       <div className="flex items-center gap-2">
-                        <label className="text-xs text-muted-foreground shrink-0">Épargner :</label>
+                        <label className="text-xs text-muted-foreground shrink-0">Verser :</label>
                         <input
                           type="number"
                           min="0"
@@ -335,10 +335,10 @@ const StartOfMonth = () => {
                 })}
                 <div className="flex gap-2 pt-1">
                   <button onClick={() => setSavingsSkipped(true)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">
-                    Je ne peux pas épargner ce mois
+                    Pas ce mois-ci
                   </button>
                   <button onClick={handleConfirmSavings} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
-                    Valider l'épargne
+                    Valider
                   </button>
                 </div>
               </>

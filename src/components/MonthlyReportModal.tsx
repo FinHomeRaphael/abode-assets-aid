@@ -37,21 +37,21 @@ function generateReportAdvice(
     const monthsLeft = Math.max(1, (targetDate.getFullYear() - now.getFullYear()) * 12 + targetDate.getMonth() - now.getMonth());
     const monthlyNeeded = remaining / monthsLeft;
     if (savings > 0 && savings >= monthlyNeeded) {
-      return `🎯 À ce rythme d'épargne, vous atteindrez ${g.emoji} "${g.name}" dans environ ${Math.ceil(remaining / savings)} mois. Continuez !`;
+      return `🎯 À ce rythme, vous atteindrez ${g.emoji} "${g.name}" dans environ ${Math.ceil(remaining / savings)} mois. Continuez !`;
     }
-    return `📈 Augmentez votre épargne de ${fmt(monthlyNeeded - savings)}/mois pour atteindre ${g.emoji} "${g.name}" à temps (${monthsLeft} mois restants).`;
+    return `📈 Augmentez vos versements de ${fmt(monthlyNeeded - savings)}/mois pour atteindre ${g.emoji} "${g.name}" à temps (${monthsLeft} mois restants).`;
   }
 
   if (savingsRate >= 20) {
     return `🌟 Excellent mois ! Vous avez épargné ${savingsRate.toFixed(0)}% de vos revenus. C'est au-dessus de la recommandation de 20%.`;
   }
   if (savingsRate >= 10) {
-    return `👍 Bon mois ! Vous avez épargné ${savingsRate.toFixed(0)}% de vos revenus. Visez 20% pour optimiser votre épargne.`;
+    return `👍 Bon mois ! Vous avez mis de côté ${savingsRate.toFixed(0)}% de vos revenus. Visez 20% pour optimiser !`;
   }
   if (income > 0 && savingsRate < 10) {
-    return `💡 Ce mois vous avez épargné ${savingsRate.toFixed(0)}% de vos revenus. Essayez de mettre de côté au moins 10% pour sécuriser votre avenir.`;
+    return `💡 Ce mois vous avez mis de côté ${savingsRate.toFixed(0)}% de vos revenus. Essayez au moins 10% pour sécuriser votre avenir.`;
   }
-  return `💪 Vos finances sont en bonne santé. Pensez à définir des objectifs d'épargne pour structurer votre stratégie !`;
+  return `💪 Vos finances sont en bonne santé. Pensez à définir des objectifs pour structurer votre stratégie !`;
 }
 
 const MonthlyReportModal = ({ open, onClose }: Props) => {
@@ -143,7 +143,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                 )}
               </div>
               <div className="bg-secondary/50 rounded-xl p-3 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Épargne</p>
+                <p className="text-xs text-muted-foreground mb-1">Enveloppes</p>
                 <p className="font-mono font-bold text-primary text-sm">-{formatAmount(savings)}</p>
               </div>
               <div className="bg-secondary/50 rounded-xl p-3 text-center">
@@ -211,7 +211,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
             {/* Savings goals */}
             {goalsData.length > 0 && (
               <div className="mb-6">
-                <h3 className="font-semibold text-sm mb-3 text-center">Objectifs d'épargne</h3>
+                <h3 className="font-semibold text-sm mb-3 text-center">Objectifs d'enveloppe</h3>
                 <div className="space-y-3 max-w-md mx-auto">
                   {goalsData.map(g => {
                     const pct = g.target > 0 ? Math.min((g.saved / g.target) * 100, 100) : 0;
