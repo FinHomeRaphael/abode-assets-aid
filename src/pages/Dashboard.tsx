@@ -3,10 +3,12 @@ import { motion } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatAmount as rawFormatAmount, formatDate, getBudgetStatus, getInitials } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import ScanTicketModal from '@/components/ScanTicketModal';
 import MonthlyReportModal from '@/components/MonthlyReportModal';
+import ConvertedAmount from '@/components/ConvertedAmount';
 
 function generateAIAdvice(
   budgets: { category: string; emoji: string; spent: number; limit: number }[],
@@ -51,14 +53,17 @@ function generateAIAdvice(
 const Dashboard = () => {
   const { transactions, budgets, household, getMemberById, getBudgetSpent, getMonthSavings, getTotalSavings, savingsGoals, getGoalSaved, getTransactionsForMonth, currentUser } = useApp();
   const { formatAmount, currency } = useCurrency();
+  const { convert } = useExchangeRates(currency);
   const navigate = useNavigate();
   const [showScan, setShowScan] = useState(false);
   const [showReport, setShowReport] = useState(false);
 
   const now = new Date();
   const monthTx = useMemo(() => getTransactionsForMonth(now), [getTransactionsForMonth]);
-  const totalIncome = monthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const totalExpense = monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+
+  // Convert all transaction amounts to household currency for totals
+  const totalIncome = monthTx.filter(t => t.type === 'income').reduce((s, t) => s + convert(t.amount, t.currency), 0);
+  const totalExpense = monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + convert(t.amount, t.currency), 0);
   const monthSavings = getMonthSavings(now);
   const totalSavings = getTotalSavings();
   const balance = totalIncome - totalExpense - monthSavings;
@@ -66,7 +71,7 @@ const Dashboard = () => {
   const prevMonth = new Date(now);
   prevMonth.setMonth(prevMonth.getMonth() - 1);
   const prevTx = useMemo(() => getTransactionsForMonth(prevMonth), [getTransactionsForMonth]);
-  const prevExpense = prevTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const prevExpense = prevTx.filter(t => t.type === 'expense').reduce((s, t) => s + convert(t.amount, t.currency), 0);
 
   const budgetData = budgets.filter(b => b.period === 'monthly').map(b => ({
     ...b,
@@ -160,23 +165,24 @@ const Dashboard = () => {
               <button onClick={() => navigate('/transactions')} className="text-sm text-primary font-medium hover:underline">Voir tout</button>
             </div>
             <div className="card-elevated divide-y divide-border/50 overflow-hidden">
-              {transactions.slice(0, 5).map(t => {
-                const member = getMemberById(t.memberId);
-                return (
-                  <div key={t.id} className="flex items-center justify-between px-4 py-3.5 hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center text-lg">{t.emoji}</div>
-                      <div>
-                        <p className="text-sm font-semibold">{t.label}</p>
-                        <p className="text-xs text-muted-foreground">{t.category} · {formatDate(t.date)}</p>
-                      </div>
+              {transactions.slice(0, 5).map(t => (
+                <div key={t.id} className="flex items-center justify-between px-4 py-3.5 hover:bg-muted/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center text-lg">{t.emoji}</div>
+                    <div>
+                      <p className="text-sm font-semibold">{t.label}</p>
+                      <p className="text-xs text-muted-foreground">{t.category} · {formatDate(t.date)}</p>
                     </div>
-                    <span className={`font-mono-amount text-sm font-bold ${t.type === 'income' ? 'text-success' : ''}`}>
-                      {t.type === 'income' ? '+' : '-'}{formatAmount(t.amount, t.currency)}
-                    </span>
                   </div>
-                );
-              })}
+                  <ConvertedAmount
+                    amount={t.amount}
+                    originalCurrency={t.currency}
+                    householdCurrency={currency}
+                    convert={convert}
+                    type={t.type}
+                  />
+                </div>
+              ))}
             </div>
           </motion.div>
 

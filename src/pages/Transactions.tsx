@@ -3,13 +3,16 @@ import { motion } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatDate } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useExchangeRates } from '@/hooks/useExchangeRates';
 import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import AddTransactionModal from '@/components/AddTransactionModal';
+import ConvertedAmount from '@/components/ConvertedAmount';
 
 const Transactions = () => {
   const { transactions, getMemberById, household, getTransactionsForMonth, toggleRecurring } = useApp();
-  const { formatAmount } = useCurrency();
+  const { formatAmount, currency } = useCurrency();
+  const { convert } = useExchangeRates(currency);
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [filterMember, setFilterMember] = useState('all');
@@ -28,8 +31,9 @@ const Transactions = () => {
     return true;
   });
 
-  const monthIncome = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const monthExpense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  // Convert totals to household currency
+  const monthIncome = filtered.filter(t => t.type === 'income').reduce((s, t) => s + convert(t.amount, t.currency), 0);
+  const monthExpense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + convert(t.amount, t.currency), 0);
 
   return (
     <Layout>
@@ -103,9 +107,13 @@ const Transactions = () => {
                       <p className="text-xs text-muted-foreground">{t.category} · {member?.name} · {formatDate(t.date)}</p>
                     </div>
                   </div>
-                  <span className={`font-mono-amount text-sm font-bold ${t.type === 'income' ? 'text-success' : ''}`}>
-                    {t.type === 'income' ? '+' : '-'}{formatAmount(t.amount, t.currency)}
-                  </span>
+                  <ConvertedAmount
+                    amount={t.amount}
+                    originalCurrency={t.currency}
+                    householdCurrency={currency}
+                    convert={convert}
+                    type={t.type}
+                  />
                 </div>
               );
             })
