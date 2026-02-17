@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
-import { AppState, Transaction, Budget, Member, Household, SavingsGoal, SavingsDeposit, CustomCategory, DEFAULT_EXCHANGE_RATES } from '@/types/finance';
+import { AppState, Transaction, Budget, Member, Household, SavingsGoal, SavingsDeposit, CustomCategory, Account, AccountType, DEFAULT_EXCHANGE_RATES } from '@/types/finance';
 import { demoMembers, demoHousehold, demoTransactions, demoBudgets, demoSavingsGoals, demoSavingsDeposits } from '@/data/demo';
 import { generateId } from '@/utils/format';
 
@@ -15,6 +15,7 @@ const defaultState: AppState = {
   savingsGoals: demoSavingsGoals,
   savingsDeposits: demoSavingsDeposits,
   customCategories: [],
+  accounts: [],
 };
 
 /** Migrate old transactions that don't have exchange rate fields */
@@ -69,9 +70,10 @@ function loadState(): AppState {
         })),
         savingsDeposits: parsed.savingsDeposits || demoSavingsDeposits,
         customCategories: parsed.customCategories || [],
+        accounts: parsed.accounts || [],
       };
     }
-  } catch {}
+  } catch { }
   return defaultState;
 }
 
@@ -103,7 +105,6 @@ function processRecurringTransactions(transactions: Transaction[], householdCurr
   const newTransactions: Transaction[] = [];
 
   for (const template of recurringTemplates) {
-    // Skip if recurring has ended before this month
     if (template.recurringEndMonth && template.recurringEndMonth < currentMonthYear) continue;
 
     const templateDate = new Date(template.date);
@@ -173,6 +174,14 @@ interface AppContextType extends AppState {
   removeMember: (id: string) => void;
   updateMemberRole: (id: string, role: 'admin' | 'member') => void;
   resetDemo: () => void;
+  // Accounts
+  addAccount: (a: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'isArchived'>) => void;
+  updateAccount: (id: string, updates: Partial<Omit<Account, 'id' | 'createdAt'>>) => void;
+  archiveAccount: (id: string) => void;
+  deleteAccount: (id: string) => boolean;
+  getAccountBalance: (accountId: string) => number;
+  getActiveAccounts: () => Account[];
+  getAccountTransactions: (accountId: string) => Transaction[];
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -234,7 +243,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       transactions: prev.transactions.map(t => {
         if (t.id !== id) return t;
         const merged = { ...t, ...updates };
-        // If amount or currency changed, recalculate conversion
         if (updates.amount !== undefined || updates.currency !== undefined) {
           const baseCurrency = prev.household.currency;
           const rate = getExchangeRate(merged.currency, baseCurrency);
@@ -404,28 +412,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const monthStr = String(month + 1).padStart(2, '0');
     const monthYear = `${year}-${monthStr}`;
 
-    // Get non-recurring transactions for this month
     const monthTransactions = state.transactions.filter(t => t.date >= range.start && t.date <= range.end);
 
-    // Generate recurring transaction instances for this month
     const recurringTemplates = state.transactions.filter(t => t.isRecurring && !t.recurringSourceId);
     for (const template of recurringTemplates) {
-      // Skip if recurring hasn't started yet
       if (template.recurringStartMonth && template.recurringStartMonth > monthYear) continue;
-      // Skip if recurring has ended before this month (endMonth is the first month where it stops)
       if (template.recurringEndMonth && monthYear >= template.recurringEndMonth) continue;
 
-      // Check if template itself is already in this month
       const [tYear, tMonth] = template.date.split('-').map(Number);
-      if (tYear === year && tMonth === month + 1) continue; // template is already included
+      if (tYear === year && tMonth === month + 1) continue;
 
-      // Check if a generated instance already exists for this month
-      const alreadyExists = monthTransactions.some(
-        t => t.recurringSourceId === template.id
-      );
+      const alreadyExists = monthTransactions.some(t => t.recurringSourceId === template.id);
       if (alreadyExists) continue;
 
-      // Also check in full transaction list (may not be in range yet)
       const existsInState = state.transactions.some(
         t => t.recurringSourceId === template.id && t.date >= range.start && t.date <= range.end
       );
@@ -504,6 +503,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState({ ...fresh, transactions: processRecurringTransactions(fresh.transactions, fresh.household.currency) });
   };
 
+  // ===== ACCOUNTS =====
+  const addAccount = (a: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'isArchived'>) => {
+    const now = new Date().toISOString();
+    setState(prev => ({
+      ...prev,
+      accounts: [...prev.accounts, { ...a, id: generateId(), isArchived: false, createdAt: now, updatedAt: now }],
+    }));
+  };
+
+  const updateAccount = (id: string, updates: Partial<Omit<Account, 'id' | 'createdAt'>>) => {
+    setState(prev => ({
+      ...prev,
+      accounts: prev.accounts.map(a => a.id === id ? { ...a, ...updates, updatedAt: new Date().toISOString() } : a),
+    }));
+  };
+
+  const archiveAccount = (id: string) => {
+    updateAccount(id, { isArchived: true });
+  };
+
+  const deleteAccount = (id: string): boolean => {
+    const hasTransactions = state.transactions.some(t => t.accountId === id);
+    if (hasTransactions) return false;
+    setState(prev => ({ ...prev, accounts: prev.accounts.filter(a => a.id !== id) }));
+    return true;
+  };
+
+  const getAccountBalance = useCallback((accountId: string) => {
+    const account = state.accounts.find(a => a.id === accountId);
+    if (!account) return 0;
+    const txs = state.transactions.filter(t => t.accountId === accountId && t.date >= account.startingDate);
+    const income = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+    const expense = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    return account.startingBalance + income - expense;
+  }, [state.accounts, state.transactions]);
+
+  const getActiveAccounts = useCallback(() => {
+    return state.accounts.filter(a => !a.isArchived);
+  }, [state.accounts]);
+
+  const getAccountTransactions = useCallback((accountId: string) => {
+    return state.transactions.filter(t => t.accountId === accountId).sort((a, b) => b.date.localeCompare(a.date));
+  }, [state.transactions]);
+
   return (
     <AppContext.Provider value={{
       ...state, login, logout, completeOnboarding,
@@ -515,6 +558,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addCustomCategory, deleteCustomCategory, getTransactionsForMonth,
       changeCurrency, addMember, removeMember, updateMemberRole,
       resetDemo,
+      addAccount, updateAccount, archiveAccount, deleteAccount, getAccountBalance, getActiveAccounts, getAccountTransactions,
     }}>
       {children}
     </AppContext.Provider>

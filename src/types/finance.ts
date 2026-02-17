@@ -25,6 +25,7 @@ export interface Transaction {
   recurringSourceId?: string;
   recurringStartMonth?: string;
   recurringEndMonth?: string | null;
+  accountId?: string;
 }
 
 export interface Budget {
@@ -64,6 +65,28 @@ export interface CustomCategory {
   type: 'expense' | 'income';
 }
 
+export type AccountType = 'courant' | 'epargne' | 'cash' | 'carte' | 'autre';
+
+export interface Account {
+  id: string;
+  name: string;
+  type: AccountType;
+  currency: string;
+  startingBalance: number;
+  startingDate: string;
+  isArchived: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const ACCOUNT_TYPES: { value: AccountType; label: string; emoji: string }[] = [
+  { value: 'courant', label: 'Compte courant', emoji: '🏦' },
+  { value: 'epargne', label: 'Épargne', emoji: '🐖' },
+  { value: 'cash', label: 'Cash', emoji: '💵' },
+  { value: 'carte', label: 'Carte', emoji: '💳' },
+  { value: 'autre', label: 'Autre', emoji: '📁' },
+];
+
 export interface Household {
   name: string;
   currency: string;
@@ -81,6 +104,7 @@ export interface AppState {
   savingsGoals: SavingsGoal[];
   savingsDeposits: SavingsDeposit[];
   customCategories: CustomCategory[];
+  accounts: Account[];
 }
 
 export const EXPENSE_CATEGORIES = [
