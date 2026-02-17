@@ -145,7 +145,7 @@ interface AppContextType extends AppState {
   addTransaction: (t: Omit<Transaction, 'id' | 'exchangeRate' | 'baseCurrency' | 'convertedAmount'>) => void;
   updateTransaction: (id: string, updates: Partial<Omit<Transaction, 'id' | 'exchangeRate' | 'baseCurrency' | 'convertedAmount'>>) => void;
   deleteTransaction: (id: string) => void;
-  softDeleteRecurringTransaction: (id: string) => void;
+  softDeleteRecurringTransaction: (id: string, fromMonthYear?: string) => void;
   toggleRecurring: (id: string) => void;
   deleteRecurring: (id: string) => void;
   getRecurringTransactions: () => Transaction[];
@@ -247,9 +247,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, transactions: prev.transactions.filter(t => t.id !== id) }));
   };
 
-  const softDeleteRecurringTransaction = (id: string) => {
-    const now = new Date();
-    const monthYear = getMonthYearStr(now);
+  const softDeleteRecurringTransaction = (id: string, fromMonthYear?: string) => {
+    const monthYear = fromMonthYear || getMonthYearStr(new Date());
     setState(prev => ({
       ...prev,
       transactions: prev.transactions.map(t =>
@@ -389,8 +388,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     for (const template of recurringTemplates) {
       // Skip if recurring hasn't started yet
       if (template.recurringStartMonth && template.recurringStartMonth > monthYear) continue;
-      // Skip if recurring has ended before this month
-      if (template.recurringEndMonth && template.recurringEndMonth < monthYear) continue;
+      // Skip if recurring has ended before this month (endMonth is the first month where it stops)
+      if (template.recurringEndMonth && monthYear >= template.recurringEndMonth) continue;
 
       // Check if template itself is already in this month
       const [tYear, tMonth] = template.date.split('-').map(Number);

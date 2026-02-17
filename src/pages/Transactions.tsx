@@ -94,8 +94,9 @@ const Transactions = () => {
 
   const handleSoftDeleteRec = () => {
     if (!deleteRecTarget) return;
-    softDeleteRecurringTransaction(deleteRecTarget.id);
-    toast.success('Transaction arrêtée pour les mois à venir');
+    const monthYear = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+    softDeleteRecurringTransaction(deleteRecTarget.id, monthYear);
+    toast.success('Transaction arrêtée à partir de ce mois');
     setDeleteRecTarget(null);
   };
 
