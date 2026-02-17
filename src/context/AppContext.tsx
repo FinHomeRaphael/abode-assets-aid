@@ -376,8 +376,61 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const getTransactionsForMonth = useCallback((refDate: Date) => {
     const range = getMonthRange(refDate);
-    return state.transactions.filter(t => t.date >= range.start && t.date <= range.end);
-  }, [state.transactions]);
+    const year = refDate.getFullYear();
+    const month = refDate.getMonth();
+    const monthStr = String(month + 1).padStart(2, '0');
+    const monthYear = `${year}-${monthStr}`;
+
+    // Get non-recurring transactions for this month
+    const monthTransactions = state.transactions.filter(t => t.date >= range.start && t.date <= range.end);
+
+    // Generate recurring transaction instances for this month
+    const recurringTemplates = state.transactions.filter(t => t.isRecurring && !t.recurringSourceId);
+    for (const template of recurringTemplates) {
+      // Skip if recurring hasn't started yet
+      if (template.recurringStartMonth && template.recurringStartMonth > monthYear) continue;
+      // Skip if recurring has ended before this month
+      if (template.recurringEndMonth && template.recurringEndMonth < monthYear) continue;
+
+      // Check if template itself is already in this month
+      const [tYear, tMonth] = template.date.split('-').map(Number);
+      if (tYear === year && tMonth === month + 1) continue; // template is already included
+
+      // Check if a generated instance already exists for this month
+      const alreadyExists = monthTransactions.some(
+        t => t.recurringSourceId === template.id
+      );
+      if (alreadyExists) continue;
+
+      // Also check in full transaction list (may not be in range yet)
+      const existsInState = state.transactions.some(
+        t => t.recurringSourceId === template.id && t.date >= range.start && t.date <= range.end
+      );
+      if (existsInState) continue;
+
+      const day = template.recurrenceDay || parseInt(template.date.split('-')[2]) || 1;
+      const maxDay = new Date(year, month + 1, 0).getDate();
+      const safeDay = Math.min(day, maxDay);
+      const dateStr = `${year}-${monthStr}-${String(safeDay).padStart(2, '0')}`;
+
+      const baseCurrency = state.household.currency;
+      const rate = getExchangeRate(template.currency, baseCurrency);
+
+      monthTransactions.push({
+        ...template,
+        id: `recurring-${template.id}-${monthYear}`,
+        date: dateStr,
+        isRecurring: false,
+        recurrenceDay: undefined,
+        recurringSourceId: template.id,
+        exchangeRate: rate,
+        baseCurrency,
+        convertedAmount: template.amount * rate,
+      });
+    }
+
+    return monthTransactions;
+  }, [state.transactions, state.household.currency]);
 
   const changeCurrency = (currency: string) => {
     setState(prev => ({ ...prev, household: { ...prev.household, currency } }));
