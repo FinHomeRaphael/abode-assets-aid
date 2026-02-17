@@ -24,6 +24,7 @@ const fabActions = [
   { label: 'Scanner un ticket', emoji: '📸', action: 'scan' },
   { label: 'Budget', emoji: '🎯', action: 'budget' },
   { label: 'Enveloppe', emoji: '🐷', action: 'savings' },
+  { label: 'Compte', emoji: '🏦', action: 'account' },
   { label: 'Conseiller IA', emoji: '✨', action: 'chat' },
 ];
 
@@ -44,6 +45,7 @@ const Layout = ({ children }: LayoutProps) => {
     else if (action === 'budget') setShowBudgetModal(true);
     else if (action === 'savings') setShowSavingsModal(true);
     else if (action === 'chat') navigate('/chat');
+    else if (action === 'account') navigate('/savings?create=account');
   };
 
   return (
