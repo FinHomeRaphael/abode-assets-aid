@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
-import { formatAmount, getBudgetStatus } from '@/utils/format';
+import { getBudgetStatus } from '@/utils/format';
+import { useCurrency } from '@/hooks/useCurrency';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import MonthSelector from './MonthSelector';
 
@@ -14,6 +15,7 @@ const COLORS = ['hsl(199, 89%, 48%)', 'hsl(160, 84%, 39%)', 'hsl(38, 92%, 50%)',
 
 const MonthlyReportModal = ({ open, onClose }: Props) => {
   const { getTransactionsForMonth, budgets, getBudgetSpent, getMemberById, getMonthSavings } = useApp();
+  const { formatAmount } = useCurrency();
   const [month, setMonth] = useState(new Date());
 
   const transactions = useMemo(() => getTransactionsForMonth(month), [month, getTransactionsForMonth]);
@@ -22,14 +24,12 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   const savings = getMonthSavings(month);
   const net = income - expenses - savings;
 
-  // Previous month
   const prevMonth = new Date(month);
   prevMonth.setMonth(prevMonth.getMonth() - 1);
   const prevTransactions = useMemo(() => getTransactionsForMonth(prevMonth), [prevMonth, getTransactionsForMonth]);
   const prevExpenses = prevTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
   const prevIncome = prevTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
 
-  // Expenses by category for pie chart
   const expensesByCategory = useMemo(() => {
     const map: Record<string, number> = {};
     transactions.filter(t => t.type === 'expense').forEach(t => {
@@ -38,18 +38,15 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [transactions]);
 
-  // Top 5 expenses
   const top5 = useMemo(() => {
     return [...transactions].filter(t => t.type === 'expense').sort((a, b) => b.amount - a.amount).slice(0, 5);
   }, [transactions]);
 
-  // Budget status
   const monthlyBudgets = budgets.filter(b => b.period === 'monthly');
 
   const diffPct = (curr: number, prev: number) => {
     if (prev === 0) return null;
-    const pct = ((curr - prev) / prev) * 100;
-    return pct;
+    return ((curr - prev) / prev) * 100;
   };
 
   if (!open) return null;
@@ -68,7 +65,6 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
               <MonthSelector currentMonth={month} onChange={setMonth} />
             </div>
 
-            {/* Summary */}
             <div className="grid grid-cols-3 gap-3 mb-6">
               <div className="bg-secondary/50 rounded-lg p-3 text-center">
                 <p className="text-xs text-muted-foreground mb-1">Revenus</p>
@@ -90,7 +86,6 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
               </div>
             </div>
 
-            {/* Pie chart */}
             {expensesByCategory.length > 0 && (
               <div className="mb-6">
                 <h3 className="font-semibold text-sm mb-3">Répartition des dépenses</h3>
@@ -120,7 +115,6 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
               </div>
             )}
 
-            {/* Top 5 */}
             {top5.length > 0 && (
               <div className="mb-6">
                 <h3 className="font-semibold text-sm mb-3">Top 5 dépenses</h3>
@@ -138,7 +132,6 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
               </div>
             )}
 
-            {/* Budget status */}
             {monthlyBudgets.length > 0 && (
               <div>
                 <h3 className="font-semibold text-sm mb-3">État des budgets</h3>

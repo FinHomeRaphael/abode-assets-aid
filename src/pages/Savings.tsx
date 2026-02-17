@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
-import { formatAmount, formatDateLong } from '@/utils/format';
+import { formatDateLong } from '@/utils/format';
+import { useCurrency } from '@/hooks/useCurrency';
 import { EMOJI_LIST } from '@/types/finance';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
@@ -9,6 +10,7 @@ import MonthSelector from '@/components/MonthSelector';
 
 const Savings = () => {
   const { savingsGoals, savingsDeposits, getGoalSaved, getMonthSavings, getTotalSavings, addSavingsGoal, addSavingsDeposit, household } = useApp();
+  const { formatAmount } = useCurrency();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [showAddDeposit, setShowAddDeposit] = useState(false);
