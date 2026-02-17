@@ -12,6 +12,9 @@ export interface Transaction {
   label: string;
   amount: number;
   currency: string;
+  exchangeRate: number;
+  baseCurrency: string;
+  convertedAmount: number;
   category: string;
   memberId: string;
   date: string;
@@ -30,6 +33,10 @@ export interface Budget {
   emoji: string;
   alertsEnabled: boolean;
   recurring: boolean;
+  isRecurring: boolean;
+  monthYear?: string;
+  startMonth: string;
+  endMonth?: string | null;
 }
 
 export interface SavingsGoal {
@@ -100,6 +107,34 @@ export const CURRENCIES = [
   // Oceania
   'FJD', 'PGK', 'WST', 'TOP',
 ] as const;
+
+// Default exchange rates (relative to EUR) used when creating transactions
+export const DEFAULT_EXCHANGE_RATES: Record<string, number> = {
+  EUR: 1,
+  USD: 0.92,
+  GBP: 1.17,
+  CHF: 1.05,
+  JPY: 0.006,
+  CAD: 0.68,
+  AUD: 0.60,
+  NZD: 0.55,
+  CNY: 0.13,
+  HKD: 0.12,
+  SGD: 0.69,
+  SEK: 0.087,
+  NOK: 0.086,
+  DKK: 0.13,
+  PLN: 0.23,
+  CZK: 0.040,
+  HUF: 0.0026,
+  RON: 0.20,
+  TRY: 0.027,
+  INR: 0.011,
+  BRL: 0.17,
+  MXN: 0.053,
+  ZAR: 0.051,
+  KRW: 0.00069,
+};
 
 export const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: '€', USD: '$', GBP: '£', CHF: 'CHF', JPY: '¥', CAD: 'CA$', AUD: 'A$', NZD: 'NZ$',

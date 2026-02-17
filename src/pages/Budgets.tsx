@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { getBudgetStatus } from '@/utils/format';
@@ -9,26 +9,32 @@ import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 
 const Budgets = () => {
-  const { budgets, addBudget, getBudgetSpent, deleteBudget } = useApp();
+  const { budgets, addBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth } = useApp();
   const { formatAmount } = useCurrency();
   const [showCreate, setShowCreate] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [newLimit, setNewLimit] = useState('');
   const [newPeriod, setNewPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [newAlerts, setNewAlerts] = useState(true);
-  const [newRecurring, setNewRecurring] = useState(true);
+  const [newIsRecurring, setNewIsRecurring] = useState(true);
   const [viewPeriod, setViewPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
+  // Delete modal state
+  const [deleteTarget, setDeleteTarget] = useState<typeof budgets[0] | null>(null);
+
   const handleCreate = () => {
     if (!newCategory || !newLimit) { toast.error('Remplissez tous les champs'); return; }
+    const monthYear = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
     addBudget({
       category: newCategory,
       limit: parseFloat(newLimit),
       period: newPeriod,
       emoji: CATEGORY_EMOJIS[newCategory] || '📌',
       alertsEnabled: newAlerts,
-      recurring: newRecurring,
+      recurring: newIsRecurring,
+      isRecurring: newIsRecurring,
+      monthYear: newIsRecurring ? undefined : monthYear,
     });
     toast.success('Budget créé ✓');
     setShowCreate(false);
@@ -36,7 +42,36 @@ const Budgets = () => {
     setNewLimit('');
   };
 
-  const filteredBudgets = budgets.filter(b => b.period === viewPeriod);
+  const filteredBudgets = useMemo(() => {
+    const monthBudgets = getBudgetsForMonth(currentMonth);
+    return monthBudgets.filter(b => b.period === viewPeriod);
+  }, [getBudgetsForMonth, currentMonth, viewPeriod]);
+
+  const currentMonthYear = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
+
+  const handleDeleteClick = (b: typeof budgets[0]) => {
+    setDeleteTarget(b);
+  };
+
+  const handleSoftDelete = () => {
+    if (!deleteTarget) return;
+    softDeleteBudget(deleteTarget.id);
+    toast.success('Budget arrêté pour les mois à venir');
+    setDeleteTarget(null);
+  };
+
+  const handleHardDelete = () => {
+    if (!deleteTarget) return;
+    deleteBudget(deleteTarget.id);
+    toast.success('Budget supprimé définitivement');
+    setDeleteTarget(null);
+  };
+
+  const formatMonth = (monthStr: string) => {
+    const [y, m] = monthStr.split('-');
+    const date = new Date(parseInt(y), parseInt(m) - 1);
+    return new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(date);
+  };
 
   return (
     <Layout>
@@ -60,7 +95,7 @@ const Budgets = () => {
 
         {filteredBudgets.length === 0 ? (
           <div className="card-elevated p-8 text-center text-muted-foreground text-sm">
-            Aucun budget {viewPeriod === 'monthly' ? 'mensuel' : 'annuel'} créé
+            Aucun budget {viewPeriod === 'monthly' ? 'mensuel' : 'annuel'} pour ce mois
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 gap-3">
@@ -68,22 +103,31 @@ const Budgets = () => {
               const spent = getBudgetSpent(b, currentMonth);
               const status = getBudgetStatus(spent, b.limit);
               const pct = Math.min((spent / b.limit) * 100, 100);
+              const isStopped = !!b.endMonth && b.endMonth <= currentMonthYear;
               return (
                 <div key={b.id} className="card-elevated p-5 card-hover group">
                   <div className="flex items-center justify-between mb-3">
                     <span className="font-semibold">{b.emoji} {b.category}</span>
                     <div className="flex items-center gap-2">
-                      {(b.recurring ?? true) && (
+                      {b.isRecurring && !isStopped && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded-lg bg-primary/10 text-primary font-medium">🔄</span>
+                      )}
+                      {!b.isRecurring && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-lg bg-muted text-muted-foreground font-medium">Ponctuel</span>
+                      )}
+                      {isStopped && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-lg bg-muted text-muted-foreground font-medium">⏹️ Arrêté en {formatMonth(b.endMonth!)}</span>
                       )}
                       {status === 'over' && <span className="text-[10px] px-2 py-1 rounded-lg bg-destructive/10 text-destructive font-semibold">Dépassé</span>}
                       {status === 'warning' && <span className="text-[10px] px-2 py-1 rounded-lg bg-warning/10 text-warning font-semibold">Attention</span>}
-                      <button
-                        onClick={() => { deleteBudget(b.id); toast.success('Budget supprimé'); }}
-                        className="text-xs text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        ✕
-                      </button>
+                      {!isStopped && (
+                        <button
+                          onClick={() => handleDeleteClick(b)}
+                          className="text-xs text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="h-2.5 bg-muted rounded-full overflow-hidden mb-2">
@@ -124,14 +168,20 @@ const Budgets = () => {
                       <button onClick={() => setNewPeriod('yearly')} className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-all ${newPeriod === 'yearly' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>📆 Annuel</button>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-muted/50">
-                    <div>
-                      <p className="text-sm font-medium">🔄 Récurrent</p>
-                      <p className="text-xs text-muted-foreground">Se renouvelle chaque {newPeriod === 'monthly' ? 'mois' : 'année'}</p>
+                  {/* Recurring vs One-time */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Type de budget</label>
+                    <div className="flex gap-2">
+                      <button onClick={() => setNewIsRecurring(true)} className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-all ${newIsRecurring ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>
+                        🔄 Récurrent
+                      </button>
+                      <button onClick={() => setNewIsRecurring(false)} className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-all ${!newIsRecurring ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>
+                        📌 Ponctuel
+                      </button>
                     </div>
-                    <button onClick={() => setNewRecurring(!newRecurring)} className={`relative w-11 h-6 rounded-full transition-colors ${newRecurring ? 'bg-primary' : 'bg-border'}`}>
-                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-card shadow transition-transform ${newRecurring ? 'translate-x-5' : ''}`} />
-                    </button>
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      {newIsRecurring ? 'Ce budget sera actif tous les mois.' : 'Ce budget ne sera actif que pour le mois en cours.'}
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <input type="checkbox" checked={newAlerts} onChange={e => setNewAlerts(e.target.checked)} id="alerts" className="rounded" />
@@ -142,6 +192,40 @@ const Budgets = () => {
                   <button onClick={() => setShowCreate(false)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Annuler</button>
                   <button onClick={handleCreate} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">Créer</button>
                 </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Delete budget modal */}
+        <AnimatePresence>
+          {deleteTarget && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setDeleteTarget(null)}>
+              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={e => e.stopPropagation()} className="bg-card w-full max-w-sm rounded-2xl shadow-card-lg p-6">
+                <h2 className="text-lg font-bold mb-2">Supprimer le budget</h2>
+                <p className="text-sm text-muted-foreground mb-5">{deleteTarget.emoji} {deleteTarget.category} — {formatAmount(deleteTarget.limit)}</p>
+
+                {deleteTarget.isRecurring ? (
+                  <div className="space-y-3">
+                    <button onClick={handleSoftDelete} className="w-full py-3 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors text-left px-4">
+                      <p className="font-semibold">⏹️ Arrêter pour les mois à venir</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">L'historique est conservé dans les mois passés</p>
+                    </button>
+                    <button onClick={handleHardDelete} className="w-full py-3 rounded-xl border border-destructive/30 text-sm font-medium hover:bg-destructive/5 transition-colors text-left px-4">
+                      <p className="font-semibold text-destructive">🗑️ Supprimer complètement</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Efface le budget de tous les mois, y compris l'historique</p>
+                    </button>
+                    <button onClick={() => setDeleteTarget(null)} className="w-full py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Annuler</button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">Cette action est irréversible.</p>
+                    <div className="flex gap-3">
+                      <button onClick={() => setDeleteTarget(null)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Annuler</button>
+                      <button onClick={handleHardDelete} className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold hover:bg-destructive/90 transition-colors">Supprimer</button>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             </motion.div>
           )}

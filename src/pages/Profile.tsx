@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatDateLong, getInitials } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
-import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { CURRENCIES, CURRENCY_NAMES, CURRENCY_SYMBOLS } from '@/types/finance';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
@@ -12,7 +11,6 @@ import ConvertedAmount from '@/components/ConvertedAmount';
 const Profile = () => {
   const { household, currentUser, logout, resetDemo, customCategories, deleteCustomCategory, getRecurringTransactions, deleteRecurring, getMemberById, changeCurrency, addMember, removeMember, updateMemberRole } = useApp();
   const { formatAmount, currency } = useCurrency();
-  const { convert } = useExchangeRates(currency);
   const recurringTx = getRecurringTransactions();
 
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
@@ -151,13 +149,7 @@ const Profile = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <ConvertedAmount
-                        amount={t.amount}
-                        originalCurrency={t.currency}
-                        householdCurrency={currency}
-                        convert={convert}
-                        type={t.type}
-                      />
+                      <ConvertedAmount transaction={t} />
                       <button onClick={() => { deleteRecurring(t.id); toast.success('Récurrence désactivée'); }} className="text-xs text-destructive font-medium hover:underline">Supprimer</button>
                     </div>
                   </div>

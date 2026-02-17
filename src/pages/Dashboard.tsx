@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatAmount as rawFormatAmount, formatDate, getBudgetStatus, getInitials } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
-import { useExchangeRates } from '@/hooks/useExchangeRates';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import ScanTicketModal from '@/components/ScanTicketModal';
@@ -53,7 +52,6 @@ function generateAIAdvice(
 const Dashboard = () => {
   const { transactions, budgets, household, getMemberById, getBudgetSpent, getMonthSavings, getTotalSavings, savingsGoals, getGoalSaved, getTransactionsForMonth, currentUser } = useApp();
   const { formatAmount, currency } = useCurrency();
-  const { convert } = useExchangeRates(currency);
   const navigate = useNavigate();
   const [showScan, setShowScan] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -61,9 +59,9 @@ const Dashboard = () => {
   const now = new Date();
   const monthTx = useMemo(() => getTransactionsForMonth(now), [getTransactionsForMonth]);
 
-  // Convert all transaction amounts to household currency for totals
-  const totalIncome = monthTx.filter(t => t.type === 'income').reduce((s, t) => s + convert(t.amount, t.currency), 0);
-  const totalExpense = monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + convert(t.amount, t.currency), 0);
+  // Use frozen convertedAmount for totals
+  const totalIncome = monthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
+  const totalExpense = monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
   const monthSavings = getMonthSavings(now);
   const totalSavings = getTotalSavings();
   const balance = totalIncome - totalExpense - monthSavings;
@@ -71,7 +69,7 @@ const Dashboard = () => {
   const prevMonth = new Date(now);
   prevMonth.setMonth(prevMonth.getMonth() - 1);
   const prevTx = useMemo(() => getTransactionsForMonth(prevMonth), [getTransactionsForMonth]);
-  const prevExpense = prevTx.filter(t => t.type === 'expense').reduce((s, t) => s + convert(t.amount, t.currency), 0);
+  const prevExpense = prevTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
 
   const budgetData = budgets.filter(b => b.period === 'monthly').map(b => ({
     ...b,
@@ -174,13 +172,7 @@ const Dashboard = () => {
                       <p className="text-xs text-muted-foreground">{t.category} · {formatDate(t.date)}</p>
                     </div>
                   </div>
-                  <ConvertedAmount
-                    amount={t.amount}
-                    originalCurrency={t.currency}
-                    householdCurrency={currency}
-                    convert={convert}
-                    type={t.type}
-                  />
+                  <ConvertedAmount transaction={t} />
                 </div>
               ))}
             </div>
