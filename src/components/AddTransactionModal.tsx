@@ -127,9 +127,15 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1.5">Devise</label>
-                  <select value={currency} onChange={e => setCurrency(e.target.value)} className="w-full px-4 py-2.5 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  {accountId ? (
+                    <div className="w-full px-4 py-2.5 rounded-md border border-input bg-muted text-sm text-muted-foreground cursor-not-allowed">
+                      {currency} (devise du compte)
+                    </div>
+                  ) : (
+                    <select value={currency} onChange={e => setCurrency(e.target.value)} className="w-full px-4 py-2.5 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                      {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  )}
                 </div>
               </div>
 
@@ -151,7 +157,14 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
               {activeAccounts.length > 0 ? (
                 <div>
                   <label className="block text-sm font-medium mb-1.5">Compte *</label>
-                  <select value={accountId} onChange={e => setAccountId(e.target.value)} className="w-full px-4 py-2.5 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                  <select value={accountId} onChange={e => {
+                    const selectedId = e.target.value;
+                    setAccountId(selectedId);
+                    if (selectedId) {
+                      const acc = activeAccounts.find(a => a.id === selectedId);
+                      if (acc) setCurrency(acc.currency);
+                    }
+                  }} className="w-full px-4 py-2.5 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
                     <option value="">Sélectionner un compte...</option>
                     {activeAccounts.map(a => (
                       <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
