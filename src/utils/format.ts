@@ -1,11 +1,14 @@
+import { CURRENCY_SYMBOLS } from '@/types/finance';
+
 export function formatAmount(amount: number, currency = 'EUR'): string {
-  const symbols: Record<string, string> = { EUR: '€', USD: '$', GBP: '£', CHF: 'CHF' };
+  const symbol = CURRENCY_SYMBOLS[currency] || currency;
   const formatted = new Intl.NumberFormat('fr-FR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(Math.abs(amount));
-  const symbol = symbols[currency] || currency;
-  return currency === 'EUR' ? `${formatted} ${symbol}` : `${symbol}${formatted}`;
+  // Symbol after number for EUR-style, before for USD-style
+  const symbolAfter = ['EUR', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'HUF', 'RON', 'TRY', 'RUB', 'UAH'];
+  return symbolAfter.includes(currency) ? `${formatted} ${symbol}` : `${symbol}${formatted}`;
 }
 
 export function formatDate(dateStr: string): string {

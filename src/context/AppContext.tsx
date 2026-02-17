@@ -112,6 +112,10 @@ interface AppContextType extends AppState {
   addCustomCategory: (c: CustomCategory) => void;
   deleteCustomCategory: (name: string) => void;
   getTransactionsForMonth: (refDate: Date) => Transaction[];
+  changeCurrency: (currency: string) => void;
+  addMember: (name: string, email: string, role: 'admin' | 'member') => void;
+  removeMember: (id: string) => void;
+  updateMemberRole: (id: string, role: 'admin' | 'member') => void;
   resetDemo: () => void;
 }
 
@@ -245,6 +249,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return state.transactions.filter(t => t.date >= range.start && t.date <= range.end);
   }, [state.transactions]);
 
+  const changeCurrency = (currency: string) => {
+    setState(prev => ({ ...prev, household: { ...prev.household, currency } }));
+  };
+
+  const addMember = (name: string, email: string, role: 'admin' | 'member') => {
+    const newMember: Member = { id: generateId(), name, email, role };
+    setState(prev => ({
+      ...prev,
+      household: { ...prev.household, members: [...prev.household.members, newMember] },
+    }));
+  };
+
+  const removeMember = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      household: { ...prev.household, members: prev.household.members.filter(m => m.id !== id) },
+    }));
+  };
+
+  const updateMemberRole = (id: string, role: 'admin' | 'member') => {
+    setState(prev => ({
+      ...prev,
+      household: {
+        ...prev.household,
+        members: prev.household.members.map(m => m.id === id ? { ...m, role } : m),
+      },
+    }));
+  };
+
   const resetDemo = () => {
     const fresh = { ...defaultState, isLoggedIn: true, isOnboarded: true, currentUser: demoMembers[0] };
     setState({ ...fresh, transactions: processRecurringTransactions(fresh.transactions) });
@@ -258,6 +291,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       getMemberById, getBudgetSpent,
       addSavingsGoal, addSavingsDeposit, getGoalSaved, getMonthSavings, getTotalSavings,
       addCustomCategory, deleteCustomCategory, getTransactionsForMonth,
+      changeCurrency, addMember, removeMember, updateMemberRole,
       resetDemo,
     }}>
       {children}

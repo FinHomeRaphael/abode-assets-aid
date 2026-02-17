@@ -1,13 +1,54 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatDateLong, formatAmount, getInitials } from '@/utils/format';
+import { CURRENCIES, CURRENCY_NAMES, CURRENCY_SYMBOLS } from '@/types/finance';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 
 const Profile = () => {
-  const { household, currentUser, logout, resetDemo, customCategories, deleteCustomCategory, getRecurringTransactions, deleteRecurring, getMemberById } = useApp();
+  const { household, currentUser, logout, resetDemo, customCategories, deleteCustomCategory, getRecurringTransactions, deleteRecurring, getMemberById, changeCurrency, addMember, removeMember, updateMemberRole } = useApp();
   const recurringTx = getRecurringTransactions();
+
+  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
+  const [currencySearch, setCurrencySearch] = useState('');
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteName, setInviteName] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
+
+  const filteredCurrencies = CURRENCIES.filter(c => {
+    const q = currencySearch.toLowerCase();
+    if (!q) return true;
+    const name = CURRENCY_NAMES[c] || '';
+    return c.toLowerCase().includes(q) || name.toLowerCase().includes(q);
+  });
+
+  const handleInvite = () => {
+    if (!inviteName.trim() || !inviteEmail.trim()) {
+      toast.error('Remplissez tous les champs');
+      return;
+    }
+    if (household.members.some(m => m.email === inviteEmail.trim())) {
+      toast.error('Ce membre existe déjà');
+      return;
+    }
+    addMember(inviteName.trim(), inviteEmail.trim(), inviteRole);
+    toast.success(`${inviteName.trim()} ajouté(e) au foyer ✓`);
+    setShowInviteModal(false);
+    setInviteName('');
+    setInviteEmail('');
+    setInviteRole('member');
+  };
+
+  const handleRemoveMember = (id: string, name: string) => {
+    if (id === currentUser?.id) {
+      toast.error('Vous ne pouvez pas vous retirer vous-même');
+      return;
+    }
+    removeMember(id);
+    toast.success(`${name} retiré(e) du foyer`);
+  };
 
   return (
     <Layout>
@@ -29,14 +70,31 @@ const Profile = () => {
         <div className="card-elevated p-5">
           <h2 className="font-semibold mb-3">🏠 {household.name}</h2>
           <p className="text-sm text-muted-foreground">Créé le {formatDateLong(household.createdAt)}</p>
-          <p className="text-sm text-muted-foreground">Devise : {household.currency}</p>
+        </div>
+
+        {/* Currency */}
+        <div className="card-elevated p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold mb-1">💱 Devise par défaut</h2>
+              <p className="text-sm text-muted-foreground">
+                {CURRENCY_SYMBOLS[household.currency] || household.currency} — {CURRENCY_NAMES[household.currency] || household.currency} ({household.currency})
+              </p>
+            </div>
+            <button
+              onClick={() => setShowCurrencyModal(true)}
+              className="h-10 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+            >
+              Modifier
+            </button>
+          </div>
         </div>
 
         {/* Members */}
         <div className="card-elevated p-5">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold">Membres</h2>
-            <button className="text-sm text-primary font-medium hover:underline" onClick={() => toast.info('Fonctionnalité à venir')}>+ Inviter</button>
+            <h2 className="font-semibold">Membres ({household.members.length})</h2>
+            <button onClick={() => setShowInviteModal(true)} className="text-sm text-primary font-medium hover:underline">+ Inviter</button>
           </div>
           <div className="space-y-3">
             {household.members.map(m => (
@@ -48,9 +106,22 @@ const Profile = () => {
                     <p className="text-xs text-muted-foreground">{m.email}</p>
                   </div>
                 </div>
-                <span className={`text-xs px-2.5 py-1 rounded-lg font-medium ${m.role === 'admin' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                  {m.role === 'admin' ? 'Admin' : 'Membre'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={m.role}
+                    onChange={e => { updateMemberRole(m.id, e.target.value as 'admin' | 'member'); toast.success('Rôle mis à jour'); }}
+                    className="text-xs px-2.5 py-1 rounded-lg border border-border bg-card font-medium"
+                    disabled={m.id === currentUser?.id}
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="member">Membre</option>
+                  </select>
+                  {m.id !== currentUser?.id && (
+                    <button onClick={() => handleRemoveMember(m.id, m.name)} className="text-xs text-destructive font-medium hover:underline">
+                      Retirer
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -71,18 +142,14 @@ const Profile = () => {
                       <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center">{t.emoji}</div>
                       <div>
                         <p className="text-sm font-medium">{t.label}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {t.category} · {member?.name} · Le {t.recurrenceDay} de chaque mois
-                        </p>
+                        <p className="text-xs text-muted-foreground">{t.category} · {member?.name} · Le {t.recurrenceDay} de chaque mois</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className={`font-mono-amount text-sm font-semibold ${t.type === 'income' ? 'text-success' : ''}`}>
                         {t.type === 'income' ? '+' : '-'}{formatAmount(t.amount)}
                       </span>
-                      <button onClick={() => { deleteRecurring(t.id); toast.success('Récurrence désactivée'); }} className="text-xs text-destructive font-medium hover:underline">
-                        Supprimer
-                      </button>
+                      <button onClick={() => { deleteRecurring(t.id); toast.success('Récurrence désactivée'); }} className="text-xs text-destructive font-medium hover:underline">Supprimer</button>
                     </div>
                   </div>
                 );
@@ -116,10 +183,6 @@ const Profile = () => {
         <div className="card-elevated p-5 space-y-3">
           <h2 className="font-semibold">Paramètres</h2>
           <div className="flex items-center justify-between text-sm">
-            <span>Devise par défaut</span>
-            <span className="font-semibold">{household.currency}</span>
-          </div>
-          <div className="flex items-center justify-between text-sm">
             <span>Notifications</span>
             <span className="text-success font-semibold">Activées</span>
           </div>
@@ -132,6 +195,85 @@ const Profile = () => {
           <button onClick={logout} className="w-full py-3 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold hover:bg-destructive/90 transition-colors">Déconnexion</button>
         </div>
       </motion.div>
+
+      {/* Currency Modal */}
+      <AnimatePresence>
+        {showCurrencyModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowCurrencyModal(false)}>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={e => e.stopPropagation()} className="bg-card w-full max-w-md rounded-2xl shadow-card-lg p-6 max-h-[80vh] flex flex-col">
+              <h2 className="text-lg font-bold mb-4">Choisir la devise</h2>
+              <input
+                value={currencySearch}
+                onChange={e => setCurrencySearch(e.target.value)}
+                placeholder="🔍 Rechercher une devise..."
+                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring mb-3"
+                autoFocus
+              />
+              <div className="flex-1 overflow-y-auto space-y-0.5 min-h-0">
+                {filteredCurrencies.map(c => (
+                  <button
+                    key={c}
+                    onClick={() => { changeCurrency(c); toast.success(`Devise changée en ${c}`); setShowCurrencyModal(false); setCurrencySearch(''); }}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all text-left ${
+                      household.currency === c ? 'bg-primary/10 text-primary font-semibold' : 'hover:bg-muted'
+                    }`}
+                  >
+                    <div>
+                      <span className="font-medium">{CURRENCY_SYMBOLS[c] || c}</span>
+                      <span className="ml-2 text-muted-foreground">{c}</span>
+                      {CURRENCY_NAMES[c] && <span className="ml-2 text-xs text-muted-foreground">— {CURRENCY_NAMES[c]}</span>}
+                    </div>
+                    {household.currency === c && <span className="text-primary">✓</span>}
+                  </button>
+                ))}
+                {filteredCurrencies.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">Aucune devise trouvée</p>
+                )}
+              </div>
+              <button onClick={() => { setShowCurrencyModal(false); setCurrencySearch(''); }} className="w-full mt-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Fermer</button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Invite Modal */}
+      <AnimatePresence>
+        {showInviteModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowInviteModal(false)}>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={e => e.stopPropagation()} className="bg-card w-full max-w-md rounded-2xl shadow-card-lg p-6">
+              <h2 className="text-lg font-bold mb-5">Inviter un membre</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Nom</label>
+                  <input value={inviteName} onChange={e => setInviteName(e.target.value)} placeholder="Prénom ou nom complet" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" autoFocus />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Email</label>
+                  <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="email@exemple.com" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Rôle</label>
+                  <div className="flex gap-2">
+                    <button onClick={() => setInviteRole('member')} className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-all ${inviteRole === 'member' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>
+                      👤 Membre
+                    </button>
+                    <button onClick={() => setInviteRole('admin')} className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-all ${inviteRole === 'admin' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>
+                      👑 Admin
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    {inviteRole === 'admin' ? 'Les admins peuvent gérer les membres et les paramètres du foyer.' : 'Les membres peuvent ajouter des transactions et consulter les données.'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button onClick={() => setShowInviteModal(false)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Annuler</button>
+                <button onClick={handleInvite} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">Inviter</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Layout>
   );
 };

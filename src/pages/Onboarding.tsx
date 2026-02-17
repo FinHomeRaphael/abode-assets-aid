@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
-import { CURRENCIES } from '@/types/finance';
+import { CURRENCIES, CURRENCY_NAMES, CURRENCY_SYMBOLS } from '@/types/finance';
 import { toast } from 'sonner';
 
 const Onboarding = () => {
@@ -11,6 +11,7 @@ const Onboarding = () => {
   const [inviteEmail, setInviteEmail] = useState('');
   const [invites, setInvites] = useState<string[]>([]);
   const [currency, setCurrency] = useState('EUR');
+  const [currencySearch, setCurrencySearch] = useState('');
 
   const handleInvite = () => {
     if (inviteEmail && !invites.includes(inviteEmail)) {
@@ -76,15 +77,36 @@ const Onboarding = () => {
             {step === 3 && (
               <motion.div key="s3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <h2 className="text-lg font-bold mb-1">Devise principale</h2>
-                <p className="text-sm text-muted-foreground mb-4">Quelle devise utilisez-vous ?</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {CURRENCIES.map(c => (
-                    <button key={c} onClick={() => setCurrency(c)} className={`py-3.5 rounded-xl border text-sm font-medium transition-all ${currency === c ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>
-                      {c === 'EUR' ? '🇪🇺 EUR' : c === 'USD' ? '🇺🇸 USD' : c === 'GBP' ? '🇬🇧 GBP' : '🇨🇭 CHF'}
+                <p className="text-sm text-muted-foreground mb-3">Quelle devise utilisez-vous ?</p>
+                <input
+                  value={currencySearch}
+                  onChange={e => setCurrencySearch(e.target.value)}
+                  placeholder="🔍 Rechercher une devise..."
+                  className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring mb-2"
+                />
+                <div className="max-h-48 overflow-y-auto space-y-0.5 mb-4">
+                  {CURRENCIES.filter(c => {
+                    const q = currencySearch.toLowerCase();
+                    if (!q) return true;
+                    return c.toLowerCase().includes(q) || (CURRENCY_NAMES[c] || '').toLowerCase().includes(q);
+                  }).map(c => (
+                    <button
+                      key={c}
+                      onClick={() => setCurrency(c)}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm transition-all text-left ${
+                        currency === c ? 'bg-primary/10 text-primary font-semibold' : 'hover:bg-muted'
+                      }`}
+                    >
+                      <span>
+                        <span className="font-medium">{CURRENCY_SYMBOLS[c] || c}</span>
+                        <span className="ml-2 text-muted-foreground">{c}</span>
+                        {CURRENCY_NAMES[c] && <span className="ml-2 text-xs text-muted-foreground">— {CURRENCY_NAMES[c]}</span>}
+                      </span>
+                      {currency === c && <span className="text-primary">✓</span>}
                     </button>
                   ))}
                 </div>
-                <div className="flex gap-2 mt-4">
+                <div className="flex gap-2">
                   <button onClick={() => setStep(2)} className="flex-1 py-3 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Retour</button>
                   <button onClick={handleFinish} className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">Commencer 🚀</button>
                 </div>
