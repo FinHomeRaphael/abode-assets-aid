@@ -15,48 +15,38 @@ function generateAIAdvice(
   totalSavings: number,
   savingsGoals: { name: string; emoji: string; target: number; saved: number }[],
 ) {
-  // 1) Budget dépassé
   const overBudgets = budgets.filter(b => b.spent > b.limit);
   if (overBudgets.length > 0) {
     const b = overBudgets[0];
     const over = b.spent - b.limit;
     return `Votre budget ${b.emoji} ${b.category} est dépassé de ${formatAmount(over)}. En réduisant cette catégorie, vous pourriez épargner ${formatAmount(over * 12)} par an.`;
   }
-
-  // 2) Budget >80%
   const warningBudgets = budgets.filter(b => b.spent / b.limit > 0.8 && b.spent <= b.limit);
   if (warningBudgets.length > 0) {
     const b = warningBudgets[0];
     const pct = Math.round((b.spent / b.limit) * 100);
     return `Attention, votre budget ${b.emoji} ${b.category} est à ${pct}% (${formatAmount(b.spent)} / ${formatAmount(b.limit)}). Surveillez vos dépenses cette fin de mois.`;
   }
-
-  // 3) Objectif épargne proche
   const closeGoals = savingsGoals.filter(g => g.saved / g.target >= 0.8 && g.saved < g.target);
   if (closeGoals.length > 0) {
     const g = closeGoals[0];
     const remaining = g.target - g.saved;
     return `${g.emoji} Votre objectif "${g.name}" est presque atteint ! Plus que ${formatAmount(remaining)} pour atteindre votre cible de ${formatAmount(g.target)}.`;
   }
-
-  // 4) Hausse dépenses vs mois dernier
   if (prevTotalExpense > 0 && totalExpense > prevTotalExpense) {
     const pct = Math.round(((totalExpense - prevTotalExpense) / prevTotalExpense) * 100);
     if (pct > 5) {
       return `Vos dépenses ont augmenté de ${pct}% par rapport au mois dernier (${formatAmount(totalExpense)} vs ${formatAmount(prevTotalExpense)}). Revoyez vos catégories les plus coûteuses.`;
     }
   }
-
-  // 5) Message positif
   if (monthSavings > 0) {
     return `Bravo ! 🎉 Vous avez épargné ${formatAmount(monthSavings)} ce mois-ci, pour un total cumulé de ${formatAmount(totalSavings)}. Continuez sur cette lancée !`;
   }
-
   return `Vos finances sont en bonne santé ce mois-ci. Pensez à mettre de côté pour vos objectifs d'épargne ! 💪`;
 }
 
 const Dashboard = () => {
-  const { transactions, budgets, household, getMemberById, getBudgetSpent, getMonthSavings, getTotalSavings, savingsGoals, getGoalSaved, getTransactionsForMonth } = useApp();
+  const { transactions, budgets, household, getMemberById, getBudgetSpent, getMonthSavings, getTotalSavings, savingsGoals, getGoalSaved, getTransactionsForMonth, currentUser } = useApp();
   const navigate = useNavigate();
   const [showScan, setShowScan] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -69,14 +59,11 @@ const Dashboard = () => {
   const totalSavings = getTotalSavings();
   const balance = totalIncome - totalExpense - monthSavings;
 
-  // Previous month for comparison
   const prevMonth = new Date(now);
   prevMonth.setMonth(prevMonth.getMonth() - 1);
   const prevTx = useMemo(() => getTransactionsForMonth(prevMonth), [getTransactionsForMonth]);
-  const prevIncome = prevTx.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const prevExpense = prevTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
 
-  const incomeDiff = prevIncome > 0 ? Math.round(((totalIncome - prevIncome) / prevIncome) * 100) : 0;
   const expenseDiff = prevExpense > 0 ? Math.round(((totalExpense - prevExpense) / prevExpense) * 100) : 0;
 
   const budgetData = budgets.filter(b => b.period === 'monthly').map(b => ({
@@ -88,95 +75,129 @@ const Dashboard = () => {
 
   const aiAdvice = useMemo(() => generateAIAdvice(budgetData, totalExpense, prevExpense, monthSavings, totalSavings, goalsData), [budgetData, totalExpense, prevExpense, monthSavings, totalSavings, goalsData]);
 
-  const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
-  const fadeUp = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
+  const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
+  const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
 
   return (
     <Layout>
       <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
-        {/* Stats */}
-        <motion.div variants={fadeUp} className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard title="Solde total" value={formatAmount(balance)} emoji="💰" className="bg-card" />
-          <StatCard title="Revenus du mois" value={`+${formatAmount(totalIncome)}`} subtitle={`${incomeDiff >= 0 ? '+' : ''}${incomeDiff}% vs mois dernier`} className="text-success" />
-          <StatCard title="Dépenses du mois" value={`-${formatAmount(totalExpense)}`} subtitle={`${expenseDiff >= 0 ? '+' : ''}${expenseDiff}% vs mois dernier`} className="text-destructive" />
-          <StatCard title="Épargne du mois" value={formatAmount(monthSavings)} subtitle={`Total: ${formatAmount(totalSavings)}`} className="text-primary" />
+        {/* Welcome */}
+        <motion.div variants={fadeUp} className="flex items-center justify-between">
+          <div>
+            <p className="text-muted-foreground text-sm">Bonjour,</p>
+            <h1 className="text-2xl font-bold">{currentUser?.name || 'Utilisateur'} 👋</h1>
+          </div>
+          <button onClick={() => navigate('/profile')} className="w-11 h-11 rounded-2xl bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground">
+            {currentUser ? getInitials(currentUser.name) : '?'}
+          </button>
         </motion.div>
 
-        {/* AI Tip */}
-        <motion.div variants={fadeUp} className="bg-primary/5 border-l-4 border-primary rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <span className="text-xl">✨</span>
-            <div>
-              <p className="font-medium text-sm mb-1">Conseil IA</p>
-              <p className="text-sm text-muted-foreground">{aiAdvice}</p>
+        {/* Balance card */}
+        <motion.div variants={fadeUp} className="bg-primary rounded-3xl p-6 text-primary-foreground shadow-card-lg">
+          <p className="text-primary-foreground/70 text-sm font-medium mb-1">Solde disponible</p>
+          <p className="text-3xl font-bold font-mono-amount tracking-tight">{formatAmount(balance)}</p>
+          <div className="flex items-center gap-4 mt-4">
+            <div className="flex-1 bg-primary-foreground/10 rounded-2xl p-3 text-center">
+              <p className="text-primary-foreground/60 text-xs mb-0.5">Revenus</p>
+              <p className="font-semibold font-mono-amount text-sm">+{formatAmount(totalIncome)}</p>
+            </div>
+            <div className="flex-1 bg-primary-foreground/10 rounded-2xl p-3 text-center">
+              <p className="text-primary-foreground/60 text-xs mb-0.5">Dépenses</p>
+              <p className="font-semibold font-mono-amount text-sm">-{formatAmount(totalExpense)}</p>
+            </div>
+            <div className="flex-1 bg-primary-foreground/10 rounded-2xl p-3 text-center">
+              <p className="text-primary-foreground/60 text-xs mb-0.5">Épargne</p>
+              <p className="font-semibold font-mono-amount text-sm">{formatAmount(monthSavings)}</p>
             </div>
           </div>
         </motion.div>
 
-        <div className="grid lg:grid-cols-5 gap-6">
-          {/* Left: Transactions */}
-          <motion.div variants={fadeUp} className="lg:col-span-3 space-y-6">
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold">Dernières transactions</h2>
-                <button onClick={() => navigate('/transactions')} className="text-sm text-primary hover:underline">Voir tout →</button>
-              </div>
-              <div className="bg-card rounded-lg border border-border divide-y divide-border">
-                {transactions.slice(0, 5).map(t => {
-                  const member = getMemberById(t.memberId);
-                  return (
-                    <div key={t.id} className="flex items-center justify-between px-4 py-3 hover:bg-secondary/30 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">{t.emoji}</span>
-                        <div>
-                          <p className="text-sm font-medium">{t.label}</p>
-                          <p className="text-xs text-muted-foreground">{t.category} · {member?.name} · {formatDate(t.date)}</p>
-                        </div>
-                      </div>
-                      <span className={`font-mono text-sm font-medium ${t.type === 'income' ? 'text-success' : ''}`}>
-                        {t.type === 'income' ? '+' : '-'}{formatAmount(t.amount)}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+        {/* AI Insight */}
+        <motion.div variants={fadeUp} className="card-elevated p-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <span className="text-lg">✨</span>
             </div>
+            <div className="flex-1">
+              <p className="font-semibold text-sm mb-0.5">Conseil IA</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{aiAdvice}</p>
+            </div>
+          </div>
+        </motion.div>
 
-            {/* Quick Actions */}
-            <div>
-              <h2 className="font-semibold mb-3">Actions rapides</h2>
-              <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => setShowScan(true)} className="bg-card border border-border rounded-lg p-3 text-center hover:bg-secondary/50 transition-colors card-hover">
-                  <span className="text-2xl block mb-1">📸</span>
-                  <span className="text-xs font-medium">Scanner ticket</span>
-                </button>
-                <button onClick={() => setShowReport(true)} className="bg-card border border-border rounded-lg p-3 text-center hover:bg-secondary/50 transition-colors card-hover">
-                  <span className="text-2xl block mb-1">📊</span>
-                  <span className="text-xs font-medium">Rapport mensuel</span>
-                </button>
+        {/* Quick Actions */}
+        <motion.div variants={fadeUp}>
+          <h2 className="font-semibold text-base mb-3">Actions rapides</h2>
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={() => setShowScan(true)} className="card-elevated p-4 flex items-center gap-3 card-hover text-left">
+              <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <span className="text-xl">📸</span>
               </div>
+              <div>
+                <p className="text-sm font-semibold">Scanner ticket</p>
+                <p className="text-xs text-muted-foreground">Ajouter via photo</p>
+              </div>
+            </button>
+            <button onClick={() => setShowReport(true)} className="card-elevated p-4 flex items-center gap-3 card-hover text-left">
+              <div className="w-11 h-11 rounded-2xl bg-success/10 flex items-center justify-center">
+                <span className="text-xl">📊</span>
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Rapport mensuel</p>
+                <p className="text-xs text-muted-foreground">Analyser le mois</p>
+              </div>
+            </button>
+          </div>
+        </motion.div>
+
+        <div className="grid lg:grid-cols-5 gap-6">
+          {/* Transactions */}
+          <motion.div variants={fadeUp} className="lg:col-span-3">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-base">Transactions récentes</h2>
+              <button onClick={() => navigate('/transactions')} className="text-sm text-primary font-medium hover:underline">Voir tout</button>
+            </div>
+            <div className="card-elevated divide-y divide-border/50 overflow-hidden">
+              {transactions.slice(0, 5).map(t => {
+                const member = getMemberById(t.memberId);
+                return (
+                  <div key={t.id} className="flex items-center justify-between px-4 py-3.5 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center text-lg">{t.emoji}</div>
+                      <div>
+                        <p className="text-sm font-semibold">{t.label}</p>
+                        <p className="text-xs text-muted-foreground">{t.category} · {formatDate(t.date)}</p>
+                      </div>
+                    </div>
+                    <span className={`font-mono-amount text-sm font-bold ${t.type === 'income' ? 'text-success' : ''}`}>
+                      {t.type === 'income' ? '+' : '-'}{formatAmount(t.amount)}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </motion.div>
 
-          {/* Right: Budgets */}
+          {/* Right sidebar */}
           <motion.div variants={fadeUp} className="lg:col-span-2 space-y-6">
+            {/* Budgets */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold">Budgets du mois</h2>
-                <button onClick={() => navigate('/budgets')} className="text-sm text-primary hover:underline">Voir →</button>
+                <h2 className="font-semibold text-base">Budgets</h2>
+                <button onClick={() => navigate('/budgets')} className="text-sm text-primary font-medium hover:underline">Voir</button>
               </div>
-              <div className="bg-card rounded-lg border border-border p-4 space-y-4">
+              <div className="card-elevated p-4 space-y-4">
                 {budgetData.slice(0, 4).map(b => {
                   const status = getBudgetStatus(b.spent, b.limit);
                   const pct = Math.min((b.spent / b.limit) * 100, 100);
                   return (
                     <div key={b.id}>
-                      <div className="flex items-center justify-between text-sm mb-1.5">
-                        <span>{b.emoji} {b.category}</span>
-                        <span className="font-mono text-xs">{formatAmount(b.spent)} / {formatAmount(b.limit)}</span>
+                      <div className="flex items-center justify-between text-sm mb-2">
+                        <span className="font-medium">{b.emoji} {b.category}</span>
+                        <span className="font-mono-amount text-xs text-muted-foreground">{formatAmount(b.spent)} / {formatAmount(b.limit)}</span>
                       </div>
-                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full transition-all duration-500 ${status === 'ok' ? 'bg-success' : status === 'warning' ? 'bg-warning' : 'bg-destructive'}`} style={{ width: `${pct}%` }} />
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full transition-all duration-500 ${status === 'ok' ? 'bg-primary' : status === 'warning' ? 'bg-warning' : 'bg-destructive'}`} style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   );
@@ -184,22 +205,22 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Savings summary */}
+            {/* Savings */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-semibold">Objectifs d'épargne</h2>
-                <button onClick={() => navigate('/savings')} className="text-sm text-primary hover:underline">Voir →</button>
+                <h2 className="font-semibold text-base">Épargne</h2>
+                <button onClick={() => navigate('/savings')} className="text-sm text-primary font-medium hover:underline">Voir</button>
               </div>
-              <div className="bg-card rounded-lg border border-border p-4 space-y-3">
+              <div className="card-elevated p-4 space-y-3">
                 {goalsData.slice(0, 3).map(g => {
                   const pct = Math.min((g.saved / g.target) * 100, 100);
                   return (
                     <div key={g.id}>
-                      <div className="flex items-center justify-between text-sm mb-1">
-                        <span>{g.emoji} {g.name}</span>
-                        <span className="font-mono text-xs">{Math.round(pct)}%</span>
+                      <div className="flex items-center justify-between text-sm mb-1.5">
+                        <span className="font-medium">{g.emoji} {g.name}</span>
+                        <span className="font-mono-amount text-xs font-semibold text-primary">{Math.round(pct)}%</span>
                       </div>
-                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
                         <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
@@ -216,15 +237,5 @@ const Dashboard = () => {
     </Layout>
   );
 };
-
-function StatCard({ title, value, subtitle, emoji, className = '' }: { title: string; value: string; subtitle?: string; emoji?: string; className?: string }) {
-  return (
-    <div className="bg-card border border-border rounded-lg p-4 card-hover">
-      <p className="text-xs text-muted-foreground mb-1">{emoji && <span className="mr-1">{emoji}</span>}{title}</p>
-      <p className={`text-lg font-bold font-mono ${className}`}>{value}</p>
-      {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
-    </div>
-  );
-}
 
 export default Dashboard;

@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["'DM Sans'", "system-ui", "sans-serif"],
-        mono: ["'Space Mono'", "monospace"],
+        sans: ["'Inter'", "system-ui", "sans-serif"],
+        mono: ["'DM Mono'", "monospace"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -74,6 +74,10 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 4px)",
         sm: "calc(var(--radius) - 8px)",
+      },
+      boxShadow: {
+        'card': '0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04)',
+        'card-lg': '0 4px 20px -4px rgba(0, 0, 0, 0.08)',
       },
       keyframes: {
         "accordion-down": {
