@@ -12,6 +12,7 @@ import Budgets from "./pages/Budgets";
 import Savings from "./pages/Savings";
 import Profile from "./pages/Profile";
 import StartOfMonth from "./pages/StartOfMonth";
+import FinanceChat from "./pages/FinanceChat";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ function AppRoutes() {
       <Route path="/budgets" element={<Budgets />} />
       <Route path="/savings" element={<Savings />} />
       <Route path="/start-of-month" element={<StartOfMonth />} />
+      <Route path="/chat" element={<FinanceChat />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
