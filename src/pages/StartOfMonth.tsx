@@ -1,9 +1,31 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { useCurrency } from '@/hooks/useCurrency';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
+
+const STORAGE_KEY_PREFIX = 'finehome_start_month_';
+
+interface ChecklistState {
+  checkedIncomes: string[];
+  checkedExpenses: string[];
+  cancelled: string[];
+  savingsConfirmed: boolean;
+  savingsSkipped: boolean;
+}
+
+function loadChecklist(monthYear: string): ChecklistState {
+  try {
+    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${monthYear}`);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { checkedIncomes: [], checkedExpenses: [], cancelled: [], savingsConfirmed: false, savingsSkipped: false };
+}
+
+function saveChecklist(monthYear: string, state: ChecklistState) {
+  localStorage.setItem(`${STORAGE_KEY_PREFIX}${monthYear}`, JSON.stringify(state));
+}
 
 const StartOfMonth = () => {
   const {
@@ -25,16 +47,29 @@ const StartOfMonth = () => {
   const recurringIncomes = recurringTemplates.filter(t => t.type === 'income');
   const recurringExpenses = recurringTemplates.filter(t => t.type === 'expense');
 
-  // Checked (confirmed OK) and cancel-requested items
-  const [checkedIncomes, setCheckedIncomes] = useState<Set<string>>(new Set());
-  const [checkedExpenses, setCheckedExpenses] = useState<Set<string>>(new Set());
-  const [cancelRequested, setCancelRequested] = useState<Set<string>>(new Set());
+  // Load persisted state
+  const initial = useMemo(() => loadChecklist(monthYear), [monthYear]);
+
+  const [checkedIncomes, setCheckedIncomes] = useState<Set<string>>(() => new Set(initial.checkedIncomes));
+  const [checkedExpenses, setCheckedExpenses] = useState<Set<string>>(() => new Set(initial.checkedExpenses));
+  const [cancelRequested, setCancelRequested] = useState<Set<string>>(() => new Set(initial.cancelled));
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
 
   // Savings
-  const [savingsConfirmed, setSavingsConfirmed] = useState(false);
-  const [savingsSkipped, setSavingsSkipped] = useState(false);
+  const [savingsConfirmed, setSavingsConfirmed] = useState(initial.savingsConfirmed);
+  const [savingsSkipped, setSavingsSkipped] = useState(initial.savingsSkipped);
   const [savingsAmounts, setSavingsAmounts] = useState<Record<string, string>>({});
+
+  // Persist on every change
+  useEffect(() => {
+    saveChecklist(monthYear, {
+      checkedIncomes: Array.from(checkedIncomes),
+      checkedExpenses: Array.from(checkedExpenses),
+      cancelled: Array.from(cancelRequested),
+      savingsConfirmed,
+      savingsSkipped,
+    });
+  }, [monthYear, checkedIncomes, checkedExpenses, cancelRequested, savingsConfirmed, savingsSkipped]);
 
   // Step completion: every item is either checked or cancel-requested
   const step1Done = recurringIncomes.length === 0 || recurringIncomes.every(t => checkedIncomes.has(t.id) || cancelRequested.has(t.id));
