@@ -47,7 +47,7 @@ const Budgets = () => {
         </div>
 
         {/* Period toggle + Month selector */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col items-center gap-3">
           <div className="flex bg-muted rounded-xl p-1">
             <button onClick={() => setViewPeriod('monthly')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewPeriod === 'monthly' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}>Mensuel</button>
             <button onClick={() => setViewPeriod('yearly')} className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewPeriod === 'yearly' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}>Annuel</button>
