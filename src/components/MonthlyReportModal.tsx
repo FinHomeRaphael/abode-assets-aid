@@ -14,35 +14,35 @@ interface Props {
 const COLORS = ['hsl(199, 89%, 48%)', 'hsl(160, 84%, 39%)', 'hsl(38, 92%, 50%)', 'hsl(0, 84%, 60%)', 'hsl(280, 60%, 55%)', 'hsl(30, 70%, 50%)', 'hsl(190, 70%, 40%)', 'hsl(340, 70%, 50%)'];
 
 const MonthlyReportModal = ({ open, onClose }: Props) => {
-  const { getTransactionsForMonth, budgets, getBudgetSpent, getMemberById, getMonthSavings } = useApp();
+  const { getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getMemberById, getMonthSavings } = useApp();
   const { formatAmount } = useCurrency();
   const [month, setMonth] = useState(new Date());
 
   const transactions = useMemo(() => getTransactionsForMonth(month), [month, getTransactionsForMonth]);
-  const income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-  const expenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
+  const expenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
   const savings = getMonthSavings(month);
   const net = income - expenses - savings;
 
   const prevMonth = new Date(month);
   prevMonth.setMonth(prevMonth.getMonth() - 1);
   const prevTransactions = useMemo(() => getTransactionsForMonth(prevMonth), [prevMonth, getTransactionsForMonth]);
-  const prevExpenses = prevTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-  const prevIncome = prevTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const prevExpenses = prevTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
+  const prevIncome = prevTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
 
   const expensesByCategory = useMemo(() => {
     const map: Record<string, number> = {};
     transactions.filter(t => t.type === 'expense').forEach(t => {
-      map[t.category] = (map[t.category] || 0) + t.amount;
+      map[t.category] = (map[t.category] || 0) + t.convertedAmount;
     });
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [transactions]);
 
   const top5 = useMemo(() => {
-    return [...transactions].filter(t => t.type === 'expense').sort((a, b) => b.amount - a.amount).slice(0, 5);
+    return [...transactions].filter(t => t.type === 'expense').sort((a, b) => b.convertedAmount - a.convertedAmount).slice(0, 5);
   }, [transactions]);
 
-  const monthlyBudgets = budgets.filter(b => b.period === 'monthly');
+  const monthlyBudgets = useMemo(() => getBudgetsForMonth(month).filter(b => b.period === 'monthly'), [getBudgetsForMonth, month]);
 
   const diffPct = (curr: number, prev: number) => {
     if (prev === 0) return null;
@@ -125,7 +125,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                         <span className="text-muted-foreground text-xs font-mono w-5">{i + 1}.</span>
                         <span className="text-sm">{t.emoji} {t.label}</span>
                       </div>
-                      <span className="font-mono text-sm">{formatAmount(t.amount)}</span>
+                      <span className="font-mono text-sm">{formatAmount(t.convertedAmount)}</span>
                     </div>
                   ))}
                 </div>

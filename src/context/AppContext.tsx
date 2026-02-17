@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
-import { AppState, Transaction, Budget, Member, Household, SavingsGoal, SavingsDeposit, CustomCategory } from '@/types/finance';
+import { AppState, Transaction, Budget, Member, Household, SavingsGoal, SavingsDeposit, CustomCategory, DEFAULT_EXCHANGE_RATES } from '@/types/finance';
 import { demoMembers, demoHousehold, demoTransactions, demoBudgets, demoSavingsGoals, demoSavingsDeposits } from '@/data/demo';
 import { generateId } from '@/utils/format';
 
@@ -17,17 +17,59 @@ const defaultState: AppState = {
   customCategories: [],
 };
 
+/** Migrate old transactions that don't have exchange rate fields */
+function migrateTransaction(t: any, householdCurrency: string): Transaction {
+  if (t.exchangeRate != null && t.baseCurrency && t.convertedAmount != null) return t;
+  const rate = getExchangeRate(t.currency || 'EUR', householdCurrency);
+  const converted = t.amount * rate;
+  return {
+    ...t,
+    currency: t.currency || 'EUR',
+    exchangeRate: rate,
+    baseCurrency: householdCurrency,
+    convertedAmount: converted,
+  };
+}
+
+/** Migrate old budgets that don't have new fields */
+function migrateBudget(b: any): Budget {
+  const now = new Date();
+  const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  return {
+    ...b,
+    isRecurring: b.isRecurring ?? b.recurring ?? true,
+    startMonth: b.startMonth || monthYear,
+    endMonth: b.endMonth ?? null,
+    monthYear: b.monthYear,
+  };
+}
+
+/** Get exchange rate from currency to baseCurrency using default rates */
+function getExchangeRate(fromCurrency: string, toCurrency: string): number {
+  if (fromCurrency === toCurrency) return 1;
+  const fromToEur = DEFAULT_EXCHANGE_RATES[fromCurrency] || 1;
+  const toToEur = DEFAULT_EXCHANGE_RATES[toCurrency] || 1;
+  // fromCurrency → EUR → toCurrency
+  // fromToEur = how much 1 unit of fromCurrency is worth in EUR
+  // toToEur = how much 1 unit of toCurrency is worth in EUR
+  // So 1 fromCurrency = fromToEur EUR = fromToEur / toToEur toCurrency
+  return fromToEur / toToEur;
+}
+
 function loadState(): AppState {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
+      const householdCurrency = parsed.household?.currency || 'EUR';
       return {
         ...defaultState,
         ...parsed,
+        transactions: (parsed.transactions || demoTransactions).map((t: any) => migrateTransaction(t, householdCurrency)),
+        budgets: (parsed.budgets || demoBudgets).map((b: any) => migrateBudget(b)),
         savingsGoals: (parsed.savingsGoals || demoSavingsGoals).map((g: any) => ({
           ...g,
-          currency: g.currency || parsed.household?.currency || 'EUR',
+          currency: g.currency || householdCurrency,
         })),
         savingsDeposits: parsed.savingsDeposits || demoSavingsDeposits,
         customCategories: parsed.customCategories || [],
@@ -50,11 +92,11 @@ function getYearRange(date: Date): { start: string; end: string } {
   return { start: `${y}-01-01`, end: `${y}-12-31` };
 }
 
-/**
- * Process recurring transactions: for each recurring template,
- * check if a transaction exists for the current month. If not, create one.
- */
-function processRecurringTransactions(transactions: Transaction[]): Transaction[] {
+function getMonthYearStr(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function processRecurringTransactions(transactions: Transaction[], householdCurrency: string): Transaction[] {
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
@@ -64,7 +106,6 @@ function processRecurringTransactions(transactions: Transaction[]): Transaction[
   const newTransactions: Transaction[] = [];
 
   for (const template of recurringTemplates) {
-    // Check if a transaction already exists for this month (either the template itself or a generated one)
     const templateDate = new Date(template.date);
     const templateInCurrentMonth = templateDate.getFullYear() === currentYear && templateDate.getMonth() === currentMonth;
 
@@ -79,6 +120,7 @@ function processRecurringTransactions(transactions: Transaction[]): Transaction[
       const safeDay = Math.min(day, maxDay);
       const dateStr = `${currentYear}-${monthStr}-${String(safeDay).padStart(2, '0')}`;
 
+      const rate = getExchangeRate(template.currency, householdCurrency);
       newTransactions.push({
         ...template,
         id: generateId(),
@@ -86,6 +128,9 @@ function processRecurringTransactions(transactions: Transaction[]): Transaction[
         isRecurring: false,
         recurrenceDay: undefined,
         recurringSourceId: template.id,
+        exchangeRate: rate,
+        baseCurrency: householdCurrency,
+        convertedAmount: template.amount * rate,
       });
     }
   }
@@ -97,16 +142,18 @@ interface AppContextType extends AppState {
   login: (email: string) => void;
   logout: () => void;
   completeOnboarding: (householdName: string, currency: string) => void;
-  addTransaction: (t: Omit<Transaction, 'id'>) => void;
+  addTransaction: (t: Omit<Transaction, 'id' | 'exchangeRate' | 'baseCurrency' | 'convertedAmount'>) => void;
   deleteTransaction: (id: string) => void;
   toggleRecurring: (id: string) => void;
   deleteRecurring: (id: string) => void;
   getRecurringTransactions: () => Transaction[];
-  addBudget: (b: Omit<Budget, 'id'>) => void;
+  addBudget: (b: Omit<Budget, 'id' | 'startMonth' | 'endMonth'>) => void;
   updateBudget: (id: string, updates: Partial<Budget>) => void;
   deleteBudget: (id: string) => void;
+  softDeleteBudget: (id: string) => void;
   getMemberById: (id: string) => Member | undefined;
   getBudgetSpent: (budget: Budget, refDate?: Date) => number;
+  getBudgetsForMonth: (refDate: Date) => Budget[];
   addSavingsGoal: (g: Omit<SavingsGoal, 'id'>) => void;
   addSavingsDeposit: (d: Omit<SavingsDeposit, 'id'>) => void;
   getGoalSaved: (goalId: string) => number;
@@ -127,9 +174,8 @@ const AppContext = createContext<AppContextType | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(() => {
     const loaded = loadState();
-    // Process recurring transactions on load
     if (loaded.isLoggedIn) {
-      return { ...loaded, transactions: processRecurringTransactions(loaded.transactions) };
+      return { ...loaded, transactions: processRecurringTransactions(loaded.transactions, loaded.household.currency) };
     }
     return loaded;
   });
@@ -142,7 +188,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const member = state.household.members.find(m => m.email === email) || demoMembers[0];
     setState(prev => {
       const updated = { ...prev, isLoggedIn: true, isOnboarded: true, currentUser: member };
-      return { ...updated, transactions: processRecurringTransactions(updated.transactions) };
+      return { ...updated, transactions: processRecurringTransactions(updated.transactions, updated.household.currency) };
     });
   };
 
@@ -158,8 +204,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const addTransaction = (t: Omit<Transaction, 'id'>) => {
-    const newT = { ...t, id: generateId() };
+  const addTransaction = (t: Omit<Transaction, 'id' | 'exchangeRate' | 'baseCurrency' | 'convertedAmount'>) => {
+    const baseCurrency = state.household.currency;
+    const rate = getExchangeRate(t.currency, baseCurrency);
+    const convertedAmount = t.amount * rate;
+    const newT: Transaction = {
+      ...t,
+      id: generateId(),
+      exchangeRate: rate,
+      baseCurrency,
+      convertedAmount,
+    };
     setState(prev => ({ ...prev, transactions: [newT, ...prev.transactions] }));
   };
 
@@ -195,8 +250,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return state.transactions.filter(t => t.isRecurring && !t.recurringSourceId);
   }, [state.transactions]);
 
-  const addBudget = (b: Omit<Budget, 'id'>) => {
-    setState(prev => ({ ...prev, budgets: [...prev.budgets, { ...b, id: generateId() }] }));
+  const addBudget = (b: Omit<Budget, 'id' | 'startMonth' | 'endMonth'>) => {
+    const now = new Date();
+    const monthYear = getMonthYearStr(now);
+    setState(prev => ({
+      ...prev,
+      budgets: [...prev.budgets, {
+        ...b,
+        id: generateId(),
+        startMonth: monthYear,
+        endMonth: null,
+        monthYear: b.isRecurring ? undefined : (b.monthYear || monthYear),
+      }],
+    }));
   };
 
   const updateBudget = (id: string, updates: Partial<Budget>) => {
@@ -207,14 +273,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, budgets: prev.budgets.filter(b => b.id !== id) }));
   };
 
+  const softDeleteBudget = (id: string) => {
+    const now = new Date();
+    const monthYear = getMonthYearStr(now);
+    setState(prev => ({
+      ...prev,
+      budgets: prev.budgets.map(b => b.id === id ? { ...b, endMonth: monthYear } : b),
+    }));
+  };
+
   const getMemberById = (id: string) => state.household.members.find(m => m.id === id);
 
   const getBudgetSpent = useCallback((budget: Budget, refDate: Date = new Date()) => {
     const range = budget.period === 'monthly' ? getMonthRange(refDate) : getYearRange(refDate);
     return state.transactions
       .filter(t => t.type === 'expense' && t.category === budget.category && t.date >= range.start && t.date <= range.end)
-      .reduce((sum, t) => sum + t.amount, 0);
+      .reduce((sum, t) => sum + t.convertedAmount, 0);
   }, [state.transactions]);
+
+  const getBudgetsForMonth = useCallback((refDate: Date) => {
+    const monthYear = getMonthYearStr(refDate);
+    return state.budgets.filter(b => {
+      // Recurring budget: visible if started before/during this month and not ended before this month
+      if (b.isRecurring) {
+        if (b.startMonth > monthYear) return false;
+        if (b.endMonth && b.endMonth < monthYear) return false;
+        return true;
+      }
+      // One-time budget: only visible in its specific month
+      return b.monthYear === monthYear;
+    });
+  }, [state.budgets]);
 
   const addSavingsGoal = (g: Omit<SavingsGoal, 'id'>) => {
     setState(prev => ({ ...prev, savingsGoals: [...prev.savingsGoals, { ...g, id: generateId() }] }));
@@ -283,15 +372,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const resetDemo = () => {
     const fresh = { ...defaultState, isLoggedIn: true, isOnboarded: true, currentUser: demoMembers[0] };
-    setState({ ...fresh, transactions: processRecurringTransactions(fresh.transactions) });
+    setState({ ...fresh, transactions: processRecurringTransactions(fresh.transactions, fresh.household.currency) });
   };
 
   return (
     <AppContext.Provider value={{
       ...state, login, logout, completeOnboarding,
       addTransaction, deleteTransaction, toggleRecurring, deleteRecurring, getRecurringTransactions,
-      addBudget, updateBudget, deleteBudget,
-      getMemberById, getBudgetSpent,
+      addBudget, updateBudget, deleteBudget, softDeleteBudget,
+      getMemberById, getBudgetSpent, getBudgetsForMonth,
       addSavingsGoal, addSavingsDeposit, getGoalSaved, getMonthSavings, getTotalSavings,
       addCustomCategory, deleteCustomCategory, getTransactionsForMonth,
       changeCurrency, addMember, removeMember, updateMemberRole,
