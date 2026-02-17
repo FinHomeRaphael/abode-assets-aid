@@ -456,7 +456,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [state.transactions, state.household.currency]);
 
   const changeCurrency = (currency: string) => {
-    setState(prev => ({ ...prev, household: { ...prev.household, currency } }));
+    setState(prev => {
+      const newTransactions = prev.transactions.map(t => {
+        const rate = getExchangeRate(t.currency, currency);
+        return {
+          ...t,
+          exchangeRate: rate,
+          baseCurrency: currency,
+          convertedAmount: t.amount * rate,
+        };
+      });
+      return {
+        ...prev,
+        household: { ...prev.household, currency },
+        transactions: newTransactions,
+      };
+    });
   };
 
   const addMember = (name: string, email: string, role: 'admin' | 'member') => {
