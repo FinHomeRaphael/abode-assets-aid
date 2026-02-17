@@ -113,19 +113,38 @@ const ScanTicketModal = ({ open, onClose }: Props) => {
           </div>
 
           {step === 'upload' && (
-            <div
-              onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={handleDrop}
-              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
-                dragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
-              }`}
-              onClick={() => fileRef.current?.click()}
-            >
-              <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
-              <span className="text-4xl block mb-3">📷</span>
-              <p className="text-sm font-medium mb-1">Prenez une photo ou glissez une image</p>
-              <p className="text-xs text-muted-foreground">L'IA analysera automatiquement le ticket</p>
+            <div className="space-y-3">
+              <div
+                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
+                  dragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                }`}
+                onClick={() => fileRef.current?.click()}
+              >
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                <span className="text-4xl block mb-3">🖼️</span>
+                <p className="text-sm font-medium mb-1">Choisir depuis la photothèque</p>
+                <p className="text-xs text-muted-foreground">ou glissez une image ici</p>
+              </div>
+              <button
+                onClick={() => {
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = 'image/*';
+                  input.capture = 'environment';
+                  input.onchange = (e) => {
+                    const file = (e.target as HTMLInputElement).files?.[0];
+                    if (file) processFile(file);
+                  };
+                  input.click();
+                }}
+                className="w-full py-3 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors flex items-center justify-center gap-2"
+              >
+                <span>📷</span> Prendre une photo
+              </button>
+              <p className="text-xs text-muted-foreground text-center">L'IA analysera automatiquement le ticket</p>
             </div>
           )}
 
