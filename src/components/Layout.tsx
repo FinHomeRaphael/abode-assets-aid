@@ -4,6 +4,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { getInitials } from '@/utils/format';
 import AddTransactionModal from '@/components/AddTransactionModal';
+import ScanTicketModal from '@/components/ScanTicketModal';
+import AddBudgetModal from '@/components/AddBudgetModal';
+import AddSavingsGoalModal from '@/components/AddSavingsGoalModal';
 
 interface LayoutProps {
   children: ReactNode;
@@ -18,6 +21,7 @@ const navItems = [
 
 const fabActions = [
   { label: 'Transaction', emoji: '💳', action: 'transaction' },
+  { label: 'Scanner un ticket', emoji: '📸', action: 'scan' },
   { label: 'Budget', emoji: '🎯', action: 'budget' },
   { label: 'Épargne', emoji: '🐷', action: 'savings' },
   { label: 'Conseiller IA', emoji: '✨', action: 'chat' },
@@ -28,13 +32,17 @@ const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const { household, currentUser } = useApp();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [showSavingsModal, setShowSavingsModal] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
 
   const handleFabAction = (action: string) => {
     setFabOpen(false);
     if (action === 'transaction') setShowAddModal(true);
-    else if (action === 'budget') navigate('/budgets');
-    else if (action === 'savings') navigate('/savings');
+    else if (action === 'scan') setShowScanModal(true);
+    else if (action === 'budget') setShowBudgetModal(true);
+    else if (action === 'savings') setShowSavingsModal(true);
     else if (action === 'chat') navigate('/chat');
   };
 
@@ -164,6 +172,9 @@ const Layout = ({ children }: LayoutProps) => {
       </main>
 
       <AddTransactionModal open={showAddModal} onClose={() => setShowAddModal(false)} />
+      <ScanTicketModal open={showScanModal} onClose={() => setShowScanModal(false)} />
+      <AddBudgetModal open={showBudgetModal} onClose={() => setShowBudgetModal(false)} />
+      <AddSavingsGoalModal open={showSavingsModal} onClose={() => setShowSavingsModal(false)} />
     </div>
   );
 };
