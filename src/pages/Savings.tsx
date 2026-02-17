@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { formatDateLong } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -18,10 +18,19 @@ const Savings = () => {
   } = useApp();
   const { formatAmount } = useCurrency();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [showAddDeposit, setShowAddDeposit] = useState(false);
-  const [showCreateAccount, setShowCreateAccount] = useState(false);
+  const [showCreateAccount, setShowCreateAccount] = useState(() => searchParams.get('create') === 'account');
+
+  // Clear query param after opening
+  React.useEffect(() => {
+    if (searchParams.get('create') === 'account') {
+      setShowCreateAccount(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Create goal state
   const [goalName, setGoalName] = useState('');
