@@ -452,9 +452,9 @@ const Savings = () => {
                     <label className="block text-sm font-medium mb-1.5">Solde de base</label>
                     <input type="number" step="0.01" value={accBalance} onChange={e => setAccBalance(e.target.value)} placeholder="0.00" className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono-amount focus:outline-none focus:ring-2 focus:ring-ring" />
                   </div>
-                  <div>
+                  <div className="overflow-hidden">
                     <label className="block text-sm font-medium mb-1.5">Date de base</label>
-                    <input type="date" value={accDate} onChange={e => setAccDate(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                    <input type="date" value={accDate} onChange={e => setAccDate(e.target.value)} className="w-full max-w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring box-border overflow-hidden appearance-none" style={{ WebkitAppearance: 'none' }} />
                   </div>
                 </div>
                 <div className="flex gap-3 mt-6">
