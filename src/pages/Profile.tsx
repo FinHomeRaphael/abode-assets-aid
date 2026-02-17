@@ -18,6 +18,9 @@ const Profile = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
     try { return localStorage.getItem('finehome_notifications') !== 'false'; } catch { return true; }
   });
+  const [darkMode, setDarkMode] = useState(() => {
+    return document.documentElement.classList.contains('dark');
+  });
 
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [currencySearch, setCurrencySearch] = useState('');
@@ -201,6 +204,21 @@ const Profile = () => {
               }}
             >
               <div className={`w-4 h-4 bg-card rounded-full absolute top-1 transition-transform ${notificationsEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+            </div>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span>🌙 Mode sombre</span>
+            <div
+              className={`w-10 h-6 rounded-full transition-colors cursor-pointer relative ${darkMode ? 'bg-primary' : 'bg-muted'}`}
+              onClick={() => {
+                const next = !darkMode;
+                setDarkMode(next);
+                document.documentElement.classList.toggle('dark', next);
+                localStorage.setItem('finehome_theme', next ? 'dark' : 'light');
+                toast.success(next ? 'Mode sombre activé' : 'Mode clair activé');
+              }}
+            >
+              <div className={`w-4 h-4 bg-card rounded-full absolute top-1 transition-transform ${darkMode ? 'translate-x-5' : 'translate-x-1'}`} />
             </div>
           </div>
           <button onClick={() => navigate('/start-of-month')} className="w-full flex items-center justify-between text-sm py-2 hover:bg-muted rounded-lg px-2 -mx-2 transition-colors">
