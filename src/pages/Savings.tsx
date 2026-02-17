@@ -449,13 +449,13 @@ const Savings = () => {
                     </select>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div>
+                    <div className="min-w-0">
                       <label className="block text-sm font-medium mb-1.5">Solde de base</label>
                       <input type="number" step="0.01" value={accBalance} onChange={e => setAccBalance(e.target.value)} placeholder="0.00" className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono-amount focus:outline-none focus:ring-2 focus:ring-ring" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <label className="block text-sm font-medium mb-1.5">Date de base</label>
-                      <input type="date" value={accDate} onChange={e => setAccDate(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                      <input type="date" value={accDate} onChange={e => setAccDate(e.target.value)} className="w-full min-w-0 px-3 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                     </div>
                   </div>
                 </div>
