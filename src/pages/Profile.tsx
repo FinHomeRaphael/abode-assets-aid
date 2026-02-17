@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { formatDateLong, getInitials } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -11,6 +12,7 @@ import ConvertedAmount from '@/components/ConvertedAmount';
 const Profile = () => {
   const { household, currentUser, logout, resetDemo, customCategories, deleteCustomCategory, getRecurringTransactions, deleteRecurring, getMemberById, changeCurrency, addMember, removeMember, updateMemberRole } = useApp();
   const { formatAmount, currency } = useCurrency();
+  const navigate = useNavigate();
   const recurringTx = getRecurringTransactions();
 
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
@@ -187,6 +189,10 @@ const Profile = () => {
             <span>Notifications</span>
             <span className="text-success font-semibold">Activées</span>
           </div>
+          <button onClick={() => navigate('/start-of-month')} className="w-full flex items-center justify-between text-sm py-2 hover:bg-muted rounded-lg px-2 -mx-2 transition-colors">
+            <span>🗓️ Mode début de mois</span>
+            <span className="text-muted-foreground">→</span>
+          </button>
         </div>
 
         {/* Actions */}

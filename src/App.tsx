@@ -11,6 +11,7 @@ import Transactions from "./pages/Transactions";
 import Budgets from "./pages/Budgets";
 import Savings from "./pages/Savings";
 import Profile from "./pages/Profile";
+import StartOfMonth from "./pages/StartOfMonth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +28,7 @@ function AppRoutes() {
       <Route path="/transactions" element={<Transactions />} />
       <Route path="/budgets" element={<Budgets />} />
       <Route path="/savings" element={<Savings />} />
+      <Route path="/start-of-month" element={<StartOfMonth />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
