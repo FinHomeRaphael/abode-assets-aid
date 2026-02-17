@@ -16,14 +16,14 @@ const navItems = [
   { path: '/', label: 'Accueil', emoji: '🏠' },
   { path: '/transactions', label: 'Transactions', emoji: '💳' },
   { path: '/budgets', label: 'Budgets', emoji: '🎯' },
-  { path: '/savings', label: 'Épargne', emoji: '🐷' },
+  { path: '/savings', label: 'Enveloppes', emoji: '🐷' },
 ];
 
 const fabActions = [
   { label: 'Transaction', emoji: '💳', action: 'transaction' },
   { label: 'Scanner un ticket', emoji: '📸', action: 'scan' },
   { label: 'Budget', emoji: '🎯', action: 'budget' },
-  { label: 'Épargne', emoji: '🐷', action: 'savings' },
+  { label: 'Enveloppe', emoji: '🐷', action: 'savings' },
   { label: 'Conseiller IA', emoji: '✨', action: 'chat' },
 ];
 

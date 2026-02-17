@@ -75,7 +75,7 @@ const Savings = () => {
   const handleAddDeposit = () => {
     if (!depositGoalId || !depositAmount) { toast.error('Remplissez les champs obligatoires'); return; }
     addSavingsDeposit({ goalId: depositGoalId, amount: parseFloat(depositAmount), memberId: depositMemberId, date: depositDate });
-    toast.success('Épargne ajoutée ✓');
+    toast.success('Versement ajouté ✓');
     setShowAddDeposit(false);
     setDepositAmount('');
   };
@@ -129,9 +129,9 @@ const Savings = () => {
     <Layout>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Épargne</h1>
+          <h1 className="text-xl font-bold">Enveloppes</h1>
           <div className="flex gap-2">
-            <button onClick={() => setShowAddDeposit(true)} className="h-10 px-4 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">+ Épargner</button>
+            <button onClick={() => setShowAddDeposit(true)} className="h-10 px-4 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">+ Verser</button>
             <button onClick={() => setShowCreateGoal(true)} className="h-10 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm">+ Objectif</button>
           </div>
         </div>
@@ -182,9 +182,9 @@ const Savings = () => {
           )}
         </div>
 
-        {/* ===== SECTION 2: Objectifs d'épargne ===== */}
+        {/* ===== SECTION 2: Objectifs d'enveloppe ===== */}
         <div className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Objectifs d'épargne</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Objectifs d'enveloppe</h2>
 
           {/* Summary */}
           <div className="grid grid-cols-3 gap-3">
@@ -204,7 +204,7 @@ const Savings = () => {
 
           {/* Goals */}
           {savingsGoals.length === 0 ? (
-            <div className="card-elevated p-8 text-center text-muted-foreground text-sm">Aucun objectif d'épargne créé</div>
+            <div className="card-elevated p-8 text-center text-muted-foreground text-sm">Aucun objectif d'enveloppe créé</div>
           ) : (
             <div className="grid sm:grid-cols-2 gap-3">
               {savingsGoals.map(g => {
@@ -390,7 +390,7 @@ const Savings = () => {
           {showAddDeposit && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowAddDeposit(false)}>
               <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={e => e.stopPropagation()} className="bg-card w-full max-w-md rounded-2xl shadow-card-lg p-6">
-                <h2 className="text-lg font-bold mb-5">Ajouter de l'épargne</h2>
+                <h2 className="text-lg font-bold mb-5">Ajouter un versement</h2>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Objectif</label>

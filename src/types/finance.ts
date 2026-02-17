@@ -81,7 +81,7 @@ export interface Account {
 
 export const ACCOUNT_TYPES: { value: AccountType; label: string; emoji: string }[] = [
   { value: 'courant', label: 'Compte courant', emoji: '🏦' },
-  { value: 'epargne', label: 'Épargne', emoji: '🐖' },
+  { value: 'epargne', label: 'Enveloppe', emoji: '🐖' },
   { value: 'cash', label: 'Cash', emoji: '💵' },
   { value: 'carte', label: 'Carte', emoji: '💳' },
   { value: 'autre', label: 'Autre', emoji: '📁' },

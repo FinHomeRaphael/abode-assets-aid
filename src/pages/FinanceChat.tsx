@@ -90,7 +90,7 @@ Devise: ${household.currency}
 --- CE MOIS-CI ---
 Revenus: ${formatAmount(totalIncome)}
 Dépenses: ${formatAmount(totalExpense)}
-Épargne du mois: ${formatAmount(monthSavings)}
+Enveloppes du mois: ${formatAmount(monthSavings)}
 Solde disponible: ${formatAmount(balance)}
 
 --- MOIS PRÉCÉDENT ---
@@ -103,9 +103,9 @@ ${topCats || 'Aucune dépense'}
 --- BUDGETS ---
 ${budgetLines || 'Aucun budget défini'}
 
---- OBJECTIFS D'ÉPARGNE ---
+--- OBJECTIFS D'ENVELOPPE ---
 ${goalLines || 'Aucun objectif'}
-Épargne totale cumulée: ${formatAmount(totalSavings)}
+Enveloppes totales cumulées: ${formatAmount(totalSavings)}
 
 --- TRANSACTIONS RÉCENTES ---
 ${recentTx || 'Aucune transaction'}
@@ -232,7 +232,7 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
   const suggestions = [
     'Comment optimiser mes dépenses ?',
     'Analyse mon budget du mois',
-    'Combien je peux épargner ?',
+    'Combien je peux mettre de côté ?',
     'Quelles sont mes plus grosses dépenses ?',
   ];
 

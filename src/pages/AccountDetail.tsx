@@ -30,7 +30,7 @@ const AccountDetail = () => {
       <Layout>
         <div className="p-8 text-center text-muted-foreground">
           <p>Compte introuvable</p>
-          <button onClick={() => navigate('/savings')} className="mt-4 text-primary underline">Retour à l'épargne</button>
+          <button onClick={() => navigate('/savings')} className="mt-4 text-primary underline">Retour aux enveloppes</button>
         </div>
       </Layout>
     );
