@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 interface Props {
   open: boolean;
@@ -15,7 +16,8 @@ interface Props {
 }
 
 const AddTransactionModal = ({ open, onClose }: Props) => {
-  const { addTransaction, household, customCategories, addCustomCategory } = useApp();
+  const { addTransaction, household, customCategories, addCustomCategory, getActiveAccounts } = useApp();
+  const navigate = useNavigate();
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [label, setLabel] = useState('');
   const [amount, setAmount] = useState('');
@@ -25,6 +27,7 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
   const [memberId, setMemberId] = useState(household.members[0]?.id || '');
   const [notes, setNotes] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
+  const [accountId, setAccountId] = useState('');
 
   // Custom category creation
   const [showCreateCat, setShowCreateCat] = useState(false);
@@ -35,10 +38,15 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
   const baseCategories = type === 'expense' ? [...EXPENSE_CATEGORIES] : [...INCOME_CATEGORIES];
   const customs = customCategories.filter(c => c.type === type);
   const allCategories = [...baseCategories, ...customs.map(c => c.name)];
+  const activeAccounts = getActiveAccounts();
 
   const handleSubmit = () => {
     if (!label.trim() || !amount || !category) {
       toast.error('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+    if (activeAccounts.length > 0 && !accountId) {
+      toast.error('Veuillez sélectionner un compte');
       return;
     }
     const customCat = customCategories.find(c => c.name === category);
@@ -55,6 +63,7 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
       emoji: customCat?.emoji || CATEGORY_EMOJIS[category] || '📌',
       isRecurring,
       recurrenceDay: isRecurring ? day : undefined,
+      accountId: accountId || undefined,
     });
     toast.success(isRecurring ? 'Transaction récurrente créée ✓' : 'Transaction ajoutée ✓');
     resetAndClose();
@@ -83,6 +92,7 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
     setNotes('');
     setDate(new Date());
     setIsRecurring(false);
+    setAccountId('');
     setShowCreateCat(false);
     onClose();
   };
@@ -136,6 +146,23 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
                   <option value="__create__">➕ Créer une catégorie</option>
                 </select>
               </div>
+
+              {/* Account selector */}
+              {activeAccounts.length > 0 ? (
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Compte *</label>
+                  <select value={accountId} onChange={e => setAccountId(e.target.value)} className="w-full px-4 py-2.5 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                    <option value="">Sélectionner un compte...</option>
+                    {activeAccounts.map(a => (
+                      <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="p-3 rounded-md border border-border bg-muted/50 text-sm text-muted-foreground">
+                  💡 Tu peux <button type="button" onClick={() => { resetAndClose(); navigate('/savings'); }} className="text-primary underline">créer un compte</button> dans l'onglet Épargne pour suivre tes soldes.
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium mb-1.5">Date</label>
