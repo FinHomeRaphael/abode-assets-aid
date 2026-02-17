@@ -9,7 +9,7 @@ interface LayoutProps {
 }
 
 const navItems = [
-  { path: '/', label: 'Vue d\'ensemble', emoji: '📊' },
+  { path: '/', label: 'Accueil', emoji: '🏠' },
   { path: '/transactions', label: 'Transactions', emoji: '💳' },
   { path: '/budgets', label: 'Budgets', emoji: '🎯' },
   { path: '/savings', label: 'Épargne', emoji: '🐷' },
@@ -23,65 +23,80 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-md border-b border-border">
-        <div className="container max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <button onClick={() => navigate('/')} className="text-lg font-bold flex items-center gap-1.5">
-              🏠 <span>FineHome</span>
+      {/* Desktop header */}
+      <header className="hidden md:block sticky top-0 z-30 glass border-b border-border/50">
+        <div className="container max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-8">
+            <button onClick={() => navigate('/')} className="text-lg font-bold flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-primary-foreground text-sm">F</span>
+              <span>FineHome</span>
             </button>
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="flex items-center gap-1">
               {navItems.map(item => (
                 <button
                   key={item.path}
                   onClick={() => navigate(item.path)}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                     location.pathname === item.path
-                      ? 'bg-secondary text-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   }`}
                 >
-                  <span className="mr-1.5">{item.emoji}</span>
                   {item.label}
                 </button>
               ))}
             </nav>
           </div>
           <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-1">
-              {household.members.map(m => (
-                <div key={m.id} className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs font-medium text-muted-foreground" title={m.name}>
-                  {getInitials(m.name)}
-                </div>
-              ))}
-            </div>
-            <button onClick={() => setShowAddModal(true)} className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
+            <button onClick={() => setShowAddModal(true)} className="h-10 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm">
               + Ajouter
             </button>
-            <button onClick={() => navigate('/profile')} className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
+            <button onClick={() => navigate('/profile')} className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground hover:bg-accent transition-colors">
               {currentUser ? getInitials(currentUser.name) : '?'}
             </button>
           </div>
         </div>
       </header>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-card/90 backdrop-blur-md border-t border-border">
-        <div className="flex justify-around py-2">
-          {navItems.map(item => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              className={`flex flex-col items-center gap-0.5 py-1 px-2 text-xs ${
-                location.pathname === item.path ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              <span className="text-lg">{item.emoji}</span>
-              <span>{item.label.split(' ')[0]}</span>
-            </button>
-          ))}
+      {/* Mobile bottom nav */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 glass border-t border-border/50 safe-area-bottom">
+        <div className="flex justify-around items-center py-2 px-2">
+          {navItems.map(item => {
+            const isActive = location.pathname === item.path;
+            return (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={`flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-all ${
+                  isActive ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                <span className={`text-xl ${isActive ? 'scale-110' : ''} transition-transform`}>{item.emoji}</span>
+                <span className={`text-[10px] font-medium ${isActive ? 'text-primary' : ''}`}>{item.label}</span>
+              </button>
+            );
+          })}
+          <button
+            onClick={() => navigate('/profile')}
+            className={`flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-all ${
+              location.pathname === '/profile' ? 'text-primary' : 'text-muted-foreground'
+            }`}
+          >
+            <span className="text-xl">👤</span>
+            <span className="text-[10px] font-medium">Profil</span>
+          </button>
         </div>
       </nav>
 
-      <main className="container max-w-7xl mx-auto px-4 py-6 pb-24 md:pb-6">
+      {/* Mobile FAB */}
+      <button
+        onClick={() => setShowAddModal(true)}
+        className="md:hidden fixed bottom-20 right-4 z-30 w-14 h-14 rounded-2xl bg-primary text-primary-foreground shadow-lg flex items-center justify-center text-2xl hover:bg-primary/90 transition-all active:scale-95"
+      >
+        +
+      </button>
+
+      <main className="container max-w-5xl mx-auto px-4 md:px-6 py-6 pb-36 md:pb-8">
         {children}
       </main>
 

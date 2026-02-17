@@ -14,7 +14,6 @@ const Transactions = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const monthTx = useMemo(() => getTransactionsForMonth(currentMonth), [currentMonth, getTransactionsForMonth]);
-
   const categories = [...new Set(monthTx.map(t => t.category))].sort();
 
   const filtered = monthTx.filter(t => {
@@ -30,50 +29,50 @@ const Transactions = () => {
 
   return (
     <Layout>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-xl font-bold">💳 Transactions</h1>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold">Transactions</h1>
           <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} />
         </div>
 
         {/* Month totals */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          <div className="bg-card border border-border rounded-lg p-3 text-center">
-            <p className="text-xs text-muted-foreground">Revenus</p>
-            <p className="font-mono font-bold text-success text-sm">+{formatAmount(monthIncome)}</p>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="card-elevated p-3.5 text-center">
+            <p className="text-xs text-muted-foreground mb-0.5">Revenus</p>
+            <p className="font-mono-amount font-bold text-success text-sm">+{formatAmount(monthIncome)}</p>
           </div>
-          <div className="bg-card border border-border rounded-lg p-3 text-center">
-            <p className="text-xs text-muted-foreground">Dépenses</p>
-            <p className="font-mono font-bold text-destructive text-sm">-{formatAmount(monthExpense)}</p>
+          <div className="card-elevated p-3.5 text-center">
+            <p className="text-xs text-muted-foreground mb-0.5">Dépenses</p>
+            <p className="font-mono-amount font-bold text-destructive text-sm">-{formatAmount(monthExpense)}</p>
           </div>
-          <div className="bg-card border border-border rounded-lg p-3 text-center">
-            <p className="text-xs text-muted-foreground">Solde</p>
-            <p className={`font-mono font-bold text-sm ${monthIncome - monthExpense >= 0 ? 'text-success' : 'text-destructive'}`}>
+          <div className="card-elevated p-3.5 text-center">
+            <p className="text-xs text-muted-foreground mb-0.5">Solde</p>
+            <p className={`font-mono-amount font-bold text-sm ${monthIncome - monthExpense >= 0 ? 'text-success' : 'text-destructive'}`}>
               {monthIncome - monthExpense >= 0 ? '+' : ''}{formatAmount(monthIncome - monthExpense)}
             </p>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Rechercher..." className="px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring flex-1 min-w-[200px]" />
-          <select value={filterType} onChange={e => setFilterType(e.target.value as any)} className="px-3 py-2 rounded-md border border-input bg-background text-sm">
+        <div className="flex flex-wrap gap-2">
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Rechercher..." className="px-3.5 py-2.5 rounded-xl border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring flex-1 min-w-[200px]" />
+          <select value={filterType} onChange={e => setFilterType(e.target.value as any)} className="px-3.5 py-2.5 rounded-xl border border-input bg-card text-sm">
             <option value="all">Tous types</option>
             <option value="income">Revenus</option>
             <option value="expense">Dépenses</option>
           </select>
-          <select value={filterMember} onChange={e => setFilterMember(e.target.value)} className="px-3 py-2 rounded-md border border-input bg-background text-sm">
+          <select value={filterMember} onChange={e => setFilterMember(e.target.value)} className="px-3.5 py-2.5 rounded-xl border border-input bg-card text-sm">
             <option value="all">Tous membres</option>
             {household.members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
-          <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="px-3 py-2 rounded-md border border-input bg-background text-sm">
+          <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="px-3.5 py-2.5 rounded-xl border border-input bg-card text-sm">
             <option value="all">Toutes catégories</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
 
         {/* List */}
-        <div className="bg-card rounded-lg border border-border divide-y divide-border">
+        <div className="card-elevated divide-y divide-border/50 overflow-hidden">
           {filtered.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-sm">Aucune transaction trouvée</div>
           ) : (
@@ -82,20 +81,20 @@ const Transactions = () => {
               const isRecTemplate = t.isRecurring && !t.recurringSourceId;
               const isRecGenerated = !!t.recurringSourceId;
               return (
-                <div key={t.id} className="flex items-center justify-between px-4 py-3 hover:bg-secondary/30 transition-colors group">
+                <div key={t.id} className="flex items-center justify-between px-4 py-3.5 hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-3">
-                    <span className="text-xl">{t.emoji}</span>
+                    <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center text-lg">{t.emoji}</div>
                     <div>
-                      <p className="text-sm font-medium flex items-center gap-1.5">
+                      <p className="text-sm font-semibold flex items-center gap-1.5">
                         {t.label}
                         {(isRecTemplate || isRecGenerated) && (
-                          <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary" title="Transaction récurrente">🔄</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-lg bg-primary/10 text-primary font-medium">🔄</span>
                         )}
                       </p>
                       <p className="text-xs text-muted-foreground">{t.category} · {member?.name} · {formatDate(t.date)}</p>
                     </div>
                   </div>
-                  <span className={`font-mono text-sm font-medium ${t.type === 'income' ? 'text-success' : ''}`}>
+                  <span className={`font-mono-amount text-sm font-bold ${t.type === 'income' ? 'text-success' : ''}`}>
                     {t.type === 'income' ? '+' : '-'}{formatAmount(t.amount)}
                   </span>
                 </div>
@@ -103,7 +102,7 @@ const Transactions = () => {
             })
           )}
         </div>
-        <p className="text-xs text-muted-foreground mt-3 text-center">{filtered.length} transaction(s)</p>
+        <p className="text-xs text-muted-foreground text-center">{filtered.length} transaction(s)</p>
       </motion.div>
     </Layout>
   );
