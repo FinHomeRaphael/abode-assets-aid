@@ -24,6 +24,7 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
   const [date, setDate] = useState<Date>(new Date());
   const [memberId, setMemberId] = useState(household.members[0]?.id || '');
   const [notes, setNotes] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false);
 
   // Custom category creation
   const [showCreateCat, setShowCreateCat] = useState(false);
@@ -41,6 +42,7 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
       return;
     }
     const customCat = customCategories.find(c => c.name === category);
+    const day = date.getDate();
     addTransaction({
       type,
       label: label.trim(),
@@ -51,8 +53,10 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
       date: date.toISOString().split('T')[0],
       notes: notes.trim() || undefined,
       emoji: customCat?.emoji || CATEGORY_EMOJIS[category] || '📌',
+      isRecurring,
+      recurrenceDay: isRecurring ? day : undefined,
     });
-    toast.success('Transaction ajoutée ✓');
+    toast.success(isRecurring ? 'Transaction récurrente créée ✓' : 'Transaction ajoutée ✓');
     resetAndClose();
   };
 
@@ -78,6 +82,7 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
     setCategory('');
     setNotes('');
     setDate(new Date());
+    setIsRecurring(false);
     setShowCreateCat(false);
     onClose();
   };
@@ -155,6 +160,20 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Recurring toggle */}
+              <div className="flex items-center justify-between py-2 px-3 rounded-md border border-border bg-secondary/30">
+                <div>
+                  <p className="text-sm font-medium">🔄 Transaction récurrente</p>
+                  <p className="text-xs text-muted-foreground">Se répète automatiquement chaque mois le {date.getDate()}</p>
+                </div>
+                <button
+                  onClick={() => setIsRecurring(!isRecurring)}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${isRecurring ? 'bg-primary' : 'bg-muted'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isRecurring ? 'translate-x-5' : ''}`} />
+                </button>
               </div>
 
               <div>

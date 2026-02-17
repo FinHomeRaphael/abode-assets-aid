@@ -17,6 +17,9 @@ export interface Transaction {
   date: string;
   notes?: string;
   emoji: string;
+  isRecurring?: boolean;
+  recurrenceDay?: number;
+  recurringSourceId?: string;
 }
 
 export interface Budget {
@@ -26,6 +29,7 @@ export interface Budget {
   period: 'monthly' | 'yearly';
   emoji: string;
   alertsEnabled: boolean;
+  recurring: boolean;
 }
 
 export interface SavingsGoal {
