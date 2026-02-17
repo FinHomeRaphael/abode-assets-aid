@@ -4,6 +4,7 @@ import { useApp } from '@/context/AppContext';
 import { formatAmount, formatDate } from '@/utils/format';
 import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
+import AddTransactionModal from '@/components/AddTransactionModal';
 
 const Transactions = () => {
   const { transactions, getMemberById, household, getTransactionsForMonth, toggleRecurring } = useApp();
@@ -12,6 +13,7 @@ const Transactions = () => {
   const [filterMember, setFilterMember] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const monthTx = useMemo(() => getTransactionsForMonth(currentMonth), [currentMonth, getTransactionsForMonth]);
   const categories = [...new Set(monthTx.map(t => t.category))].sort();
@@ -32,6 +34,11 @@ const Transactions = () => {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold">Transactions</h1>
+          <button onClick={() => setShowAddModal(true)} className="h-10 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm">
+            + Créer
+          </button>
+        </div>
+        <div className="flex justify-center">
           <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} />
         </div>
 
@@ -104,6 +111,7 @@ const Transactions = () => {
         </div>
         <p className="text-xs text-muted-foreground text-center">{filtered.length} transaction(s)</p>
       </motion.div>
+      <AddTransactionModal open={showAddModal} onClose={() => setShowAddModal(false)} />
     </Layout>
   );
 };

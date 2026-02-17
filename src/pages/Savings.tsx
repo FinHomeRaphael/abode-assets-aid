@@ -53,7 +53,9 @@ const Savings = () => {
           </div>
         </div>
 
-        <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} />
+        <div className="flex justify-center">
+          <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} />
+        </div>
 
         {/* Summary */}
         <div className="grid grid-cols-3 gap-3">
