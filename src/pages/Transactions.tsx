@@ -82,8 +82,12 @@ const Transactions = () => {
 
   const handleDeleteFromEdit = () => {
     if (!editTarget) return;
-    if (editTarget.isRecurring && !editTarget.recurringSourceId) {
-      setDeleteRecTarget(editTarget);
+    // If it's a recurring template OR a generated recurring instance, show recurring delete modal
+    if (editTarget.isRecurring || editTarget.recurringSourceId) {
+      // Find the actual template for generated instances
+      const templateId = editTarget.recurringSourceId || editTarget.id;
+      const template = transactions.find(t => t.id === templateId) || editTarget;
+      setDeleteRecTarget({ ...template, id: templateId });
       setEditTarget(null);
     } else {
       deleteTransaction(editTarget.id);
