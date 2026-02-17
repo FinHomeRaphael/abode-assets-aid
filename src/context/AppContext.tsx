@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { AppState, Transaction, Budget, Investment, Member, Household } from '@/types/finance';
 import { demoMembers, demoHousehold, demoTransactions, demoBudgets, demoInvestments } from '@/data/demo';
 import { generateId } from '@/utils/format';
@@ -23,6 +23,19 @@ function loadState(): AppState {
   return defaultState;
 }
 
+function getMonthRange(date: Date): { start: string; end: string } {
+  const y = date.getFullYear();
+  const m = date.getMonth();
+  const start = new Date(y, m, 1).toISOString().split('T')[0];
+  const end = new Date(y, m + 1, 0).toISOString().split('T')[0];
+  return { start, end };
+}
+
+function getYearRange(date: Date): { start: string; end: string } {
+  const y = date.getFullYear();
+  return { start: `${y}-01-01`, end: `${y}-12-31` };
+}
+
 interface AppContextType extends AppState {
   login: (email: string) => void;
   logout: () => void;
@@ -33,6 +46,7 @@ interface AppContextType extends AppState {
   updateBudget: (id: string, updates: Partial<Budget>) => void;
   addInvestment: (i: Omit<Investment, 'id'>) => void;
   getMemberById: (id: string) => Member | undefined;
+  getBudgetSpent: (budget: Budget, refDate?: Date) => number;
   resetDemo: () => void;
 }
 
@@ -64,17 +78,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addTransaction = (t: Omit<Transaction, 'id'>) => {
     const newT = { ...t, id: generateId() };
-    setState(prev => {
-      const newTransactions = [newT, ...prev.transactions];
-      // Update budget spent if expense
-      let newBudgets = prev.budgets;
-      if (t.type === 'expense') {
-        newBudgets = prev.budgets.map(b =>
-          b.category === t.category ? { ...b, spent: b.spent + t.amount } : b
-        );
-      }
-      return { ...prev, transactions: newTransactions, budgets: newBudgets };
-    });
+    setState(prev => ({
+      ...prev,
+      transactions: [newT, ...prev.transactions],
+    }));
   };
 
   const deleteTransaction = (id: string) => {
@@ -107,6 +114,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const getMemberById = (id: string) => state.household.members.find(m => m.id === id);
 
+  const getBudgetSpent = useCallback((budget: Budget, refDate: Date = new Date()) => {
+    const range = budget.period === 'monthly' ? getMonthRange(refDate) : getYearRange(refDate);
+    return state.transactions
+      .filter(t => t.type === 'expense' && t.category === budget.category && t.date >= range.start && t.date <= range.end)
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [state.transactions]);
+
   const resetDemo = () => {
     setState({ ...defaultState, isLoggedIn: true, isOnboarded: true, currentUser: demoMembers[0] });
   };
@@ -115,7 +129,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider value={{
       ...state, login, logout, completeOnboarding,
       addTransaction, deleteTransaction, addBudget, updateBudget,
-      addInvestment, getMemberById, resetDemo,
+      addInvestment, getMemberById, getBudgetSpent, resetDemo,
     }}>
       {children}
     </AppContext.Provider>
