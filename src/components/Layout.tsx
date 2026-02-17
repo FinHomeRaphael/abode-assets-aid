@@ -142,7 +142,7 @@ const Layout = ({ children }: LayoutProps) => {
               <motion.span
                 animate={{ rotate: fabOpen ? 45 : 0 }}
                 transition={{ duration: 0.2 }}
-                className="text-primary-foreground text-3xl font-light leading-none"
+                className="text-primary-foreground text-3xl font-light leading-none flex items-center justify-center w-full h-full"
               >
                 +
               </motion.span>
