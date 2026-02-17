@@ -8,6 +8,7 @@ import Layout from '@/components/Layout';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
+const CHAT_STORAGE_KEY = 'finehome_chat_messages';
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/finance-chat`;
 
 const FinanceChat = () => {
@@ -19,7 +20,12 @@ const FinanceChat = () => {
   } = useApp();
   const { formatAmount } = useCurrency();
 
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const [messages, setMessages] = useState<Msg[]>(() => {
+    try {
+      const saved = localStorage.getItem(CHAT_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -27,6 +33,11 @@ const FinanceChat = () => {
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [messages]);
+
+  // Persist messages
+  useEffect(() => {
+    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
   }, [messages]);
 
   // Build financial context string
@@ -227,7 +238,7 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
 
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto flex flex-col" style={{ height: 'calc(100vh - 10rem)' }}>
+      <div className="max-w-2xl mx-auto flex flex-col h-[calc(100dvh-10rem)] md:h-[calc(100dvh-8rem)]">
         {/* Header */}
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
@@ -297,7 +308,7 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
         </div>
 
         {/* Input */}
-        <div className="pt-3 border-t border-border/50">
+        <div className="pt-3 border-t border-border/50 pb-safe">
           <div className="flex gap-2">
             <input
               ref={inputRef}
@@ -316,6 +327,14 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
               Envoyer
             </button>
           </div>
+          {messages.length > 0 && (
+            <button
+              onClick={() => { setMessages([]); localStorage.removeItem(CHAT_STORAGE_KEY); }}
+              className="w-full mt-2 text-xs text-muted-foreground hover:text-destructive transition-colors"
+            >
+              Effacer la conversation
+            </button>
+          )}
         </div>
       </div>
     </Layout>
