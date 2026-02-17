@@ -3,28 +3,43 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatDateLong } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
-import { EMOJI_LIST, CURRENCIES, CURRENCY_SYMBOLS } from '@/types/finance';
+import { EMOJI_LIST, CURRENCIES, CURRENCY_SYMBOLS, SavingsGoal } from '@/types/finance';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 
 const Savings = () => {
-  const { savingsGoals, savingsDeposits, getGoalSaved, getMonthSavings, getTotalSavings, addSavingsGoal, addSavingsDeposit, household } = useApp();
+  const {
+    savingsGoals, savingsDeposits, getGoalSaved, getGoalDeposits, getMonthSavings, getTotalSavings,
+    addSavingsGoal, updateSavingsGoal, deleteSavingsGoal,
+    addSavingsDeposit, deleteSavingsDeposit, household, getMemberById,
+  } = useApp();
   const { formatAmount } = useCurrency();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [showAddDeposit, setShowAddDeposit] = useState(false);
 
+  // Create goal state
   const [goalName, setGoalName] = useState('');
   const [goalEmoji, setGoalEmoji] = useState('🎯');
   const [goalTarget, setGoalTarget] = useState('');
   const [goalDate, setGoalDate] = useState('');
   const [goalCurrency, setGoalCurrency] = useState(household.currency);
 
+  // Deposit state
   const [depositGoalId, setDepositGoalId] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
   const [depositMemberId, setDepositMemberId] = useState(household.members[0]?.id || '');
   const [depositDate, setDepositDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Edit goal state
+  const [editGoal, setEditGoal] = useState<SavingsGoal | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editEmoji, setEditEmoji] = useState('');
+  const [editTarget, setEditTarget] = useState('');
+  const [editDate, setEditDate] = useState('');
+  const [editCurrency, setEditCurrency] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const monthSavings = getMonthSavings(currentMonth);
   const totalSavings = getTotalSavings();
@@ -44,6 +59,36 @@ const Savings = () => {
     toast.success('Épargne ajoutée ✓');
     setShowAddDeposit(false);
     setDepositAmount('');
+  };
+
+  const openEditGoal = (g: SavingsGoal) => {
+    setEditGoal(g);
+    setEditName(g.name);
+    setEditEmoji(g.emoji);
+    setEditTarget(String(g.target));
+    setEditDate(g.targetDate || '');
+    setEditCurrency(g.currency);
+    setShowDeleteConfirm(false);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editGoal || !editName.trim() || !editTarget) return;
+    updateSavingsGoal(editGoal.id, {
+      name: editName.trim(),
+      emoji: editEmoji,
+      target: parseFloat(editTarget),
+      currency: editCurrency,
+      targetDate: editDate || undefined,
+    });
+    toast.success('Objectif modifié ✓');
+    setEditGoal(null);
+  };
+
+  const handleDeleteGoal = () => {
+    if (!editGoal) return;
+    deleteSavingsGoal(editGoal.id);
+    toast.success('Objectif supprimé');
+    setEditGoal(null);
   };
 
   return (
@@ -85,9 +130,8 @@ const Savings = () => {
             {savingsGoals.map(g => {
               const saved = getGoalSaved(g.id);
               const pct = Math.min((saved / g.target) * 100, 100);
-              const goalCurrencySymbol = CURRENCY_SYMBOLS[g.currency] || g.currency;
               return (
-                <div key={g.id} className="card-elevated p-5 card-hover">
+                <div key={g.id} onClick={() => openEditGoal(g)} className="card-elevated p-5 card-hover cursor-pointer active:scale-[0.98] transition-transform">
                   <div className="flex items-center justify-between mb-3">
                     <span className="font-semibold text-lg">{g.emoji} {g.name}</span>
                     <div className="flex items-center gap-2">
@@ -107,6 +151,117 @@ const Savings = () => {
             })}
           </div>
         )}
+
+        {/* Edit Goal Modal */}
+        <AnimatePresence>
+          {editGoal && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setEditGoal(null)}>
+              <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={e => e.stopPropagation()} className="bg-card w-full max-w-md rounded-2xl shadow-card-lg p-6 max-h-[90vh] overflow-y-auto">
+                <h2 className="text-lg font-bold mb-1">{editEmoji} {editName || 'Objectif'}</h2>
+
+                {/* Progress stats */}
+                {(() => {
+                  const saved = getGoalSaved(editGoal.id);
+                  const target = parseFloat(editTarget) || editGoal.target;
+                  const pct = Math.min((saved / target) * 100, 100);
+                  const deposits = getGoalDeposits(editGoal.id);
+                  return (
+                    <div className="mb-5">
+                      <div className="flex items-center justify-between text-sm mb-1.5">
+                        <span className="text-muted-foreground font-mono-amount">{formatAmount(saved, editCurrency)} / {formatAmount(target, editCurrency)}</span>
+                        <span className="font-bold text-primary">{Math.round(pct)}%</span>
+                      </div>
+                      <div className="h-3 bg-muted rounded-full overflow-hidden mb-3">
+                        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                      {editGoal.targetDate && (() => {
+                        const remaining = Math.ceil((new Date(editGoal.targetDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 30));
+                        return <p className="text-xs text-muted-foreground">{remaining > 0 ? `Objectif dans ${remaining} mois` : 'Date cible dépassée'}</p>;
+                      })()}
+
+                      {/* Deposits list */}
+                      {deposits.length > 0 && (
+                        <div className="mt-3 space-y-1.5">
+                          <p className="text-xs font-medium text-muted-foreground">Versements ({deposits.length})</p>
+                          <div className="max-h-32 overflow-y-auto space-y-1">
+                            {deposits.sort((a, b) => b.date.localeCompare(a.date)).map(d => {
+                              const member = getMemberById(d.memberId);
+                              return (
+                                <div key={d.id} className="flex items-center justify-between text-xs bg-muted/50 rounded-lg px-3 py-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-muted-foreground">{formatDateLong(d.date)}</span>
+                                    {member && <span className="text-muted-foreground">• {member.name}</span>}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono-amount font-medium text-primary">+{formatAmount(d.amount, editCurrency)}</span>
+                                    <button onClick={() => { deleteSavingsDeposit(d.id); toast.success('Versement supprimé'); }} className="text-destructive hover:text-destructive/80 text-[10px] font-medium">✕</button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Editable fields */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Nom</label>
+                    <input value={editName} onChange={e => setEditName(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Emoji</label>
+                    <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto p-2 bg-muted/50 rounded-xl">
+                      {EMOJI_LIST.map(e => (
+                        <button key={e} onClick={() => setEditEmoji(e)} className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${editEmoji === e ? 'bg-primary/20 ring-2 ring-primary' : 'hover:bg-muted'}`}>{e}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">Montant cible</label>
+                      <input type="number" value={editTarget} onChange={e => setEditTarget(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono-amount focus:outline-none focus:ring-2 focus:ring-ring" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">Devise</label>
+                      <select value={editCurrency} onChange={e => setEditCurrency(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                        {CURRENCIES.map(c => <option key={c} value={c}>{CURRENCY_SYMBOLS[c] || c} {c}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Date cible (optionnel)</label>
+                    <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="mt-6 space-y-3">
+                  <div className="flex gap-3">
+                    <button onClick={() => setEditGoal(null)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Annuler</button>
+                    <button onClick={handleSaveEdit} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">Sauvegarder</button>
+                  </div>
+                  {!showDeleteConfirm ? (
+                    <button onClick={() => setShowDeleteConfirm(true)} className="w-full py-2.5 rounded-xl border border-destructive text-destructive text-sm font-medium hover:bg-destructive/10 transition-colors">
+                      Supprimer cet objectif
+                    </button>
+                  ) : (
+                    <div className="p-3 rounded-xl border border-destructive bg-destructive/5 space-y-2">
+                      <p className="text-sm text-destructive font-medium text-center">Supprimer définitivement ? Tous les versements associés seront perdus.</p>
+                      <div className="flex gap-3">
+                        <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 py-2 rounded-xl border border-border text-sm hover:bg-muted transition-colors">Non</button>
+                        <button onClick={handleDeleteGoal} className="flex-1 py-2 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold hover:bg-destructive/90 transition-colors">Oui, supprimer</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Create Goal Modal */}
         <AnimatePresence>
