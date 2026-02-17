@@ -5,6 +5,7 @@ import { formatAmount, getBudgetStatus } from '@/utils/format';
 import { EXPENSE_CATEGORIES, CATEGORY_EMOJIS } from '@/types/finance';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
+import MonthSelector from '@/components/MonthSelector';
 
 const Budgets = () => {
   const { budgets, addBudget, getBudgetSpent } = useApp();
@@ -14,6 +15,7 @@ const Budgets = () => {
   const [newPeriod, setNewPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [newAlerts, setNewAlerts] = useState(true);
   const [viewPeriod, setViewPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
   const handleCreate = () => {
     if (!newCategory || !newLimit) { toast.error('Remplissez tous les champs'); return; }
@@ -31,10 +33,6 @@ const Budgets = () => {
   };
 
   const filteredBudgets = budgets.filter(b => b.period === viewPeriod);
-  const now = new Date();
-  const periodLabel = viewPeriod === 'monthly'
-    ? new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(now)
-    : `Année ${now.getFullYear()}`;
 
   return (
     <Layout>
@@ -46,23 +44,14 @@ const Budgets = () => {
           </button>
         </div>
 
-        {/* Period toggle */}
-        <div className="flex items-center gap-3 mb-4">
+        {/* Period toggle + Month selector */}
+        <div className="flex flex-wrap items-center gap-3 mb-4">
           <div className="flex bg-secondary rounded-md p-1">
-            <button
-              onClick={() => setViewPeriod('monthly')}
-              className={`px-4 py-1.5 rounded-sm text-sm font-medium transition-colors ${viewPeriod === 'monthly' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}
-            >
-              Mensuel
-            </button>
-            <button
-              onClick={() => setViewPeriod('yearly')}
-              className={`px-4 py-1.5 rounded-sm text-sm font-medium transition-colors ${viewPeriod === 'yearly' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}
-            >
-              Annuel
-            </button>
+            <button onClick={() => setViewPeriod('monthly')} className={`px-4 py-1.5 rounded-sm text-sm font-medium transition-colors ${viewPeriod === 'monthly' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}>Mensuel</button>
+            <button onClick={() => setViewPeriod('yearly')} className={`px-4 py-1.5 rounded-sm text-sm font-medium transition-colors ${viewPeriod === 'yearly' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}>Annuel</button>
           </div>
-          <span className="text-sm text-muted-foreground capitalize">{periodLabel}</span>
+          {viewPeriod === 'monthly' && <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} />}
+          {viewPeriod === 'yearly' && <span className="text-sm text-muted-foreground">Année {currentMonth.getFullYear()}</span>}
         </div>
 
         {filteredBudgets.length === 0 ? (
@@ -72,7 +61,7 @@ const Budgets = () => {
         ) : (
           <div className="grid sm:grid-cols-2 gap-3">
             {filteredBudgets.map(b => {
-              const spent = getBudgetSpent(b);
+              const spent = getBudgetSpent(b, currentMonth);
               const status = getBudgetStatus(spent, b.limit);
               const pct = Math.min((spent / b.limit) * 100, 100);
               return (
@@ -80,22 +69,13 @@ const Budgets = () => {
                   <div className="flex items-center justify-between mb-3">
                     <span className="font-medium">{b.emoji} {b.category}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">
-                        {b.period === 'monthly' ? '/ mois' : '/ an'}
-                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">{b.period === 'monthly' ? '/ mois' : '/ an'}</span>
                       {status === 'over' && <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">Dépassé</span>}
                       {status === 'warning' && <span className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning font-medium">Attention</span>}
                     </div>
                   </div>
                   <div className="h-3 bg-secondary rounded-full overflow-hidden mb-2">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${pct}%` }}
-                      transition={{ duration: 0.6, ease: 'easeOut' }}
-                      className={`h-full rounded-full ${
-                        status === 'ok' ? 'bg-success' : status === 'warning' ? 'bg-warning' : 'bg-destructive'
-                      }`}
-                    />
+                    <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} className={`h-full rounded-full ${status === 'ok' ? 'bg-success' : status === 'warning' ? 'bg-warning' : 'bg-destructive'}`} />
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-mono">{formatAmount(spent)} / {formatAmount(b.limit)}</span>
@@ -110,11 +90,7 @@ const Budgets = () => {
         {/* Create modal */}
         <AnimatePresence>
           {showCreate && (
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm flex items-center justify-center p-4"
-              onClick={() => setShowCreate(false)}
-            >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowCreate(false)}>
               <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={e => e.stopPropagation()} className="bg-card w-full max-w-md rounded-lg border border-border shadow-lg p-6">
                 <h2 className="text-lg font-semibold mb-4">Créer un budget</h2>
                 <div className="space-y-4">
@@ -132,18 +108,8 @@ const Budgets = () => {
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Période</label>
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => setNewPeriod('monthly')}
-                        className={`flex-1 py-2.5 rounded-md border text-sm font-medium transition-colors ${newPeriod === 'monthly' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-secondary'}`}
-                      >
-                        📅 Mensuel
-                      </button>
-                      <button
-                        onClick={() => setNewPeriod('yearly')}
-                        className={`flex-1 py-2.5 rounded-md border text-sm font-medium transition-colors ${newPeriod === 'yearly' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-secondary'}`}
-                      >
-                        📆 Annuel
-                      </button>
+                      <button onClick={() => setNewPeriod('monthly')} className={`flex-1 py-2.5 rounded-md border text-sm font-medium transition-colors ${newPeriod === 'monthly' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-secondary'}`}>📅 Mensuel</button>
+                      <button onClick={() => setNewPeriod('yearly')} className={`flex-1 py-2.5 rounded-md border text-sm font-medium transition-colors ${newPeriod === 'yearly' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-secondary'}`}>📆 Annuel</button>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

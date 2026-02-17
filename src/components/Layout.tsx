@@ -12,7 +12,7 @@ const navItems = [
   { path: '/', label: 'Vue d\'ensemble', emoji: '📊' },
   { path: '/transactions', label: 'Transactions', emoji: '💳' },
   { path: '/budgets', label: 'Budgets', emoji: '🎯' },
-  { path: '/investments', label: 'Investissements', emoji: '📈' },
+  { path: '/savings', label: 'Épargne', emoji: '🐷' },
 ];
 
 const Layout = ({ children }: LayoutProps) => {
@@ -23,7 +23,6 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="sticky top-0 z-30 bg-card/80 backdrop-blur-md border-b border-border">
         <div className="container max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-6">
@@ -50,32 +49,21 @@ const Layout = ({ children }: LayoutProps) => {
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-1">
               {household.members.map(m => (
-                <div
-                  key={m.id}
-                  className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs font-medium text-muted-foreground"
-                  title={m.name}
-                >
+                <div key={m.id} className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs font-medium text-muted-foreground" title={m.name}>
                   {getInitials(m.name)}
                 </div>
               ))}
             </div>
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
-            >
+            <button onClick={() => setShowAddModal(true)} className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity">
               + Ajouter
             </button>
-            <button
-              onClick={() => navigate('/profile')}
-              className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold"
-            >
+            <button onClick={() => navigate('/profile')} className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
               {currentUser ? getInitials(currentUser.name) : '?'}
             </button>
           </div>
         </div>
       </header>
 
-      {/* Mobile nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-card/90 backdrop-blur-md border-t border-border">
         <div className="flex justify-around py-2">
           {navItems.map(item => (
@@ -93,7 +81,6 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </nav>
 
-      {/* Content */}
       <main className="container max-w-7xl mx-auto px-4 py-6 pb-24 md:pb-6">
         {children}
       </main>

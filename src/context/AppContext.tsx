@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { AppState, Transaction, Budget, Investment, Member, Household } from '@/types/finance';
-import { demoMembers, demoHousehold, demoTransactions, demoBudgets, demoInvestments } from '@/data/demo';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
+import { AppState, Transaction, Budget, Member, Household, SavingsGoal, SavingsDeposit, CustomCategory } from '@/types/finance';
+import { demoMembers, demoHousehold, demoTransactions, demoBudgets, demoSavingsGoals, demoSavingsDeposits } from '@/data/demo';
 import { generateId } from '@/utils/format';
 
 const STORAGE_KEY = 'finehome_state';
@@ -12,13 +12,25 @@ const defaultState: AppState = {
   household: demoHousehold,
   transactions: demoTransactions,
   budgets: demoBudgets,
-  investments: demoInvestments,
+  savingsGoals: demoSavingsGoals,
+  savingsDeposits: demoSavingsDeposits,
+  customCategories: [],
 };
 
 function loadState(): AppState {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Ensure new fields exist for older saved states
+      return {
+        ...defaultState,
+        ...parsed,
+        savingsGoals: parsed.savingsGoals || demoSavingsGoals,
+        savingsDeposits: parsed.savingsDeposits || demoSavingsDeposits,
+        customCategories: parsed.customCategories || [],
+      };
+    }
   } catch {}
   return defaultState;
 }
@@ -44,9 +56,16 @@ interface AppContextType extends AppState {
   deleteTransaction: (id: string) => void;
   addBudget: (b: Omit<Budget, 'id'>) => void;
   updateBudget: (id: string, updates: Partial<Budget>) => void;
-  addInvestment: (i: Omit<Investment, 'id'>) => void;
   getMemberById: (id: string) => Member | undefined;
   getBudgetSpent: (budget: Budget, refDate?: Date) => number;
+  addSavingsGoal: (g: Omit<SavingsGoal, 'id'>) => void;
+  addSavingsDeposit: (d: Omit<SavingsDeposit, 'id'>) => void;
+  getGoalSaved: (goalId: string) => number;
+  getMonthSavings: (refDate?: Date) => number;
+  getTotalSavings: () => number;
+  addCustomCategory: (c: CustomCategory) => void;
+  deleteCustomCategory: (name: string) => void;
+  getTransactionsForMonth: (refDate: Date) => Transaction[];
   resetDemo: () => void;
 }
 
@@ -78,38 +97,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addTransaction = (t: Omit<Transaction, 'id'>) => {
     const newT = { ...t, id: generateId() };
-    setState(prev => ({
-      ...prev,
-      transactions: [newT, ...prev.transactions],
-    }));
+    setState(prev => ({ ...prev, transactions: [newT, ...prev.transactions] }));
   };
 
   const deleteTransaction = (id: string) => {
-    setState(prev => ({
-      ...prev,
-      transactions: prev.transactions.filter(t => t.id !== id),
-    }));
+    setState(prev => ({ ...prev, transactions: prev.transactions.filter(t => t.id !== id) }));
   };
 
   const addBudget = (b: Omit<Budget, 'id'>) => {
-    setState(prev => ({
-      ...prev,
-      budgets: [...prev.budgets, { ...b, id: generateId() }],
-    }));
+    setState(prev => ({ ...prev, budgets: [...prev.budgets, { ...b, id: generateId() }] }));
   };
 
   const updateBudget = (id: string, updates: Partial<Budget>) => {
-    setState(prev => ({
-      ...prev,
-      budgets: prev.budgets.map(b => b.id === id ? { ...b, ...updates } : b),
-    }));
-  };
-
-  const addInvestment = (i: Omit<Investment, 'id'>) => {
-    setState(prev => ({
-      ...prev,
-      investments: [...prev.investments, { ...i, id: generateId() }],
-    }));
+    setState(prev => ({ ...prev, budgets: prev.budgets.map(b => b.id === id ? { ...b, ...updates } : b) }));
   };
 
   const getMemberById = (id: string) => state.household.members.find(m => m.id === id);
@@ -121,6 +121,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .reduce((sum, t) => sum + t.amount, 0);
   }, [state.transactions]);
 
+  const addSavingsGoal = (g: Omit<SavingsGoal, 'id'>) => {
+    setState(prev => ({ ...prev, savingsGoals: [...prev.savingsGoals, { ...g, id: generateId() }] }));
+  };
+
+  const addSavingsDeposit = (d: Omit<SavingsDeposit, 'id'>) => {
+    setState(prev => ({ ...prev, savingsDeposits: [...prev.savingsDeposits, { ...d, id: generateId() }] }));
+  };
+
+  const getGoalSaved = useCallback((goalId: string) => {
+    return state.savingsDeposits.filter(d => d.goalId === goalId).reduce((s, d) => s + d.amount, 0);
+  }, [state.savingsDeposits]);
+
+  const getMonthSavings = useCallback((refDate: Date = new Date()) => {
+    const range = getMonthRange(refDate);
+    return state.savingsDeposits
+      .filter(d => d.date >= range.start && d.date <= range.end)
+      .reduce((s, d) => s + d.amount, 0);
+  }, [state.savingsDeposits]);
+
+  const getTotalSavings = useCallback(() => {
+    return state.savingsDeposits.reduce((s, d) => s + d.amount, 0);
+  }, [state.savingsDeposits]);
+
+  const addCustomCategory = (c: CustomCategory) => {
+    setState(prev => ({ ...prev, customCategories: [...prev.customCategories, c] }));
+  };
+
+  const deleteCustomCategory = (name: string) => {
+    setState(prev => ({ ...prev, customCategories: prev.customCategories.filter(c => c.name !== name) }));
+  };
+
+  const getTransactionsForMonth = useCallback((refDate: Date) => {
+    const range = getMonthRange(refDate);
+    return state.transactions.filter(t => t.date >= range.start && t.date <= range.end);
+  }, [state.transactions]);
+
   const resetDemo = () => {
     setState({ ...defaultState, isLoggedIn: true, isOnboarded: true, currentUser: demoMembers[0] });
   };
@@ -129,7 +165,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider value={{
       ...state, login, logout, completeOnboarding,
       addTransaction, deleteTransaction, addBudget, updateBudget,
-      addInvestment, getMemberById, getBudgetSpent, resetDemo,
+      getMemberById, getBudgetSpent,
+      addSavingsGoal, addSavingsDeposit, getGoalSaved, getMonthSavings, getTotalSavings,
+      addCustomCategory, deleteCustomCategory, getTransactionsForMonth,
+      resetDemo,
     }}>
       {children}
     </AppContext.Provider>

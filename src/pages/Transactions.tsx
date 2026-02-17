@@ -1,19 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatAmount, formatDate } from '@/utils/format';
 import Layout from '@/components/Layout';
+import MonthSelector from '@/components/MonthSelector';
 
 const Transactions = () => {
-  const { transactions, getMemberById, household, deleteTransaction } = useApp();
+  const { transactions, getMemberById, household, getTransactionsForMonth } = useApp();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [filterMember, setFilterMember] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
+  const [currentMonth, setCurrentMonth] = useState(new Date());
 
-  const categories = [...new Set(transactions.map(t => t.category))].sort();
+  const monthTx = useMemo(() => getTransactionsForMonth(currentMonth), [currentMonth, getTransactionsForMonth]);
 
-  const filtered = transactions.filter(t => {
+  const categories = [...new Set(monthTx.map(t => t.category))].sort();
+
+  const filtered = monthTx.filter(t => {
     if (filterType !== 'all' && t.type !== filterType) return false;
     if (filterMember !== 'all' && t.memberId !== filterMember) return false;
     if (filterCategory !== 'all' && t.category !== filterCategory) return false;
@@ -21,19 +25,38 @@ const Transactions = () => {
     return true;
   });
 
+  const monthIncome = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const monthExpense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+
   return (
     <Layout>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        <h1 className="text-xl font-bold mb-4">💳 Transactions</h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-xl font-bold">💳 Transactions</h1>
+          <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} />
+        </div>
+
+        {/* Month totals */}
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="bg-card border border-border rounded-lg p-3 text-center">
+            <p className="text-xs text-muted-foreground">Revenus</p>
+            <p className="font-mono font-bold text-success text-sm">+{formatAmount(monthIncome)}</p>
+          </div>
+          <div className="bg-card border border-border rounded-lg p-3 text-center">
+            <p className="text-xs text-muted-foreground">Dépenses</p>
+            <p className="font-mono font-bold text-destructive text-sm">-{formatAmount(monthExpense)}</p>
+          </div>
+          <div className="bg-card border border-border rounded-lg p-3 text-center">
+            <p className="text-xs text-muted-foreground">Solde</p>
+            <p className={`font-mono font-bold text-sm ${monthIncome - monthExpense >= 0 ? 'text-success' : 'text-destructive'}`}>
+              {monthIncome - monthExpense >= 0 ? '+' : ''}{formatAmount(monthIncome - monthExpense)}
+            </p>
+          </div>
+        </div>
 
         {/* Filters */}
         <div className="flex flex-wrap gap-2 mb-4">
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="🔍 Rechercher..."
-            className="px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring flex-1 min-w-[200px]"
-          />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Rechercher..." className="px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring flex-1 min-w-[200px]" />
           <select value={filterType} onChange={e => setFilterType(e.target.value as any)} className="px-3 py-2 rounded-md border border-input bg-background text-sm">
             <option value="all">Tous types</option>
             <option value="income">Revenus</option>
