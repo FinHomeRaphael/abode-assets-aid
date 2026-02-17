@@ -6,7 +6,7 @@ import { formatAmount, formatDate, getBudgetStatus, getInitials } from '@/utils/
 import Layout from '@/components/Layout';
 
 const Dashboard = () => {
-  const { transactions, budgets, investments, household, getMemberById } = useApp();
+  const { transactions, budgets, investments, household, getMemberById, getBudgetSpent } = useApp();
   const navigate = useNavigate();
 
   const monthTransactions = transactions; // demo: all are current month
@@ -98,14 +98,15 @@ const Dashboard = () => {
                 <button onClick={() => navigate('/budgets')} className="text-sm text-primary hover:underline">Voir →</button>
               </div>
               <div className="bg-card rounded-lg border border-border p-4 space-y-4">
-                {budgets.slice(0, 4).map(b => {
-                  const status = getBudgetStatus(b.spent, b.limit);
-                  const pct = Math.min((b.spent / b.limit) * 100, 100);
+                {budgets.filter(b => b.period === 'monthly').slice(0, 4).map(b => {
+                  const spent = getBudgetSpent(b);
+                  const status = getBudgetStatus(spent, b.limit);
+                  const pct = Math.min((spent / b.limit) * 100, 100);
                   return (
                     <div key={b.id}>
                       <div className="flex items-center justify-between text-sm mb-1.5">
                         <span>{b.emoji} {b.category}</span>
-                        <span className="font-mono text-xs">{formatAmount(b.spent)} / {formatAmount(b.limit)}</span>
+                        <span className="font-mono text-xs">{formatAmount(spent)} / {formatAmount(b.limit)}</span>
                       </div>
                       <div className="h-2 bg-secondary rounded-full overflow-hidden">
                         <div
