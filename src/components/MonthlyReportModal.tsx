@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
-import { getBudgetStatus } from '@/utils/format';
+import { getBudgetStatus, formatAmount as rawFormatAmount } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import MonthSelector from './MonthSelector';
@@ -13,16 +13,57 @@ interface Props {
 
 const COLORS = ['hsl(199, 89%, 48%)', 'hsl(160, 84%, 39%)', 'hsl(38, 92%, 50%)', 'hsl(0, 84%, 60%)', 'hsl(280, 60%, 55%)', 'hsl(30, 70%, 50%)', 'hsl(190, 70%, 40%)', 'hsl(340, 70%, 50%)'];
 
+function generateReportAdvice(
+  income: number,
+  savings: number,
+  savingsGoals: { name: string; emoji: string; target: number; saved: number; targetDate?: string }[],
+  overBudgets: { category: string; emoji: string }[],
+  currency: string,
+): string {
+  const fmt = (n: number) => rawFormatAmount(n, currency);
+  const savingsRate = income > 0 ? (savings / income) * 100 : 0;
+
+  if (overBudgets.length > 0) {
+    return `⚠️ ${overBudgets.length} budget(s) dépassé(s) ce mois : ${overBudgets.map(b => `${b.emoji} ${b.category}`).join(', ')}. Revoyez ces catégories pour le mois prochain.`;
+  }
+
+  // Check savings goals with target dates
+  const goalsWithDate = savingsGoals.filter(g => g.targetDate && g.saved < g.target);
+  if (goalsWithDate.length > 0) {
+    const g = goalsWithDate[0];
+    const remaining = g.target - g.saved;
+    const targetDate = new Date(g.targetDate!);
+    const now = new Date();
+    const monthsLeft = Math.max(1, (targetDate.getFullYear() - now.getFullYear()) * 12 + targetDate.getMonth() - now.getMonth());
+    const monthlyNeeded = remaining / monthsLeft;
+    if (savings > 0 && savings >= monthlyNeeded) {
+      return `🎯 À ce rythme d'épargne, vous atteindrez ${g.emoji} "${g.name}" dans environ ${Math.ceil(remaining / savings)} mois. Continuez !`;
+    }
+    return `📈 Augmentez votre épargne de ${fmt(monthlyNeeded - savings)}/mois pour atteindre ${g.emoji} "${g.name}" à temps (${monthsLeft} mois restants).`;
+  }
+
+  if (savingsRate >= 20) {
+    return `🌟 Excellent mois ! Vous avez épargné ${savingsRate.toFixed(0)}% de vos revenus. C'est au-dessus de la recommandation de 20%.`;
+  }
+  if (savingsRate >= 10) {
+    return `👍 Bon mois ! Vous avez épargné ${savingsRate.toFixed(0)}% de vos revenus. Visez 20% pour optimiser votre épargne.`;
+  }
+  if (income > 0 && savingsRate < 10) {
+    return `💡 Ce mois vous avez épargné ${savingsRate.toFixed(0)}% de vos revenus. Essayez de mettre de côté au moins 10% pour sécuriser votre avenir.`;
+  }
+  return `💪 Vos finances sont en bonne santé. Pensez à définir des objectifs d'épargne pour structurer votre stratégie !`;
+}
+
 const MonthlyReportModal = ({ open, onClose }: Props) => {
-  const { getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getMemberById, getMonthSavings } = useApp();
-  const { formatAmount } = useCurrency();
+  const { getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getMonthSavings, savingsGoals, getGoalSaved } = useApp();
+  const { formatAmount, currency } = useCurrency();
   const [month, setMonth] = useState(new Date());
 
   const transactions = useMemo(() => getTransactionsForMonth(month), [month, getTransactionsForMonth]);
   const income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
   const expenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
   const savings = getMonthSavings(month);
-  const net = income - expenses - savings;
+  const available = income - expenses - savings;
 
   const prevMonth = new Date(month);
   prevMonth.setMonth(prevMonth.getMonth() - 1);
@@ -38,15 +79,35 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
   }, [transactions]);
 
-  const top5 = useMemo(() => {
-    return [...transactions].filter(t => t.type === 'expense').sort((a, b) => b.convertedAmount - a.convertedAmount).slice(0, 5);
-  }, [transactions]);
-
   const monthlyBudgets = useMemo(() => getBudgetsForMonth(month).filter(b => b.period === 'monthly'), [getBudgetsForMonth, month]);
+
+  const goalsData = useMemo(() => savingsGoals.map(g => ({
+    ...g,
+    saved: getGoalSaved(g.id),
+  })), [savingsGoals, getGoalSaved]);
+
+  const overBudgets = useMemo(() => monthlyBudgets.filter(b => {
+    const spent = getBudgetSpent(b, month);
+    return spent > b.limit;
+  }), [monthlyBudgets, getBudgetSpent, month]);
+
+  const aiAdvice = useMemo(() => generateReportAdvice(
+    income, savings, goalsData, overBudgets, currency,
+  ), [income, savings, goalsData, overBudgets, currency]);
 
   const diffPct = (curr: number, prev: number) => {
     if (prev === 0) return null;
     return ((curr - prev) / prev) * 100;
+  };
+
+  const getTimeRemaining = (targetDate?: string) => {
+    if (!targetDate) return null;
+    const target = new Date(targetDate);
+    const now = new Date();
+    const months = (target.getFullYear() - now.getFullYear()) * 12 + target.getMonth() - now.getMonth();
+    if (months <= 0) return 'Échéance passée';
+    if (months === 1) return 'Objectif dans 1 mois';
+    return `Objectif dans ${months} mois`;
   };
 
   if (!open) return null;
@@ -54,42 +115,48 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   return (
     <AnimatePresence>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm flex items-center justify-center p-4" onClick={onClose}>
-        <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={e => e.stopPropagation()} className="bg-card w-full max-w-2xl rounded-lg border border-border shadow-lg max-h-[85vh] overflow-y-auto">
+        <motion.div initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }} onClick={e => e.stopPropagation()} className="bg-card w-full max-w-2xl rounded-2xl border border-border shadow-lg max-h-[85vh] overflow-y-auto">
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">📊 Rapport mensuel</h2>
               <button onClick={onClose} className="text-muted-foreground hover:text-foreground">✕</button>
             </div>
 
-            <div className="mb-5">
+            <div className="mb-5 flex justify-center">
               <MonthSelector currentMonth={month} onChange={setMonth} />
             </div>
 
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              <div className="bg-secondary/50 rounded-lg p-3 text-center">
+            {/* Financial summary - 4 columns */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              <div className="bg-secondary/50 rounded-xl p-3 text-center">
                 <p className="text-xs text-muted-foreground mb-1">Revenus</p>
                 <p className="font-mono font-bold text-success text-sm">+{formatAmount(income)}</p>
                 {diffPct(income, prevIncome) !== null && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{diffPct(income, prevIncome)! >= 0 ? '+' : ''}{diffPct(income, prevIncome)!.toFixed(0)}% vs mois préc.</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{diffPct(income, prevIncome)! >= 0 ? '+' : ''}{diffPct(income, prevIncome)!.toFixed(0)}%</p>
                 )}
               </div>
-              <div className="bg-secondary/50 rounded-lg p-3 text-center">
+              <div className="bg-secondary/50 rounded-xl p-3 text-center">
                 <p className="text-xs text-muted-foreground mb-1">Dépenses</p>
                 <p className="font-mono font-bold text-destructive text-sm">-{formatAmount(expenses)}</p>
                 {diffPct(expenses, prevExpenses) !== null && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{diffPct(expenses, prevExpenses)! >= 0 ? '+' : ''}{diffPct(expenses, prevExpenses)!.toFixed(0)}% vs mois préc.</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{diffPct(expenses, prevExpenses)! >= 0 ? '+' : ''}{diffPct(expenses, prevExpenses)!.toFixed(0)}%</p>
                 )}
               </div>
-              <div className="bg-secondary/50 rounded-lg p-3 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Solde net</p>
-                <p className={`font-mono font-bold text-sm ${net >= 0 ? 'text-success' : 'text-destructive'}`}>{net >= 0 ? '+' : ''}{formatAmount(net)}</p>
+              <div className="bg-secondary/50 rounded-xl p-3 text-center">
+                <p className="text-xs text-muted-foreground mb-1">Épargne</p>
+                <p className="font-mono font-bold text-primary text-sm">-{formatAmount(savings)}</p>
+              </div>
+              <div className="bg-secondary/50 rounded-xl p-3 text-center">
+                <p className="text-xs text-muted-foreground mb-1">Disponible</p>
+                <p className={`font-mono font-bold text-sm ${available >= 0 ? 'text-success' : 'text-destructive'}`}>{available >= 0 ? '+' : ''}{formatAmount(available)}</p>
               </div>
             </div>
 
+            {/* Expense breakdown */}
             {expensesByCategory.length > 0 && (
               <div className="mb-6">
-                <h3 className="font-semibold text-sm mb-3">Répartition des dépenses</h3>
-                <div className="flex items-center gap-4">
+                <h3 className="font-semibold text-sm mb-3 text-center">Répartition des dépenses</h3>
+                <div className="flex flex-col items-center gap-4">
                   <div className="w-40 h-40">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
@@ -100,7 +167,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="flex-1 space-y-1.5">
+                  <div className="w-full max-w-sm space-y-1.5">
                     {expensesByCategory.map((cat, i) => (
                       <div key={cat.name} className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
@@ -115,27 +182,11 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
               </div>
             )}
 
-            {top5.length > 0 && (
-              <div className="mb-6">
-                <h3 className="font-semibold text-sm mb-3">Top 5 dépenses</h3>
-                <div className="bg-secondary/30 rounded-lg divide-y divide-border">
-                  {top5.map((t, i) => (
-                    <div key={t.id} className="flex items-center justify-between px-4 py-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground text-xs font-mono w-5">{i + 1}.</span>
-                        <span className="text-sm">{t.emoji} {t.label}</span>
-                      </div>
-                      <span className="font-mono text-sm">{formatAmount(t.convertedAmount)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
+            {/* Budget status */}
             {monthlyBudgets.length > 0 && (
-              <div>
-                <h3 className="font-semibold text-sm mb-3">État des budgets</h3>
-                <div className="space-y-2">
+              <div className="mb-6">
+                <h3 className="font-semibold text-sm mb-3 text-center">État des budgets</h3>
+                <div className="space-y-2 max-w-md mx-auto">
                   {monthlyBudgets.map(b => {
                     const spent = getBudgetSpent(b, month);
                     const status = getBudgetStatus(spent, b.limit);
@@ -156,6 +207,52 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                 </div>
               </div>
             )}
+
+            {/* Savings goals */}
+            {goalsData.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-sm mb-3 text-center">Objectifs d'épargne</h3>
+                <div className="space-y-3 max-w-md mx-auto">
+                  {goalsData.map(g => {
+                    const pct = g.target > 0 ? Math.min((g.saved / g.target) * 100, 100) : 0;
+                    const timeRemaining = getTimeRemaining(g.targetDate);
+                    return (
+                      <div key={g.id} className="bg-secondary/30 rounded-xl p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-semibold">{g.emoji} {g.name}</span>
+                          <span className="text-xs font-mono font-bold text-primary">{Math.round(pct)}%</span>
+                        </div>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden mb-2">
+                          <div
+                            className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-success' : pct >= 60 ? 'bg-primary' : 'bg-warning'}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-xs text-muted-foreground">{formatAmount(g.saved, g.currency)} / {formatAmount(g.target, g.currency)}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {timeRemaining || 'Pas de date cible définie'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* AI Advice */}
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <span className="text-lg">✨</span>
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-sm mb-1">Conseil IA</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{aiAdvice}</p>
+                </div>
+              </div>
+            </div>
           </div>
         </motion.div>
       </motion.div>

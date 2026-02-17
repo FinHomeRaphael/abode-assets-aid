@@ -49,10 +49,6 @@ function getExchangeRate(fromCurrency: string, toCurrency: string): number {
   if (fromCurrency === toCurrency) return 1;
   const fromToEur = DEFAULT_EXCHANGE_RATES[fromCurrency] || 1;
   const toToEur = DEFAULT_EXCHANGE_RATES[toCurrency] || 1;
-  // fromCurrency → EUR → toCurrency
-  // fromToEur = how much 1 unit of fromCurrency is worth in EUR
-  // toToEur = how much 1 unit of toCurrency is worth in EUR
-  // So 1 fromCurrency = fromToEur EUR = fromToEur / toToEur toCurrency
   return fromToEur / toToEur;
 }
 
@@ -101,11 +97,15 @@ function processRecurringTransactions(transactions: Transaction[], householdCurr
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth();
   const monthStr = String(currentMonth + 1).padStart(2, '0');
+  const currentMonthYear = `${currentYear}-${monthStr}`;
 
   const recurringTemplates = transactions.filter(t => t.isRecurring && !t.recurringSourceId);
   const newTransactions: Transaction[] = [];
 
   for (const template of recurringTemplates) {
+    // Skip if recurring has ended before this month
+    if (template.recurringEndMonth && template.recurringEndMonth < currentMonthYear) continue;
+
     const templateDate = new Date(template.date);
     const templateInCurrentMonth = templateDate.getFullYear() === currentYear && templateDate.getMonth() === currentMonth;
 
@@ -143,7 +143,9 @@ interface AppContextType extends AppState {
   logout: () => void;
   completeOnboarding: (householdName: string, currency: string) => void;
   addTransaction: (t: Omit<Transaction, 'id' | 'exchangeRate' | 'baseCurrency' | 'convertedAmount'>) => void;
+  updateTransaction: (id: string, updates: Partial<Omit<Transaction, 'id' | 'exchangeRate' | 'baseCurrency' | 'convertedAmount'>>) => void;
   deleteTransaction: (id: string) => void;
+  softDeleteRecurringTransaction: (id: string) => void;
   toggleRecurring: (id: string) => void;
   deleteRecurring: (id: string) => void;
   getRecurringTransactions: () => Transaction[];
@@ -208,18 +210,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const baseCurrency = state.household.currency;
     const rate = getExchangeRate(t.currency, baseCurrency);
     const convertedAmount = t.amount * rate;
+    const now = new Date();
+    const monthYear = getMonthYearStr(now);
     const newT: Transaction = {
       ...t,
       id: generateId(),
       exchangeRate: rate,
       baseCurrency,
       convertedAmount,
+      recurringStartMonth: t.isRecurring ? monthYear : undefined,
+      recurringEndMonth: t.isRecurring ? null : undefined,
     };
     setState(prev => ({ ...prev, transactions: [newT, ...prev.transactions] }));
   };
 
+  const updateTransaction = (id: string, updates: Partial<Omit<Transaction, 'id' | 'exchangeRate' | 'baseCurrency' | 'convertedAmount'>>) => {
+    setState(prev => ({
+      ...prev,
+      transactions: prev.transactions.map(t => {
+        if (t.id !== id) return t;
+        const merged = { ...t, ...updates };
+        // If amount or currency changed, recalculate conversion
+        if (updates.amount !== undefined || updates.currency !== undefined) {
+          const baseCurrency = prev.household.currency;
+          const rate = getExchangeRate(merged.currency, baseCurrency);
+          merged.exchangeRate = rate;
+          merged.baseCurrency = baseCurrency;
+          merged.convertedAmount = merged.amount * rate;
+        }
+        return merged as Transaction;
+      }),
+    }));
+  };
+
   const deleteTransaction = (id: string) => {
     setState(prev => ({ ...prev, transactions: prev.transactions.filter(t => t.id !== id) }));
+  };
+
+  const softDeleteRecurringTransaction = (id: string) => {
+    const now = new Date();
+    const monthYear = getMonthYearStr(now);
+    setState(prev => ({
+      ...prev,
+      transactions: prev.transactions.map(t =>
+        t.id === id ? { ...t, recurringEndMonth: monthYear } : t
+      ),
+    }));
   };
 
   const toggleRecurring = (id: string) => {
@@ -228,10 +264,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       transactions: prev.transactions.map(t => {
         if (t.id !== id) return t;
         const day = parseInt(t.date.split('-')[2]) || 1;
+        const now = new Date();
+        const monthYear = getMonthYearStr(now);
         return {
           ...t,
           isRecurring: !t.isRecurring,
           recurrenceDay: !t.isRecurring ? day : undefined,
+          recurringStartMonth: !t.isRecurring ? monthYear : undefined,
+          recurringEndMonth: !t.isRecurring ? null : undefined,
         };
       }),
     }));
@@ -241,13 +281,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState(prev => ({
       ...prev,
       transactions: prev.transactions.map(t =>
-        t.id === id ? { ...t, isRecurring: false, recurrenceDay: undefined } : t
+        t.id === id ? { ...t, isRecurring: false, recurrenceDay: undefined, recurringStartMonth: undefined, recurringEndMonth: undefined } : t
       ),
     }));
   };
 
   const getRecurringTransactions = useCallback(() => {
-    return state.transactions.filter(t => t.isRecurring && !t.recurringSourceId);
+    return state.transactions.filter(t => t.isRecurring && !t.recurringSourceId && !t.recurringEndMonth);
   }, [state.transactions]);
 
   const addBudget = (b: Omit<Budget, 'id' | 'startMonth' | 'endMonth'>) => {
@@ -294,13 +334,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const getBudgetsForMonth = useCallback((refDate: Date) => {
     const monthYear = getMonthYearStr(refDate);
     return state.budgets.filter(b => {
-      // Recurring budget: visible if started before/during this month and not ended before this month
       if (b.isRecurring) {
         if (b.startMonth > monthYear) return false;
         if (b.endMonth && b.endMonth < monthYear) return false;
         return true;
       }
-      // One-time budget: only visible in its specific month
       return b.monthYear === monthYear;
     });
   }, [state.budgets]);
@@ -378,7 +416,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AppContext.Provider value={{
       ...state, login, logout, completeOnboarding,
-      addTransaction, deleteTransaction, toggleRecurring, deleteRecurring, getRecurringTransactions,
+      addTransaction, updateTransaction, deleteTransaction, softDeleteRecurringTransaction,
+      toggleRecurring, deleteRecurring, getRecurringTransactions,
       addBudget, updateBudget, deleteBudget, softDeleteBudget,
       getMemberById, getBudgetSpent, getBudgetsForMonth,
       addSavingsGoal, addSavingsDeposit, getGoalSaved, getMonthSavings, getTotalSavings,

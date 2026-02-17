@@ -1,16 +1,21 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
-import { formatDate } from '@/utils/format';
+import { formatDate, formatDateLong } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CURRENCIES, CATEGORY_EMOJIS } from '@/types/finance';
 import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import AddTransactionModal from '@/components/AddTransactionModal';
 import ConvertedAmount from '@/components/ConvertedAmount';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 const Transactions = () => {
-  const { transactions, getMemberById, household, getTransactionsForMonth, deleteTransaction } = useApp();
+  const { transactions, getMemberById, household, getTransactionsForMonth, deleteTransaction, updateTransaction, softDeleteRecurringTransaction } = useApp();
   const { formatAmount, currency } = useCurrency();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
@@ -18,10 +23,19 @@ const Transactions = () => {
   const [filterCategory, setFilterCategory] = useState('all');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showAddModal, setShowAddModal] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<typeof transactions[0] | null>(null);
 
-  // Swipe state
-  const [swipedId, setSwipedId] = useState<string | null>(null);
+  // Edit modal state
+  const [editTarget, setEditTarget] = useState<typeof transactions[0] | null>(null);
+  const [editLabel, setEditLabel] = useState('');
+  const [editAmount, setEditAmount] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editDate, setEditDate] = useState<Date>(new Date());
+  const [editMemberId, setEditMemberId] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editIsRecurring, setEditIsRecurring] = useState(false);
+
+  // Delete recurring modal
+  const [deleteRecTarget, setDeleteRecTarget] = useState<typeof transactions[0] | null>(null);
 
   const monthTx = useMemo(() => getTransactionsForMonth(currentMonth), [currentMonth, getTransactionsForMonth]);
   const categories = [...new Set(monthTx.map(t => t.category))].sort();
@@ -37,11 +51,67 @@ const Transactions = () => {
   const monthIncome = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
   const monthExpense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
 
-  const handleConfirmDelete = () => {
-    if (!deleteTarget) return;
-    deleteTransaction(deleteTarget.id);
-    toast.success('Transaction supprimée');
-    setDeleteTarget(null);
+  const openEditModal = (t: typeof transactions[0]) => {
+    setEditTarget(t);
+    setEditLabel(t.label);
+    setEditAmount(String(t.amount));
+    setEditCategory(t.category);
+    setEditDate(new Date(t.date));
+    setEditMemberId(t.memberId);
+    setEditNotes(t.notes || '');
+    setEditIsRecurring(!!t.isRecurring);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editTarget || !editLabel.trim() || !editAmount || !editCategory) return;
+    const day = editDate.getDate();
+    updateTransaction(editTarget.id, {
+      label: editLabel.trim(),
+      amount: parseFloat(editAmount),
+      category: editCategory,
+      date: editDate.toISOString().split('T')[0],
+      memberId: editMemberId,
+      notes: editNotes.trim() || undefined,
+      emoji: CATEGORY_EMOJIS[editCategory] || editTarget.emoji,
+      isRecurring: editIsRecurring,
+      recurrenceDay: editIsRecurring ? day : undefined,
+    });
+    toast.success('Transaction modifiée ✓');
+    setEditTarget(null);
+  };
+
+  const handleDeleteFromEdit = () => {
+    if (!editTarget) return;
+    if (editTarget.isRecurring && !editTarget.recurringSourceId) {
+      setDeleteRecTarget(editTarget);
+      setEditTarget(null);
+    } else {
+      deleteTransaction(editTarget.id);
+      toast.success('Transaction supprimée');
+      setEditTarget(null);
+    }
+  };
+
+  const handleSoftDeleteRec = () => {
+    if (!deleteRecTarget) return;
+    softDeleteRecurringTransaction(deleteRecTarget.id);
+    toast.success('Transaction arrêtée pour les mois à venir');
+    setDeleteRecTarget(null);
+  };
+
+  const handleHardDeleteRec = () => {
+    if (!deleteRecTarget) return;
+    deleteTransaction(deleteRecTarget.id);
+    toast.success('Transaction supprimée définitivement');
+    setDeleteRecTarget(null);
+  };
+
+  const allCategories = editTarget?.type === 'income' ? [...INCOME_CATEGORIES] : [...EXPENSE_CATEGORIES];
+
+  const formatMonth = (monthStr: string) => {
+    const [y, m] = monthStr.split('-');
+    const date = new Date(parseInt(y), parseInt(m) - 1);
+    return new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(date);
   };
 
   return (
@@ -102,69 +172,34 @@ const Transactions = () => {
               const member = getMemberById(t.memberId);
               const isRecTemplate = t.isRecurring && !t.recurringSourceId;
               const isRecGenerated = !!t.recurringSourceId;
-              const isSwiped = swipedId === t.id;
+              const isStopped = isRecTemplate && !!t.recurringEndMonth;
               return (
                 <div
                   key={t.id}
-                  className="relative overflow-hidden"
-                  onTouchStart={(e) => {
-                    const touch = e.touches[0];
-                    (e.currentTarget as any)._startX = touch.clientX;
-                  }}
-                  onTouchEnd={(e) => {
-                    const startX = (e.currentTarget as any)._startX;
-                    const endX = e.changedTouches[0].clientX;
-                    const diff = startX - endX;
-                    if (diff > 60) {
-                      setSwipedId(t.id);
-                    } else if (diff < -30) {
-                      setSwipedId(null);
-                    }
-                  }}
+                  className="flex items-center justify-between px-4 py-3.5 hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => openEditModal(t)}
                 >
-                  {/* Delete button behind (mobile swipe) */}
-                  <div className="absolute inset-y-0 right-0 flex items-center sm:hidden">
-                    <button
-                      onClick={() => setDeleteTarget(t)}
-                      className="h-full px-6 bg-destructive text-destructive-foreground text-sm font-semibold"
-                    >
-                      Supprimer
-                    </button>
-                  </div>
-
-                  <div
-                    className={`flex items-center justify-between px-4 py-3.5 hover:bg-muted/50 transition-all bg-card relative ${isSwiped ? '-translate-x-28 sm:translate-x-0' : 'translate-x-0'}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center text-lg">{t.emoji}</div>
-                      <div>
-                        <p className="text-sm font-semibold flex items-center gap-1.5">
-                          {t.label}
-                          {(isRecTemplate || isRecGenerated) && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-lg bg-primary/10 text-primary font-medium">🔄</span>
-                          )}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{t.category} · {member?.name} · {formatDate(t.date)}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <ConvertedAmount transaction={t} />
-                      {/* Desktop delete menu */}
-                      <div className="hidden sm:block relative group">
-                        <button className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                          ⋮
-                        </button>
-                        <div className="absolute right-0 top-full mt-1 bg-card border border-border rounded-xl shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 min-w-[140px]">
-                          <button
-                            onClick={() => setDeleteTarget(t)}
-                            className="w-full px-4 py-2 text-sm text-destructive hover:bg-destructive/10 text-left transition-colors"
-                          >
-                            🗑️ Supprimer
-                          </button>
-                        </div>
-                      </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center text-lg">{t.emoji}</div>
+                    <div>
+                      <p className="text-sm font-semibold flex items-center gap-1.5">
+                        {t.label}
+                        {(isRecTemplate || isRecGenerated) && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-lg bg-primary/10 text-primary font-medium">🔄</span>
+                        )}
+                        {isStopped && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-lg bg-muted text-muted-foreground font-medium">⏹️</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {t.category} · {member?.name} · {formatDate(t.date)}
+                        {isStopped && t.recurringEndMonth && (
+                          <span className="ml-1 text-muted-foreground"> · Arrêtée en {formatMonth(t.recurringEndMonth)}</span>
+                        )}
+                      </p>
                     </div>
                   </div>
+                  <ConvertedAmount transaction={t} />
                 </div>
               );
             })
@@ -175,15 +210,127 @@ const Transactions = () => {
 
       <AddTransactionModal open={showAddModal} onClose={() => setShowAddModal(false)} />
 
-      {/* Delete Confirmation Modal */}
+      {/* Edit Transaction Modal */}
       <AnimatePresence>
-        {deleteTarget && (
+        {editTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+            onClick={() => setEditTarget(null)}
+          >
+            <motion.div
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 50, opacity: 0 }}
+              onClick={e => e.stopPropagation()}
+              className="bg-card w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-card-lg max-h-[90vh] overflow-y-auto"
+            >
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="text-lg font-bold">{editTarget.emoji} Modifier la transaction</h2>
+                  <button onClick={() => setEditTarget(null)} className="text-muted-foreground hover:text-foreground text-lg">✕</button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Libellé</label>
+                    <input value={editLabel} onChange={e => setEditLabel(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">Montant</label>
+                      <input type="number" step="0.01" value={editAmount} onChange={e => setEditAmount(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">Devise</label>
+                      <input value={editTarget.currency} disabled className="w-full px-4 py-2.5 rounded-xl border border-input bg-muted text-sm text-muted-foreground" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Catégorie</label>
+                    <select value={editCategory} onChange={e => setEditCategory(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                      {allCategories.map(c => <option key={c} value={c}>{CATEGORY_EMOJIS[c]} {c}</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Date</label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm text-left focus:outline-none focus:ring-2 focus:ring-ring">
+                          {format(editDate, 'dd MMMM yyyy', { locale: fr })}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={editDate} onSelect={d => d && setEditDate(d)} className="p-3 pointer-events-auto" />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Membre</label>
+                    <div className="flex gap-2">
+                      {household.members.map(m => (
+                        <button key={m.id} onClick={() => setEditMemberId(m.id)} className={`px-3 py-2 rounded-xl border text-sm transition-all ${editMemberId === m.id ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>{m.name}</button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Recurring toggle */}
+                  <div className="flex items-center justify-between py-2 px-3 rounded-xl border border-border bg-secondary/30">
+                    <div>
+                      <p className="text-sm font-medium">🔄 Transaction récurrente</p>
+                      <p className="text-xs text-muted-foreground">Se répète chaque mois le {editDate.getDate()}</p>
+                    </div>
+                    <button
+                      onClick={() => setEditIsRecurring(!editIsRecurring)}
+                      className={`relative w-11 h-6 rounded-full transition-colors ${editIsRecurring ? 'bg-primary' : 'bg-muted'}`}
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${editIsRecurring ? 'translate-x-5' : ''}`} />
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Notes</label>
+                    <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={2} className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
+                  </div>
+
+                  {/* Info lines */}
+                  <div className="bg-muted/50 rounded-xl p-3 space-y-1">
+                    <p className="text-xs text-muted-foreground">Créée le {formatDateLong(editTarget.date)}</p>
+                    {editTarget.currency !== editTarget.baseCurrency && (
+                      <p className="text-xs text-muted-foreground">Taux de change appliqué : {editTarget.exchangeRate.toFixed(4)} ({editTarget.currency} → {editTarget.baseCurrency})</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 mt-6">
+                  <button onClick={handleDeleteFromEdit} className="py-2.5 px-4 rounded-xl bg-destructive/10 text-destructive text-sm font-semibold hover:bg-destructive/20 transition-colors">
+                    🗑️ Supprimer
+                  </button>
+                  <div className="flex-1" />
+                  <button onClick={() => setEditTarget(null)} className="py-2.5 px-5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Annuler</button>
+                  <button onClick={handleSaveEdit} className="py-2.5 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">Sauvegarder</button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Recurring Transaction Modal */}
+      <AnimatePresence>
+        {deleteRecTarget && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => setDeleteTarget(null)}
+            onClick={() => setDeleteRecTarget(null)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
@@ -192,23 +339,18 @@ const Transactions = () => {
               onClick={e => e.stopPropagation()}
               className="bg-card w-full max-w-sm rounded-2xl shadow-card-lg p-6"
             >
-              <h2 className="text-lg font-bold mb-4">Supprimer cette transaction ?</h2>
-              <div className="bg-muted/50 rounded-xl p-4 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-muted flex items-center justify-center text-lg">{deleteTarget.emoji}</div>
-                  <div>
-                    <p className="text-sm font-semibold">{deleteTarget.label}</p>
-                    <p className="text-xs text-muted-foreground">{deleteTarget.category} · {formatDate(deleteTarget.date)}</p>
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <ConvertedAmount transaction={deleteTarget} />
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground mb-5">Cette action est irréversible.</p>
-              <div className="flex gap-3">
-                <button onClick={() => setDeleteTarget(null)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Annuler</button>
-                <button onClick={handleConfirmDelete} className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold hover:bg-destructive/90 transition-colors">Supprimer</button>
+              <h2 className="text-lg font-bold mb-2">Supprimer la transaction récurrente</h2>
+              <p className="text-sm text-muted-foreground mb-5">{deleteRecTarget.emoji} {deleteRecTarget.label} — {formatAmount(deleteRecTarget.amount)}</p>
+              <div className="space-y-3">
+                <button onClick={handleSoftDeleteRec} className="w-full py-3 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors text-left px-4">
+                  <p className="font-semibold">⏹️ Supprimer pour les mois à venir</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">L'historique est conservé dans les mois passés</p>
+                </button>
+                <button onClick={handleHardDeleteRec} className="w-full py-3 rounded-xl border border-destructive/30 text-sm font-medium hover:bg-destructive/5 transition-colors text-left px-4">
+                  <p className="font-semibold text-destructive">🗑️ Supprimer de tous les mois</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Suppression totale et définitive</p>
+                </button>
+                <button onClick={() => setDeleteRecTarget(null)} className="w-full py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Annuler</button>
               </div>
             </motion.div>
           </motion.div>

@@ -23,6 +23,8 @@ export interface Transaction {
   isRecurring?: boolean;
   recurrenceDay?: number;
   recurringSourceId?: string;
+  recurringStartMonth?: string;
+  recurringEndMonth?: string | null;
 }
 
 export interface Budget {
