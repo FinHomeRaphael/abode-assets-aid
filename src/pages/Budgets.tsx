@@ -8,12 +8,13 @@ import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 
 const Budgets = () => {
-  const { budgets, addBudget, getBudgetSpent } = useApp();
+  const { budgets, addBudget, getBudgetSpent, deleteBudget } = useApp();
   const [showCreate, setShowCreate] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [newLimit, setNewLimit] = useState('');
   const [newPeriod, setNewPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [newAlerts, setNewAlerts] = useState(true);
+  const [newRecurring, setNewRecurring] = useState(true);
   const [viewPeriod, setViewPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -25,6 +26,7 @@ const Budgets = () => {
       period: newPeriod,
       emoji: CATEGORY_EMOJIS[newCategory] || '📌',
       alertsEnabled: newAlerts,
+      recurring: newRecurring,
     });
     toast.success('Budget créé ✓');
     setShowCreate(false);
@@ -65,13 +67,22 @@ const Budgets = () => {
               const status = getBudgetStatus(spent, b.limit);
               const pct = Math.min((spent / b.limit) * 100, 100);
               return (
-                <div key={b.id} className="bg-card border border-border rounded-lg p-5 card-hover">
+                <div key={b.id} className="bg-card border border-border rounded-lg p-5 card-hover group">
                   <div className="flex items-center justify-between mb-3">
                     <span className="font-medium">{b.emoji} {b.category}</span>
                     <div className="flex items-center gap-2">
+                      {(b.recurring ?? true) && (
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary" title="Budget récurrent">🔄</span>
+                      )}
                       <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">{b.period === 'monthly' ? '/ mois' : '/ an'}</span>
                       {status === 'over' && <span className="text-xs px-2 py-0.5 rounded-full bg-destructive/10 text-destructive font-medium">Dépassé</span>}
                       {status === 'warning' && <span className="text-xs px-2 py-0.5 rounded-full bg-warning/10 text-warning font-medium">Attention</span>}
+                      <button
+                        onClick={() => { deleteBudget(b.id); toast.success('Budget supprimé'); }}
+                        className="text-xs text-destructive opacity-0 group-hover:opacity-100 transition-opacity hover:underline"
+                      >
+                        ✕
+                      </button>
                     </div>
                   </div>
                   <div className="h-3 bg-secondary rounded-full overflow-hidden mb-2">
@@ -112,6 +123,21 @@ const Budgets = () => {
                       <button onClick={() => setNewPeriod('yearly')} className={`flex-1 py-2.5 rounded-md border text-sm font-medium transition-colors ${newPeriod === 'yearly' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-secondary'}`}>📆 Annuel</button>
                     </div>
                   </div>
+
+                  {/* Recurring toggle */}
+                  <div className="flex items-center justify-between py-2 px-3 rounded-md border border-border bg-secondary/30">
+                    <div>
+                      <p className="text-sm font-medium">🔄 Budget récurrent</p>
+                      <p className="text-xs text-muted-foreground">Se renouvelle automatiquement chaque {newPeriod === 'monthly' ? 'mois' : 'année'}</p>
+                    </div>
+                    <button
+                      onClick={() => setNewRecurring(!newRecurring)}
+                      className={`relative w-11 h-6 rounded-full transition-colors ${newRecurring ? 'bg-primary' : 'bg-muted'}`}
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${newRecurring ? 'translate-x-5' : ''}`} />
+                    </button>
+                  </div>
+
                   <div className="flex items-center gap-2">
                     <input type="checkbox" checked={newAlerts} onChange={e => setNewAlerts(e.target.checked)} id="alerts" className="rounded" />
                     <label htmlFor="alerts" className="text-sm">Activer les alertes</label>

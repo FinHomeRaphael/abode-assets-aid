@@ -1,12 +1,14 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
-import { formatDateLong, getInitials } from '@/utils/format';
+import { formatDateLong, formatAmount, getInitials } from '@/utils/format';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 
 const Profile = () => {
-  const { household, currentUser, logout, resetDemo, customCategories, deleteCustomCategory } = useApp();
+  const { household, currentUser, logout, resetDemo, customCategories, deleteCustomCategory, getRecurringTransactions, deleteRecurring, getMemberById } = useApp();
+
+  const recurringTx = getRecurringTransactions();
 
   return (
     <Layout>
@@ -42,6 +44,44 @@ const Profile = () => {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Recurring Transactions */}
+        <div className="bg-card border border-border rounded-lg p-5 mb-4">
+          <h2 className="font-semibold mb-3">🔄 Transactions récurrentes</h2>
+          {recurringTx.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Aucune transaction récurrente. Activez la récurrence lors de la création d'une transaction.</p>
+          ) : (
+            <div className="space-y-2">
+              {recurringTx.map(t => {
+                const member = getMemberById(t.memberId);
+                return (
+                  <div key={t.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                    <div className="flex items-center gap-3">
+                      <span>{t.emoji}</span>
+                      <div>
+                        <p className="text-sm font-medium">{t.label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {t.category} · {member?.name} · Le {t.recurrenceDay} de chaque mois
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`font-mono text-sm ${t.type === 'income' ? 'text-success' : ''}`}>
+                        {t.type === 'income' ? '+' : '-'}{formatAmount(t.amount)}
+                      </span>
+                      <button
+                        onClick={() => { deleteRecurring(t.id); toast.success('Récurrence désactivée'); }}
+                        className="text-xs text-destructive hover:underline"
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Custom Categories */}

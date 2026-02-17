@@ -22,7 +22,6 @@ function loadState(): AppState {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Ensure new fields exist for older saved states
       return {
         ...defaultState,
         ...parsed,
@@ -48,14 +47,61 @@ function getYearRange(date: Date): { start: string; end: string } {
   return { start: `${y}-01-01`, end: `${y}-12-31` };
 }
 
+/**
+ * Process recurring transactions: for each recurring template,
+ * check if a transaction exists for the current month. If not, create one.
+ */
+function processRecurringTransactions(transactions: Transaction[]): Transaction[] {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const monthStr = String(currentMonth + 1).padStart(2, '0');
+
+  const recurringTemplates = transactions.filter(t => t.isRecurring && !t.recurringSourceId);
+  const newTransactions: Transaction[] = [];
+
+  for (const template of recurringTemplates) {
+    // Check if a transaction already exists for this month (either the template itself or a generated one)
+    const templateDate = new Date(template.date);
+    const templateInCurrentMonth = templateDate.getFullYear() === currentYear && templateDate.getMonth() === currentMonth;
+
+    const hasGenerated = transactions.some(
+      t => t.recurringSourceId === template.id &&
+        t.date.startsWith(`${currentYear}-${monthStr}`)
+    );
+
+    if (!templateInCurrentMonth && !hasGenerated) {
+      const day = template.recurrenceDay || parseInt(template.date.split('-')[2]) || 1;
+      const maxDay = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const safeDay = Math.min(day, maxDay);
+      const dateStr = `${currentYear}-${monthStr}-${String(safeDay).padStart(2, '0')}`;
+
+      newTransactions.push({
+        ...template,
+        id: generateId(),
+        date: dateStr,
+        isRecurring: false,
+        recurrenceDay: undefined,
+        recurringSourceId: template.id,
+      });
+    }
+  }
+
+  return newTransactions.length > 0 ? [...transactions, ...newTransactions] : transactions;
+}
+
 interface AppContextType extends AppState {
   login: (email: string) => void;
   logout: () => void;
   completeOnboarding: (householdName: string, currency: string) => void;
   addTransaction: (t: Omit<Transaction, 'id'>) => void;
   deleteTransaction: (id: string) => void;
+  toggleRecurring: (id: string) => void;
+  deleteRecurring: (id: string) => void;
+  getRecurringTransactions: () => Transaction[];
   addBudget: (b: Omit<Budget, 'id'>) => void;
   updateBudget: (id: string, updates: Partial<Budget>) => void;
+  deleteBudget: (id: string) => void;
   getMemberById: (id: string) => Member | undefined;
   getBudgetSpent: (budget: Budget, refDate?: Date) => number;
   addSavingsGoal: (g: Omit<SavingsGoal, 'id'>) => void;
@@ -72,7 +118,14 @@ interface AppContextType extends AppState {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AppState>(loadState);
+  const [state, setState] = useState<AppState>(() => {
+    const loaded = loadState();
+    // Process recurring transactions on load
+    if (loaded.isLoggedIn) {
+      return { ...loaded, transactions: processRecurringTransactions(loaded.transactions) };
+    }
+    return loaded;
+  });
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -80,7 +133,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const login = (email: string) => {
     const member = state.household.members.find(m => m.email === email) || demoMembers[0];
-    setState(prev => ({ ...prev, isLoggedIn: true, isOnboarded: true, currentUser: member }));
+    setState(prev => {
+      const updated = { ...prev, isLoggedIn: true, isOnboarded: true, currentUser: member };
+      return { ...updated, transactions: processRecurringTransactions(updated.transactions) };
+    });
   };
 
   const logout = () => {
@@ -104,12 +160,44 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, transactions: prev.transactions.filter(t => t.id !== id) }));
   };
 
+  const toggleRecurring = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      transactions: prev.transactions.map(t => {
+        if (t.id !== id) return t;
+        const day = parseInt(t.date.split('-')[2]) || 1;
+        return {
+          ...t,
+          isRecurring: !t.isRecurring,
+          recurrenceDay: !t.isRecurring ? day : undefined,
+        };
+      }),
+    }));
+  };
+
+  const deleteRecurring = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      transactions: prev.transactions.map(t =>
+        t.id === id ? { ...t, isRecurring: false, recurrenceDay: undefined } : t
+      ),
+    }));
+  };
+
+  const getRecurringTransactions = useCallback(() => {
+    return state.transactions.filter(t => t.isRecurring && !t.recurringSourceId);
+  }, [state.transactions]);
+
   const addBudget = (b: Omit<Budget, 'id'>) => {
     setState(prev => ({ ...prev, budgets: [...prev.budgets, { ...b, id: generateId() }] }));
   };
 
   const updateBudget = (id: string, updates: Partial<Budget>) => {
     setState(prev => ({ ...prev, budgets: prev.budgets.map(b => b.id === id ? { ...b, ...updates } : b) }));
+  };
+
+  const deleteBudget = (id: string) => {
+    setState(prev => ({ ...prev, budgets: prev.budgets.filter(b => b.id !== id) }));
   };
 
   const getMemberById = (id: string) => state.household.members.find(m => m.id === id);
@@ -158,13 +246,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [state.transactions]);
 
   const resetDemo = () => {
-    setState({ ...defaultState, isLoggedIn: true, isOnboarded: true, currentUser: demoMembers[0] });
+    const fresh = { ...defaultState, isLoggedIn: true, isOnboarded: true, currentUser: demoMembers[0] };
+    setState({ ...fresh, transactions: processRecurringTransactions(fresh.transactions) });
   };
 
   return (
     <AppContext.Provider value={{
       ...state, login, logout, completeOnboarding,
-      addTransaction, deleteTransaction, addBudget, updateBudget,
+      addTransaction, deleteTransaction, toggleRecurring, deleteRecurring, getRecurringTransactions,
+      addBudget, updateBudget, deleteBudget,
       getMemberById, getBudgetSpent,
       addSavingsGoal, addSavingsDeposit, getGoalSaved, getMonthSavings, getTotalSavings,
       addCustomCategory, deleteCustomCategory, getTransactionsForMonth,

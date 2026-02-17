@@ -6,7 +6,7 @@ import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 
 const Transactions = () => {
-  const { transactions, getMemberById, household, getTransactionsForMonth } = useApp();
+  const { transactions, getMemberById, household, getTransactionsForMonth, toggleRecurring } = useApp();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [filterMember, setFilterMember] = useState('all');
@@ -79,12 +79,19 @@ const Transactions = () => {
           ) : (
             filtered.map(t => {
               const member = getMemberById(t.memberId);
+              const isRecTemplate = t.isRecurring && !t.recurringSourceId;
+              const isRecGenerated = !!t.recurringSourceId;
               return (
-                <div key={t.id} className="flex items-center justify-between px-4 py-3 hover:bg-secondary/30 transition-colors">
+                <div key={t.id} className="flex items-center justify-between px-4 py-3 hover:bg-secondary/30 transition-colors group">
                   <div className="flex items-center gap-3">
                     <span className="text-xl">{t.emoji}</span>
                     <div>
-                      <p className="text-sm font-medium">{t.label}</p>
+                      <p className="text-sm font-medium flex items-center gap-1.5">
+                        {t.label}
+                        {(isRecTemplate || isRecGenerated) && (
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-primary/10 text-primary" title="Transaction récurrente">🔄</span>
+                        )}
+                      </p>
                       <p className="text-xs text-muted-foreground">{t.category} · {member?.name} · {formatDate(t.date)}</p>
                     </div>
                   </div>
