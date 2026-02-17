@@ -157,8 +157,12 @@ interface AppContextType extends AppState {
   getBudgetSpent: (budget: Budget, refDate?: Date) => number;
   getBudgetsForMonth: (refDate: Date) => Budget[];
   addSavingsGoal: (g: Omit<SavingsGoal, 'id'>) => void;
+  updateSavingsGoal: (id: string, updates: Partial<Omit<SavingsGoal, 'id'>>) => void;
+  deleteSavingsGoal: (id: string) => void;
   addSavingsDeposit: (d: Omit<SavingsDeposit, 'id'>) => void;
+  deleteSavingsDeposit: (id: string) => void;
   getGoalSaved: (goalId: string) => number;
+  getGoalDeposits: (goalId: string) => SavingsDeposit[];
   getMonthSavings: (refDate?: Date) => number;
   getTotalSavings: () => number;
   addCustomCategory: (c: CustomCategory) => void;
@@ -346,12 +350,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState(prev => ({ ...prev, savingsGoals: [...prev.savingsGoals, { ...g, id: generateId() }] }));
   };
 
+  const updateSavingsGoal = (id: string, updates: Partial<Omit<SavingsGoal, 'id'>>) => {
+    setState(prev => ({ ...prev, savingsGoals: prev.savingsGoals.map(g => g.id === id ? { ...g, ...updates } : g) }));
+  };
+
+  const deleteSavingsGoal = (id: string) => {
+    setState(prev => ({
+      ...prev,
+      savingsGoals: prev.savingsGoals.filter(g => g.id !== id),
+      savingsDeposits: prev.savingsDeposits.filter(d => d.goalId !== id),
+    }));
+  };
+
   const addSavingsDeposit = (d: Omit<SavingsDeposit, 'id'>) => {
     setState(prev => ({ ...prev, savingsDeposits: [...prev.savingsDeposits, { ...d, id: generateId() }] }));
   };
 
+  const deleteSavingsDeposit = (id: string) => {
+    setState(prev => ({ ...prev, savingsDeposits: prev.savingsDeposits.filter(d => d.id !== id) }));
+  };
+
   const getGoalSaved = useCallback((goalId: string) => {
     return state.savingsDeposits.filter(d => d.goalId === goalId).reduce((s, d) => s + d.amount, 0);
+  }, [state.savingsDeposits]);
+
+  const getGoalDeposits = useCallback((goalId: string) => {
+    return state.savingsDeposits.filter(d => d.goalId === goalId);
   }, [state.savingsDeposits]);
 
   const getMonthSavings = useCallback((refDate: Date = new Date()) => {
@@ -472,7 +496,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toggleRecurring, deleteRecurring, getRecurringTransactions,
       addBudget, updateBudget, deleteBudget, softDeleteBudget,
       getMemberById, getBudgetSpent, getBudgetsForMonth,
-      addSavingsGoal, addSavingsDeposit, getGoalSaved, getMonthSavings, getTotalSavings,
+      addSavingsGoal, updateSavingsGoal, deleteSavingsGoal, addSavingsDeposit, deleteSavingsDeposit, getGoalSaved, getGoalDeposits, getMonthSavings, getTotalSavings,
       addCustomCategory, deleteCustomCategory, getTransactionsForMonth,
       changeCurrency, addMember, removeMember, updateMemberRole,
       resetDemo,
