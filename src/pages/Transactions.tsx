@@ -146,21 +146,23 @@ const Transactions = () => {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-2">
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Rechercher..." className="px-3.5 py-2.5 rounded-xl border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring flex-1 min-w-[200px]" />
-          <select value={filterType} onChange={e => setFilterType(e.target.value as any)} className="px-3.5 py-2.5 rounded-xl border border-input bg-card text-sm">
-            <option value="all">Tous types</option>
-            <option value="income">Revenus</option>
-            <option value="expense">Dépenses</option>
-          </select>
-          <select value={filterMember} onChange={e => setFilterMember(e.target.value)} className="px-3.5 py-2.5 rounded-xl border border-input bg-card text-sm">
-            <option value="all">Tous membres</option>
-            {household.members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-          </select>
-          <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="px-3.5 py-2.5 rounded-xl border border-input bg-card text-sm">
-            <option value="all">Toutes catégories</option>
-            {categories.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+        <div className="space-y-2">
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Rechercher..." className="w-full px-3.5 py-2.5 rounded-xl border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+          <div className="grid grid-cols-3 gap-2">
+            <select value={filterType} onChange={e => setFilterType(e.target.value as any)} className="w-full px-2 py-2.5 rounded-xl border border-input bg-card text-sm truncate">
+              <option value="all">Tous types</option>
+              <option value="income">Revenus</option>
+              <option value="expense">Dépenses</option>
+            </select>
+            <select value={filterMember} onChange={e => setFilterMember(e.target.value)} className="w-full px-2 py-2.5 rounded-xl border border-input bg-card text-sm truncate">
+              <option value="all">Membres</option>
+              {household.members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+            <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="w-full px-2 py-2.5 rounded-xl border border-input bg-card text-sm truncate">
+              <option value="all">Catégories</option>
+              {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
         </div>
 
         {/* List */}
@@ -308,13 +310,14 @@ const Transactions = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 mt-6">
-                  <button onClick={handleDeleteFromEdit} className="py-2.5 px-4 rounded-xl bg-destructive/10 text-destructive text-sm font-semibold hover:bg-destructive/20 transition-colors">
-                    🗑️ Supprimer
+                <div className="mt-6 space-y-3">
+                  <div className="flex gap-3">
+                    <button onClick={() => setEditTarget(null)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Annuler</button>
+                    <button onClick={handleSaveEdit} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">Sauvegarder</button>
+                  </div>
+                  <button onClick={handleDeleteFromEdit} className="w-full py-2.5 rounded-xl bg-destructive/10 text-destructive text-sm font-semibold hover:bg-destructive/20 transition-colors">
+                    🗑️ Supprimer cette transaction
                   </button>
-                  <div className="flex-1" />
-                  <button onClick={() => setEditTarget(null)} className="py-2.5 px-5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Annuler</button>
-                  <button onClick={handleSaveEdit} className="py-2.5 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">Sauvegarder</button>
                 </div>
               </div>
             </motion.div>
