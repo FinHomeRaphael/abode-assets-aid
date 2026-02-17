@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
+import { formatDateLong } from '@/utils/format';
 import { getBudgetStatus } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
 import { EXPENSE_CATEGORIES, CATEGORY_EMOJIS } from '@/types/finance';
@@ -9,7 +10,7 @@ import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 
 const Budgets = () => {
-  const { budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth } = useApp();
+  const { budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth, getTransactionsForMonth, getMemberById } = useApp();
   const { formatAmount } = useCurrency();
   const [showCreate, setShowCreate] = useState(false);
   const [newCategory, setNewCategory] = useState('');
@@ -239,6 +240,37 @@ const Budgets = () => {
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>{Math.round(pct)}% utilisé</span>
                         <span>Reste : {formatAmount(remaining)}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Transaction history for this budget */}
+                {(() => {
+                  const monthTx = getTransactionsForMonth(currentMonth);
+                  const budgetTx = monthTx.filter(t => t.type === 'expense' && t.category === editTarget.category)
+                    .sort((a, b) => b.date.localeCompare(a.date));
+                  if (budgetTx.length === 0) return (
+                    <div className="bg-muted/30 rounded-xl p-3 mb-5 text-center text-xs text-muted-foreground">Aucune transaction ce mois</div>
+                  );
+                  return (
+                    <div className="mb-5">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Transactions ({budgetTx.length})</p>
+                      <div className="max-h-40 overflow-y-auto space-y-1.5">
+                        {budgetTx.map(t => {
+                          const member = getMemberById(t.memberId);
+                          return (
+                            <div key={t.id} className="flex items-center justify-between text-xs bg-muted/50 rounded-lg px-3 py-2">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
+                                <span>{t.emoji}</span>
+                                <span className="truncate font-medium">{t.label}</span>
+                                <span className="text-muted-foreground shrink-0">{formatDateLong(t.date)}</span>
+                                {member && <span className="text-muted-foreground shrink-0">• {member.name}</span>}
+                              </div>
+                              <span className="font-mono-amount font-medium text-destructive shrink-0 ml-2">-{formatAmount(t.convertedAmount)}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
