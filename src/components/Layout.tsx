@@ -61,7 +61,7 @@ const Layout = ({ children }: LayoutProps) => {
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 glass border-t border-border/50 safe-area-bottom">
         <div className="flex justify-around items-center py-2 px-2">
-          {navItems.map(item => {
+          {navItems.slice(0, 2).map(item => {
             const isActive = location.pathname === item.path;
             return (
               <button
@@ -76,15 +76,32 @@ const Layout = ({ children }: LayoutProps) => {
               </button>
             );
           })}
-          <button
-            onClick={() => navigate('/profile')}
-            className={`flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-all ${
-              location.pathname === '/profile' ? 'text-primary' : 'text-muted-foreground'
-            }`}
-          >
-            <span className="text-xl">👤</span>
-            <span className="text-[10px] font-medium">Profil</span>
-          </button>
+
+          {/* FAB center button */}
+          <div className="relative -mt-8">
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg flex items-center justify-center text-2xl font-light hover:bg-primary/90 active:scale-95 transition-all"
+            >
+              +
+            </button>
+          </div>
+
+          {navItems.slice(2).map(item => {
+            const isActive = location.pathname === item.path;
+            return (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={`flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-all ${
+                  isActive ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                <span className={`text-xl ${isActive ? 'scale-110' : ''} transition-transform`}>{item.emoji}</span>
+                <span className={`text-[10px] font-medium ${isActive ? 'text-primary' : ''}`}>{item.label}</span>
+              </button>
+            );
+          })}
         </div>
       </nav>
 
