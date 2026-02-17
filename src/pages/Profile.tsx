@@ -15,6 +15,10 @@ const Profile = () => {
   const navigate = useNavigate();
   const recurringTx = getRecurringTransactions();
 
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    try { return localStorage.getItem('finehome_notifications') !== 'false'; } catch { return true; }
+  });
+
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [currencySearch, setCurrencySearch] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -186,8 +190,18 @@ const Profile = () => {
         <div className="card-elevated p-5 space-y-3">
           <h2 className="font-semibold">Paramètres</h2>
           <div className="flex items-center justify-between text-sm">
-            <span>Notifications</span>
-            <span className="text-success font-semibold">Activées</span>
+            <span>🔔 Notifications</span>
+            <div
+              className={`w-10 h-6 rounded-full transition-colors cursor-pointer relative ${notificationsEnabled ? 'bg-primary' : 'bg-muted'}`}
+              onClick={() => {
+                const next = !notificationsEnabled;
+                setNotificationsEnabled(next);
+                localStorage.setItem('finehome_notifications', String(next));
+                toast.success(next ? 'Notifications activées' : 'Notifications désactivées');
+              }}
+            >
+              <div className={`w-4 h-4 bg-card rounded-full absolute top-1 transition-transform ${notificationsEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+            </div>
           </div>
           <button onClick={() => navigate('/start-of-month')} className="w-full flex items-center justify-between text-sm py-2 hover:bg-muted rounded-lg px-2 -mx-2 transition-colors">
             <span>🗓️ Mode début de mois</span>
