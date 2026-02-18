@@ -18,6 +18,7 @@ const navItems = [
   { path: '/budgets', label: 'Budgets', emoji: '🎯' },
   { path: '/savings', label: 'Enveloppes', emoji: '🐷' },
   { path: '/debts', label: 'Dettes', emoji: '🏦' },
+  { path: '/insights', label: 'Insights', emoji: '💡' },
 ];
 
 const fabActions = [

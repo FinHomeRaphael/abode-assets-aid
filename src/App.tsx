@@ -18,6 +18,7 @@ import FinanceChat from "./pages/FinanceChat";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import NotFound from "./pages/NotFound";
+import Insights from "./pages/Insights";
 import InvitationChoiceModal from "./components/InvitationChoiceModal";
 
 const queryClient = new QueryClient();
@@ -145,6 +146,7 @@ const AppRoutes = () => (
       <Route path="/budgets" element={<ProtectedRoute><Budgets /></ProtectedRoute>} />
       <Route path="/savings" element={<ProtectedRoute><Savings /></ProtectedRoute>} />
       <Route path="/debts" element={<ProtectedRoute><Debts /></ProtectedRoute>} />
+      <Route path="/insights" element={<ProtectedRoute><Insights /></ProtectedRoute>} />
       <Route path="/account/:id" element={<ProtectedRoute><AccountDetail /></ProtectedRoute>} />
       <Route path="/start-of-month" element={<ProtectedRoute><StartOfMonth /></ProtectedRoute>} />
       <Route path="/chat" element={<ProtectedRoute><FinanceChat /></ProtectedRoute>} />
