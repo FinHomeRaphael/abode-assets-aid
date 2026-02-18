@@ -33,7 +33,8 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
   const periodsPerYear = getPeriodsPerYear(debt.paymentFrequency);
   const rate = debt.interestRate / 100 / periodsPerYear;
   const nextInterest = debt.remainingAmount * rate;
-  const nextPrincipal = Math.max(0, debt.paymentAmount - nextInterest);
+  const nextPrincipal = debt.paymentAmount; // paymentAmount = amortissement (capital only)
+  const totalPayment = nextPrincipal + nextInterest;
   const endDate = estimateEndDate(debt);
   const typeInfo = DEBT_TYPES.find(t => t.value === debt.type);
 
@@ -56,8 +57,8 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
     }
 
     const interestAmount = debt.remainingAmount * rate;
-    const principalAmount = Math.max(0, debt.paymentAmount - interestAmount);
-    const today = new Date().toISOString().split('T')[0];
+    const principalAmount = debt.paymentAmount; // paymentAmount = amortissement only
+    const paymentDate = debt.nextPaymentDate || new Date().toISOString().split('T')[0];
     const currency = debt.currency;
 
     // Create interest transaction
@@ -72,7 +73,7 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
       converted_amount: Math.round(interestAmount * 100) / 100,
       category: debt.categoryId,
       emoji: '🏦',
-      date: today,
+      date: paymentDate,
       is_auto_generated: true,
       debt_id: debt.id,
       debt_payment_type: 'interest',
@@ -90,7 +91,7 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
       converted_amount: Math.round(principalAmount * 100) / 100,
       category: debt.categoryId,
       emoji: '🏦',
-      date: today,
+      date: paymentDate,
       is_auto_generated: true,
       debt_id: debt.id,
       debt_payment_type: 'principal',
@@ -102,7 +103,7 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
     const newRemaining = Math.max(0, debt.remainingAmount - principalAmount);
     await supabase.from('debts').update({
       remaining_amount: Math.round(newRemaining * 100) / 100,
-      last_payment_date: today,
+      last_payment_date: paymentDate,
     }).eq('id', debt.id);
 
     toast.success('Paiement enregistré ✓');
@@ -196,7 +197,7 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
                     </div>
                     <div className="border-t border-border pt-2 flex items-center justify-between text-sm font-semibold">
                       <span>Total</span>
-                      <span className="font-mono-amount">{formatAmount(debt.paymentAmount)}</span>
+                      <span className="font-mono-amount">{formatAmount(totalPayment)}</span>
                     </div>
                   </div>
                 </div>
