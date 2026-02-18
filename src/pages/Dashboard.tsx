@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useMemo, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatAmount as rawFormatAmount, formatDate, getBudgetStatus, getInitials } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -9,7 +9,7 @@ import ScanTicketModal from '@/components/ScanTicketModal';
 import MonthlyReportModal from '@/components/MonthlyReportModal';
 import ConvertedAmount from '@/components/ConvertedAmount';
 
-function generateAIAdvice(
+function generateAIAdvices(
   budgets: { category: string; emoji: string; spent: number; limit: number }[],
   totalExpense: number,
   prevTotalExpense: number,
@@ -17,36 +17,57 @@ function generateAIAdvice(
   totalSavings: number,
   savingsGoals: { name: string; emoji: string; target: number; saved: number }[],
   currency: string,
-) {
+): { icon: string; title: string; text: string }[] {
   const fmt = (amount: number) => rawFormatAmount(amount, currency);
+  const advices: { icon: string; title: string; text: string }[] = [];
+
+  // Conseil 1 : budget
   const overBudgets = budgets.filter(b => b.spent > b.limit);
   if (overBudgets.length > 0) {
     const b = overBudgets[0];
     const over = b.spent - b.limit;
-    return `Votre budget ${b.emoji} ${b.category} est dépassé de ${fmt(over)}. En réduisant cette catégorie, vous pourriez mettre de côté ${fmt(over * 12)} par an.`;
-  }
-  const warningBudgets = budgets.filter(b => b.spent / b.limit > 0.8 && b.spent <= b.limit);
-  if (warningBudgets.length > 0) {
-    const b = warningBudgets[0];
-    const pct = Math.round((b.spent / b.limit) * 100);
-    return `Attention, votre budget ${b.emoji} ${b.category} est à ${pct}% (${fmt(b.spent)} / ${fmt(b.limit)}). Surveillez vos dépenses cette fin de mois.`;
-  }
-  const closeGoals = savingsGoals.filter(g => g.saved / g.target >= 0.8 && g.saved < g.target);
-  if (closeGoals.length > 0) {
-    const g = closeGoals[0];
-    const remaining = g.target - g.saved;
-    return `${g.emoji} Votre objectif "${g.name}" est presque atteint ! Plus que ${fmt(remaining)} pour atteindre votre cible de ${fmt(g.target)}.`;
-  }
-  if (prevTotalExpense > 0 && totalExpense > prevTotalExpense) {
-    const pct = Math.round(((totalExpense - prevTotalExpense) / prevTotalExpense) * 100);
-    if (pct > 5) {
-      return `Vos dépenses ont augmenté de ${pct}% par rapport au mois dernier (${fmt(totalExpense)} vs ${fmt(prevTotalExpense)}). Revoyez vos catégories les plus coûteuses.`;
+    advices.push({ icon: '⚠️', title: 'Alerte budget', text: `Votre budget ${b.emoji} ${b.category} est dépassé de ${fmt(over)}. Réduisez cette catégorie pour économiser ${fmt(over * 12)}/an.` });
+  } else {
+    const warningBudgets = budgets.filter(b => b.spent / b.limit > 0.8 && b.spent <= b.limit);
+    if (warningBudgets.length > 0) {
+      const b = warningBudgets[0];
+      const pct = Math.round((b.spent / b.limit) * 100);
+      advices.push({ icon: '👀', title: 'Budget à surveiller', text: `${b.emoji} ${b.category} est à ${pct}% (${fmt(b.spent)} / ${fmt(b.limit)}). Surveillez vos dépenses cette fin de mois.` });
+    } else {
+      advices.push({ icon: '✅', title: 'Budgets maîtrisés', text: `Tous vos budgets sont sous contrôle ce mois-ci. Bravo, continuez comme ça ! 💪` });
     }
   }
+
+  // Conseil 2 : épargne / tendance
   if (monthSavings > 0) {
-    return `Bravo ! 🎉 Vous avez mis de côté ${fmt(monthSavings)} ce mois-ci, pour un total cumulé de ${fmt(totalSavings)}. Continuez sur cette lancée !`;
+    advices.push({ icon: '🎉', title: 'Épargne du mois', text: `Vous avez mis de côté ${fmt(monthSavings)} ce mois-ci, pour un total de ${fmt(totalSavings)}. Continuez sur cette lancée !` });
+  } else if (prevTotalExpense > 0 && totalExpense > prevTotalExpense) {
+    const pct = Math.round(((totalExpense - prevTotalExpense) / prevTotalExpense) * 100);
+    advices.push({ icon: '📈', title: 'Tendance dépenses', text: `Vos dépenses ont augmenté de ${pct}% vs le mois dernier (${fmt(totalExpense)} vs ${fmt(prevTotalExpense)}). Revoyez vos catégories.` });
+  } else {
+    advices.push({ icon: '💡', title: 'Astuce épargne', text: `Pensez à mettre de côté même un petit montant chaque mois. La régularité est la clé de l'épargne réussie !` });
   }
-  return `Vos finances sont en bonne santé ce mois-ci. Pensez à mettre de côté pour vos objectifs ! 💪`;
+
+  // Conseil 3 : investissement immobilier
+  const monthlyCapacity = Math.max(0, monthSavings);
+  advices.push({
+    icon: '🏠',
+    title: 'Immobilier',
+    text: monthlyCapacity > 200
+      ? `Avec ${fmt(monthlyCapacity)}/mois d'épargne, vous pourriez rembourser un crédit immobilier. Les taux actuels restent favorables pour un premier achat.`
+      : `Constituez d'abord un apport solide. Visez 10-15% du prix du bien. Avec ${fmt(totalSavings)} d'épargne, vous êtes sur la bonne voie.`,
+  });
+
+  // Conseil 4 : investissement bourse
+  advices.push({
+    icon: '📊',
+    title: 'Bourse',
+    text: totalSavings > 1000
+      ? `Avec ${fmt(totalSavings)} d'épargne, diversifiez via un ETF World (frais < 0.3%). Un investissement régulier de ${fmt(Math.round(monthlyCapacity * 0.3))}/mois lisse le risque.`
+      : `Commencez la bourse avec un PEA et des ETF diversifiés dès ${fmt(50)}/mois. L'investissement progressif réduit le risque et crée un effet boule de neige.`,
+  });
+
+  return advices;
 }
 
 const Dashboard = () => {
@@ -78,7 +99,15 @@ const Dashboard = () => {
 
   const goalsData = savingsGoals.map(g => ({ ...g, saved: getGoalSaved(g.id) }));
 
-  const aiAdvice = useMemo(() => generateAIAdvice(budgetData, totalExpense, prevExpense, monthSavings, totalSavings, goalsData, currency), [budgetData, totalExpense, prevExpense, monthSavings, totalSavings, goalsData, currency]);
+  const aiAdvices = useMemo(() => generateAIAdvices(budgetData, totalExpense, prevExpense, monthSavings, totalSavings, goalsData, currency), [budgetData, totalExpense, prevExpense, monthSavings, totalSavings, goalsData, currency]);
+  const [adviceIndex, setAdviceIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setAdviceIndex(i => (i + 1) % aiAdvices.length);
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [aiAdvices.length]);
 
   const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
   const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
@@ -117,16 +146,36 @@ const Dashboard = () => {
           </div>
         </motion.div>
 
-        {/* AI Insight */}
-        <motion.div variants={fadeUp} className="card-elevated p-4">
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <span className="text-lg">✨</span>
-            </div>
-            <div className="flex-1">
-              <p className="font-semibold text-sm mb-0.5">Conseil IA</p>
-              <p className="text-sm text-muted-foreground leading-relaxed">{aiAdvice}</p>
-            </div>
+        {/* AI Insight Carousel */}
+        <motion.div variants={fadeUp} className="card-elevated p-4 overflow-hidden">
+          <div className="relative min-h-[72px]">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={adviceIndex}
+                initial={{ opacity: 0, x: 40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -40 }}
+                transition={{ duration: 0.3 }}
+                className="flex items-start gap-3"
+              >
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <span className="text-lg">{aiAdvices[adviceIndex].icon}</span>
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-sm mb-0.5">{aiAdvices[adviceIndex].title}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{aiAdvices[adviceIndex].text}</p>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+          <div className="flex items-center justify-center gap-1.5 mt-3">
+            {aiAdvices.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setAdviceIndex(i)}
+                className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i === adviceIndex ? 'bg-primary w-4' : 'bg-muted-foreground/30'}`}
+              />
+            ))}
           </div>
         </motion.div>
 
