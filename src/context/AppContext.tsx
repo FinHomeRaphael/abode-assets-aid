@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, ReactNode } from 'react';
 import { Transaction, Budget, Member, Household, SavingsGoal, SavingsDeposit, CustomCategory, Account, AccountType, DEFAULT_EXCHANGE_RATES } from '@/types/finance';
 import { toast } from 'sonner';
-import { demoMembers, demoHousehold, demoTransactions, demoBudgets, demoSavingsGoals, demoSavingsDeposits } from '@/data/demo';
+import { supabase } from '@/integrations/supabase/client';
+import { Session } from '@supabase/supabase-js';
 
 // ===== Helpers =====
 
@@ -33,8 +34,9 @@ function getMonthYearStr(date: Date): string {
 
 interface AppContextType {
   isLoggedIn: boolean;
-  isOnboarded: boolean;
   loading: boolean;
+  session: Session | null;
+  householdId: string;
   currentUser: Member | null;
   household: Household;
   transactions: Transaction[];
@@ -45,7 +47,6 @@ interface AppContextType {
   accounts: Account[];
 
   logout: () => void;
-  completeOnboarding: (householdName: string, currency: string) => Promise<void>;
 
   addTransaction: (t: Omit<Transaction, 'id' | 'exchangeRate' | 'baseCurrency' | 'convertedAmount'>) => void;
   updateTransaction: (id: string, updates: Partial<Omit<Transaction, 'id' | 'exchangeRate' | 'baseCurrency' | 'convertedAmount'>>) => void;
@@ -97,30 +98,261 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [members, setMembers] = useState<Member[]>(demoMembers);
-  const [householdData, setHouseholdData] = useState(demoHousehold);
-  const [transactions, setTransactions] = useState<Transaction[]>(demoTransactions);
-  const [budgets, setBudgets] = useState<Budget[]>(demoBudgets);
-  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>(demoSavingsGoals);
-  const [savingsDeposits, setSavingsDeposits] = useState<SavingsDeposit[]>(demoSavingsDeposits);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [householdId, setHouseholdId] = useState('');
+  const [currentUser, setCurrentUser] = useState<Member | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [householdData, setHouseholdData] = useState<{ name: string; currency: string; createdAt: string }>({ name: '', currency: 'EUR', createdAt: '' });
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
+  const [savingsDeposits, setSavingsDeposits] = useState<SavingsDeposit[]>([]);
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
 
-  // Always logged in and onboarded in demo mode
-  const isLoggedIn = true;
-  const isOnboarded = true;
-  const loading = false;
-
-  const currentUser: Member = useMemo(() => demoMembers[0], []);
+  const isLoggedIn = !!session;
 
   const household: Household = useMemo(() => ({
     ...householdData,
     members,
   }), [householdData, members]);
 
-  // ===== Auth Actions (no-op in demo) =====
-  const logout = () => { toast.info('Mode démo — pas de déconnexion'); };
-  const completeOnboarding = async () => {};
+  // ===== Fetch user data from Supabase =====
+  const fetchUserData = useCallback(async (userId: string) => {
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (profileError || !profile) {
+        await supabase.auth.signOut({ scope: 'local' });
+        setSession(null);
+        setLoading(false);
+        return;
+      }
+
+      const { data: memberRow } = await supabase
+        .from('household_members')
+        .select('household_id, role')
+        .eq('user_id', userId)
+        .single();
+
+      if (!memberRow) {
+        setLoading(false);
+        return;
+      }
+
+      const hId = memberRow.household_id;
+      setHouseholdId(hId);
+
+      const { data: houseData } = await supabase
+        .from('households')
+        .select('*')
+        .eq('id', hId)
+        .single();
+
+      if (!houseData) {
+        setLoading(false);
+        return;
+      }
+
+      setHouseholdData({
+        name: houseData.name,
+        currency: houseData.default_currency || 'EUR',
+        createdAt: houseData.created_at || '',
+      });
+
+      setCurrentUser({
+        id: profile.id,
+        name: `${profile.first_name} ${(profile as any).last_name || ''}`.trim(),
+        email: profile.email,
+        role: memberRow.role as 'admin' | 'member',
+      });
+
+      // Fetch members
+      const { data: allMembers } = await supabase
+        .from('household_members')
+        .select('user_id, role, profiles(id, first_name, last_name, email)')
+        .eq('household_id', hId);
+
+      if (allMembers) {
+        setMembers(allMembers.map((m: any) => ({
+          id: m.profiles.id,
+          name: `${m.profiles.first_name} ${m.profiles.last_name || ''}`.trim(),
+          email: m.profiles.email,
+          role: m.role as 'admin' | 'member',
+        })));
+      }
+
+      // Fetch transactions
+      const { data: txData } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('household_id', hId)
+        .order('date', { ascending: false });
+
+      if (txData) {
+        setTransactions(txData.map((t: any) => ({
+          id: t.id,
+          type: t.type,
+          amount: Number(t.amount),
+          currency: t.currency,
+          baseCurrency: t.base_currency,
+          exchangeRate: Number(t.exchange_rate),
+          convertedAmount: Number(t.converted_amount),
+          category: t.category,
+          emoji: t.emoji,
+          label: t.label,
+          date: t.date,
+          memberId: t.member_id || userId,
+          accountId: t.account_id || undefined,
+          notes: t.notes || undefined,
+          isRecurring: t.is_recurring || false,
+          recurrenceDay: t.recurrence_day || undefined,
+          recurringStartMonth: t.recurring_start_month || undefined,
+          recurringEndMonth: t.recurring_end_month || undefined,
+          recurringSourceId: t.recurring_source_id || undefined,
+        })));
+      }
+
+      // Fetch budgets
+      const { data: budgetData } = await supabase
+        .from('budgets')
+        .select('*')
+        .eq('household_id', hId);
+
+      if (budgetData) {
+        setBudgets(budgetData.map((b: any) => ({
+          id: b.id,
+          category: b.category,
+          emoji: b.emoji,
+          limit: Number(b.limit_amount),
+          period: b.period,
+          recurring: b.is_recurring ?? true,
+          isRecurring: b.is_recurring ?? true,
+          alertsEnabled: b.alerts_enabled ?? true,
+          monthYear: b.month_year || undefined,
+          startMonth: b.start_month,
+          endMonth: b.end_month || undefined,
+        })));
+      }
+
+      // Fetch savings goals
+      const { data: goalsData } = await supabase
+        .from('savings_goals')
+        .select('*')
+        .eq('household_id', hId);
+
+      if (goalsData) {
+        setSavingsGoals(goalsData.map((g: any) => ({
+          id: g.id,
+          name: g.name,
+          emoji: g.emoji,
+          target: Number(g.target_amount),
+          currency: g.currency,
+          targetDate: g.target_date || undefined,
+        })));
+      }
+
+      // Fetch savings deposits
+      const { data: depositsData } = await supabase
+        .from('savings_deposits')
+        .select('*')
+        .eq('household_id', hId);
+
+      if (depositsData) {
+        setSavingsDeposits(depositsData.map((d: any) => ({
+          id: d.id,
+          goalId: d.goal_id,
+          amount: Number(d.amount),
+          date: d.date,
+          memberId: d.member_id || userId,
+        })));
+      }
+
+      // Fetch accounts
+      const { data: accountsData } = await supabase
+        .from('accounts')
+        .select('*')
+        .eq('household_id', hId);
+
+      if (accountsData) {
+        setAccounts(accountsData.map((a: any) => ({
+          id: a.id,
+          name: a.name,
+          type: a.type as AccountType,
+          currency: a.currency,
+          startingBalance: Number(a.starting_balance),
+          startingDate: a.starting_date,
+          isArchived: a.is_archived || false,
+          createdAt: a.created_at,
+          updatedAt: a.updated_at,
+        })));
+      }
+
+      // Fetch custom categories
+      const { data: catData } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('household_id', hId)
+        .eq('is_default', false);
+
+      if (catData) {
+        setCustomCategories(catData.map((c: any) => ({
+          name: c.name,
+          emoji: c.emoji,
+          type: c.type as 'expense' | 'income',
+        })));
+      }
+    } catch (err) {
+      console.error('Error fetching user data:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // ===== Auth listener =====
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      if (newSession?.user) {
+        setTimeout(() => fetchUserData(newSession.user.id), 0);
+      } else {
+        setCurrentUser(null);
+        setMembers([]);
+        setTransactions([]);
+        setBudgets([]);
+        setSavingsGoals([]);
+        setSavingsDeposits([]);
+        setCustomCategories([]);
+        setAccounts([]);
+        setHouseholdData({ name: '', currency: 'EUR', createdAt: '' });
+        setHouseholdId('');
+        setLoading(false);
+      }
+    });
+
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      setSession(s);
+      if (s?.user) {
+        fetchUserData(s.user.id);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [fetchUserData]);
+
+  // ===== Auth Actions =====
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setSession(null);
+    toast.success('Déconnexion réussie');
+  };
 
   // ===== Transaction Actions =====
   const addTransaction = (t: Omit<Transaction, 'id' | 'exchangeRate' | 'baseCurrency' | 'convertedAmount'>) => {
@@ -128,15 +360,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const rate = getExchangeRate(t.currency, baseCurrency);
     const convertedAmount = t.amount * rate;
     const monthYear = getMonthYearStr(new Date());
+    const newId = crypto.randomUUID();
     const newT: Transaction = {
       ...t,
-      id: `t-${Date.now()}`,
+      id: newId,
       exchangeRate: rate,
       baseCurrency,
       convertedAmount,
       recurringStartMonth: t.isRecurring ? monthYear : undefined,
     };
     setTransactions(prev => [newT, ...prev]);
+
+    supabase.from('transactions').insert({
+      id: newId,
+      household_id: householdId,
+      type: t.type,
+      amount: t.amount,
+      currency: t.currency,
+      base_currency: baseCurrency,
+      exchange_rate: rate,
+      converted_amount: convertedAmount,
+      category: t.category,
+      emoji: t.emoji,
+      label: t.label,
+      date: t.date,
+      member_id: t.memberId,
+      account_id: t.accountId || null,
+      notes: t.notes || null,
+      is_recurring: t.isRecurring || false,
+      recurrence_day: t.recurrenceDay || null,
+      recurring_start_month: t.isRecurring ? monthYear : null,
+    }).then(({ error }) => { if (error) console.error('Insert tx error:', error); });
   };
 
   const updateTransaction = (id: string, updates: Partial<Omit<Transaction, 'id' | 'exchangeRate' | 'baseCurrency' | 'convertedAmount'>>) => {
@@ -150,15 +404,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       return merged as Transaction;
     }));
+
+    const dbUpdates: any = {};
+    if (updates.amount !== undefined) dbUpdates.amount = updates.amount;
+    if (updates.currency !== undefined) dbUpdates.currency = updates.currency;
+    if (updates.category !== undefined) dbUpdates.category = updates.category;
+    if (updates.label !== undefined) dbUpdates.label = updates.label;
+    if (updates.date !== undefined) dbUpdates.date = updates.date;
+    if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+    if (updates.emoji !== undefined) dbUpdates.emoji = updates.emoji;
+
+    if (Object.keys(dbUpdates).length > 0) {
+      supabase.from('transactions').update(dbUpdates).eq('id', id).then(({ error }) => {
+        if (error) console.error('Update tx error:', error);
+      });
+    }
   };
 
   const deleteTransaction = (id: string) => {
     setTransactions(prev => prev.filter(t => t.id !== id));
+    supabase.from('transactions').delete().eq('id', id).then(({ error }) => {
+      if (error) console.error('Delete tx error:', error);
+    });
   };
 
   const softDeleteRecurringTransaction = (id: string, fromMonthYear?: string) => {
     const monthYear = fromMonthYear || getMonthYearStr(new Date());
     setTransactions(prev => prev.map(t => t.id === id ? { ...t, recurringEndMonth: monthYear } : t));
+    supabase.from('transactions').update({ recurring_end_month: monthYear }).eq('id', id).then(({ error }) => {
+      if (error) console.error('Soft delete recurring error:', error);
+    });
   };
 
   const toggleRecurring = (id: string) => {
@@ -181,6 +456,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setTransactions(prev => prev.map(t =>
       t.id === id ? { ...t, isRecurring: false, recurrenceDay: undefined, recurringStartMonth: undefined, recurringEndMonth: undefined } : t
     ));
+    supabase.from('transactions').update({ is_recurring: false, recurrence_day: null, recurring_start_month: null, recurring_end_month: null }).eq('id', id).then(({ error }) => {
+      if (error) console.error('Delete recurring error:', error);
+    });
   };
 
   const getRecurringTransactions = useCallback(() => {
@@ -190,21 +468,50 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ===== Budget Actions =====
   const addBudget = (b: Omit<Budget, 'id' | 'startMonth' | 'endMonth'>) => {
     const monthYear = getMonthYearStr(new Date());
-    const newB: Budget = { ...b, id: `b-${Date.now()}`, startMonth: monthYear };
+    const newId = crypto.randomUUID();
+    const newB: Budget = { ...b, id: newId, startMonth: monthYear };
     setBudgets(prev => [...prev, newB]);
+
+    supabase.from('budgets').insert({
+      id: newId,
+      household_id: householdId,
+      category: b.category,
+      emoji: b.emoji,
+      limit_amount: b.limit,
+      period: b.period,
+      is_recurring: b.isRecurring ?? true,
+      alerts_enabled: b.alertsEnabled ?? true,
+      start_month: monthYear,
+      month_year: b.monthYear || null,
+    }).then(({ error }) => { if (error) console.error('Insert budget error:', error); });
   };
 
   const updateBudget = (id: string, updates: Partial<Budget>) => {
     setBudgets(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+    const dbUpdates: any = {};
+    if (updates.limit !== undefined) dbUpdates.limit_amount = updates.limit;
+    if (updates.category !== undefined) dbUpdates.category = updates.category;
+    if (updates.emoji !== undefined) dbUpdates.emoji = updates.emoji;
+    if (Object.keys(dbUpdates).length > 0) {
+      supabase.from('budgets').update(dbUpdates).eq('id', id).then(({ error }) => {
+        if (error) console.error('Update budget error:', error);
+      });
+    }
   };
 
   const deleteBudget = (id: string) => {
     setBudgets(prev => prev.filter(b => b.id !== id));
+    supabase.from('budgets').delete().eq('id', id).then(({ error }) => {
+      if (error) console.error('Delete budget error:', error);
+    });
   };
 
   const softDeleteBudget = (id: string) => {
     const monthYear = getMonthYearStr(new Date());
     setBudgets(prev => prev.map(b => b.id === id ? { ...b, endMonth: monthYear } : b));
+    supabase.from('budgets').update({ end_month: monthYear }).eq('id', id).then(({ error }) => {
+      if (error) console.error('Soft delete budget error:', error);
+    });
   };
 
   // ===== Computed Helpers =====
@@ -231,8 +538,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ===== Savings Actions =====
   const addSavingsGoal = (g: Omit<SavingsGoal, 'id'>) => {
-    const newG: SavingsGoal = { ...g, id: `sg-${Date.now()}` };
+    const newId = crypto.randomUUID();
+    const newG: SavingsGoal = { ...g, id: newId };
     setSavingsGoals(prev => [...prev, newG]);
+
+    supabase.from('savings_goals').insert({
+      id: newId,
+      household_id: householdId,
+      name: g.name,
+      emoji: g.emoji,
+      target_amount: g.target,
+      target_date: g.targetDate || null,
+      currency: g.currency,
+    }).then(({ error }) => { if (error) console.error('Insert goal error:', error); });
   };
 
   const updateSavingsGoal = (id: string, updates: Partial<Omit<SavingsGoal, 'id'>>) => {
@@ -242,15 +560,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const deleteSavingsGoal = (id: string) => {
     setSavingsGoals(prev => prev.filter(g => g.id !== id));
     setSavingsDeposits(prev => prev.filter(d => d.goalId !== id));
+    supabase.from('savings_deposits').delete().eq('goal_id', id).then(() => {
+      supabase.from('savings_goals').delete().eq('id', id).then(({ error }) => {
+        if (error) console.error('Delete goal error:', error);
+      });
+    });
   };
 
   const addSavingsDeposit = (d: Omit<SavingsDeposit, 'id'>) => {
-    const newD: SavingsDeposit = { ...d, id: `sd-${Date.now()}` };
+    const newId = crypto.randomUUID();
+    const newD: SavingsDeposit = { ...d, id: newId };
     setSavingsDeposits(prev => [...prev, newD]);
+
+    supabase.from('savings_deposits').insert({
+      id: newId,
+      household_id: householdId,
+      goal_id: d.goalId,
+      amount: d.amount,
+      date: d.date,
+      member_id: d.memberId || null,
+    }).then(({ error }) => { if (error) console.error('Insert deposit error:', error); });
   };
 
   const deleteSavingsDeposit = (id: string) => {
     setSavingsDeposits(prev => prev.filter(d => d.id !== id));
+    supabase.from('savings_deposits').delete().eq('id', id).then(({ error }) => {
+      if (error) console.error('Delete deposit error:', error);
+    });
   };
 
   const getGoalSaved = useCallback((goalId: string) => {
@@ -275,10 +611,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ===== Category Actions =====
   const addCustomCategory = (c: CustomCategory) => {
     setCustomCategories(prev => [...prev, c]);
+    supabase.from('categories').insert({
+      household_id: householdId,
+      name: c.name,
+      emoji: c.emoji,
+      type: c.type,
+      is_default: false,
+    }).then(({ error }) => { if (error) console.error('Insert category error:', error); });
   };
 
   const deleteCustomCategory = (name: string) => {
     setCustomCategories(prev => prev.filter(c => c.name !== name));
+    supabase.from('categories').delete().eq('household_id', householdId).eq('name', name).eq('is_default', false).then(({ error }) => {
+      if (error) console.error('Delete category error:', error);
+    });
   };
 
   // ===== Transaction Month View (with virtual recurring) =====
@@ -339,6 +685,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
     setTransactions(newTransactions);
     setHouseholdData(prev => ({ ...prev, currency }));
+    supabase.from('households').update({ default_currency: currency }).eq('id', householdId).then(({ error }) => {
+      if (error) console.error('Update currency error:', error);
+    });
   };
 
   const addMember = (name: string, email: string, role: 'admin' | 'member') => {
@@ -356,27 +705,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const resetDemo = () => {
-    setMembers(demoMembers);
-    setHouseholdData(demoHousehold);
-    setTransactions(demoTransactions);
-    setBudgets(demoBudgets);
-    setSavingsGoals(demoSavingsGoals);
-    setSavingsDeposits(demoSavingsDeposits);
-    setCustomCategories([]);
-    setAccounts([]);
-    toast.success('Données de démo réinitialisées ✓');
+    toast.info('Utilisez la déconnexion pour réinitialiser');
   };
 
   // ===== Account Actions =====
   const addAccount = (a: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'isArchived'>) => {
+    const newId = crypto.randomUUID();
     const newA: Account = {
       ...a,
-      id: `acc-${Date.now()}`,
+      id: newId,
       isArchived: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     setAccounts(prev => [...prev, newA]);
+
+    supabase.from('accounts').insert({
+      id: newId,
+      household_id: householdId,
+      name: a.name,
+      type: a.type,
+      currency: a.currency,
+      starting_balance: a.startingBalance,
+      starting_date: a.startingDate,
+    }).then(({ error }) => { if (error) console.error('Insert account error:', error); });
   };
 
   const updateAccount = (id: string, updates: Partial<Omit<Account, 'id' | 'createdAt'>>) => {
@@ -385,12 +737,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const archiveAccount = (id: string) => {
     updateAccount(id, { isArchived: true });
+    supabase.from('accounts').update({ is_archived: true }).eq('id', id).then(({ error }) => {
+      if (error) console.error('Archive account error:', error);
+    });
   };
 
   const deleteAccount = (id: string): boolean => {
     const hasTransactions = transactions.some(t => t.accountId === id);
     if (hasTransactions) return false;
     setAccounts(prev => prev.filter(a => a.id !== id));
+    supabase.from('accounts').delete().eq('id', id).then(({ error }) => {
+      if (error) console.error('Delete account error:', error);
+    });
     return true;
   };
 
@@ -411,9 +769,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   return (
     <AppContext.Provider value={{
-      isLoggedIn, isOnboarded, loading, currentUser, household,
+      isLoggedIn, loading, session, householdId, currentUser, household,
       transactions, budgets, savingsGoals, savingsDeposits, customCategories, accounts,
-      logout, completeOnboarding,
+      logout,
       addTransaction, updateTransaction, deleteTransaction, softDeleteRecurringTransaction,
       toggleRecurring, deleteRecurring, getRecurringTransactions,
       addBudget, updateBudget, deleteBudget, softDeleteBudget,
