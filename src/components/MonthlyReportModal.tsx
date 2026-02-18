@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { getBudgetStatus, formatAmount as rawFormatAmount } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import MonthSelector from './MonthSelector';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   open: boolean;
@@ -55,9 +56,31 @@ function generateReportAdvice(
 }
 
 const MonthlyReportModal = ({ open, onClose }: Props) => {
-  const { getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getMonthSavings, savingsGoals, getGoalSaved, getActiveAccounts, getAccountBalance } = useApp();
+  const { getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getMonthSavings, savingsGoals, getGoalSaved, getActiveAccounts, getAccountBalance, householdId } = useApp();
   const { formatAmount, currency } = useCurrency();
   const [month, setMonth] = useState(new Date());
+
+  // Fetch debts
+  interface DebtRow {
+    id: string;
+    name: string;
+    type: string;
+    initial_amount: number;
+    remaining_amount: number;
+    payment_amount: number;
+    interest_rate: number;
+    currency: string;
+    start_date: string;
+    duration_years: number;
+    payment_frequency: string;
+  }
+  const [debts, setDebts] = useState<DebtRow[]>([]);
+  const fetchDebts = useCallback(async () => {
+    if (!householdId) return;
+    const { data } = await supabase.from('debts').select('*').eq('household_id', householdId);
+    if (data) setDebts(data as DebtRow[]);
+  }, [householdId]);
+  useEffect(() => { if (open) fetchDebts(); }, [open, fetchDebts]);
 
   const transactions = useMemo(() => getTransactionsForMonth(month), [month, getTransactionsForMonth]);
   const income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
@@ -267,6 +290,42 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Debts */}
+            {debts.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-sm mb-3 text-center">Suivi des dettes</h3>
+                <div className="space-y-3 max-w-md mx-auto">
+                  {debts.map(d => {
+                    const pct = d.initial_amount > 0 ? Math.min(((d.initial_amount - d.remaining_amount) / d.initial_amount) * 100, 100) : 0;
+                    const totalDebt = debts.reduce((s, x) => s + x.remaining_amount, 0);
+                    const monthlyTotal = debts.reduce((s, x) => s + x.payment_amount, 0);
+                    return (
+                      <div key={d.id} className="bg-secondary/30 rounded-xl p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-semibold">🏦 {d.name}</span>
+                          <span className="text-xs font-mono font-bold text-primary">{Math.round(pct)}% remboursé</span>
+                        </div>
+                        <div className="h-2 bg-muted rounded-full overflow-hidden mb-2">
+                          <div
+                            className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-success' : pct >= 50 ? 'bg-primary' : 'bg-warning'}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-xs text-muted-foreground">Restant : {formatAmount(d.remaining_amount, d.currency)}</span>
+                          <span className="font-mono text-xs text-muted-foreground">Mensualité : {formatAmount(d.payment_amount, d.currency)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="bg-primary/10 rounded-xl p-3 flex justify-between items-center">
+                    <span className="text-sm font-semibold">Total restant dû</span>
+                    <span className="font-mono font-bold text-sm text-primary">{formatAmount(debts.reduce((s, d) => s + d.remaining_amount, 0))}</span>
+                  </div>
                 </div>
               </div>
             )}
