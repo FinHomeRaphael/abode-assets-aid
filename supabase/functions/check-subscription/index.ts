@@ -54,7 +54,12 @@ serve(async (req) => {
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      if (subscription.current_period_end) {
+        const endDate = new Date(subscription.current_period_end * 1000);
+        if (!isNaN(endDate.getTime())) {
+          subscriptionEnd = endDate.toISOString();
+        }
+      }
       subscriptionId = subscription.id;
 
       // Update household with subscription info
