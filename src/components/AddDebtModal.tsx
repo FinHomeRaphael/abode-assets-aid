@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DEBT_TYPES, PAYMENT_FREQUENCIES } from '@/types/debt';
 import { EXPENSE_CATEGORIES, CATEGORY_EMOJIS } from '@/types/finance';
-import { getPeriodsPerYear } from '@/types/debt';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
@@ -88,84 +87,10 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
       next_payment_date: nextPaymentDate.toISOString().split('T')[0],
     };
 
-    const { data: insertedDebt, error } = await supabase.from('debts').insert(debtData as any).select().single();
+    const { error } = await supabase.from('debts').insert(debtData as any);
     if (error) { console.error('Insert debt error:', error); toast.error('Erreur lors de l\'ajout'); setSaving(false); return; }
 
-    // Auto-generate all future payment transactions
-    const debtId = insertedDebt.id;
-    const currency = household.currency;
-    const ppYear = getPeriodsPerYear(paymentFrequency as any);
-    const ratePerPeriod = (parseFloat(interestRate) || 0) / 100 / ppYear;
-    const principal = parseFloat(paymentAmount);
-    let remaining = parseFloat(remainingAmount);
-    let currentDate = new Date(nextPaymentDate);
-    const cat = categoryId || null;
-    const accId = accountId || null;
-
-    const allTransactions: any[] = [];
-
-    while (remaining > 0) {
-      const interest = Math.round(remaining * ratePerPeriod * 100) / 100;
-      const actualPrincipal = Math.round(Math.min(principal, remaining) * 100) / 100;
-      const dateStr = currentDate.toISOString().split('T')[0];
-
-      // Interest transaction
-      if (interest > 0) {
-        allTransactions.push({
-          household_id: householdId,
-          type: 'expense',
-          label: `Intérêts - ${name.trim()}`,
-          amount: interest,
-          currency,
-          base_currency: currency,
-          exchange_rate: 1,
-          converted_amount: interest,
-          category: cat,
-          emoji: '🏦',
-          date: dateStr,
-          is_auto_generated: true,
-          debt_id: debtId,
-          debt_payment_type: 'interest',
-          account_id: accId,
-        });
-      }
-
-      // Principal transaction
-      allTransactions.push({
-        household_id: householdId,
-        type: 'expense',
-        label: `Amortissement - ${name.trim()}`,
-        amount: actualPrincipal,
-        currency,
-        base_currency: currency,
-        exchange_rate: 1,
-        converted_amount: actualPrincipal,
-        category: cat,
-        emoji: '🏦',
-        date: dateStr,
-        is_auto_generated: true,
-        debt_id: debtId,
-        debt_payment_type: 'principal',
-        account_id: accId,
-      });
-
-      remaining -= actualPrincipal;
-
-      // Advance to next period
-      if (paymentFrequency === 'monthly') currentDate.setMonth(currentDate.getMonth() + 1);
-      else if (paymentFrequency === 'quarterly') currentDate.setMonth(currentDate.getMonth() + 3);
-      else if (paymentFrequency === 'semi-annual') currentDate.setMonth(currentDate.getMonth() + 6);
-      else currentDate.setFullYear(currentDate.getFullYear() + 1);
-    }
-
-    // Insert all transactions in batches of 100
-    for (let i = 0; i < allTransactions.length; i += 100) {
-      const batch = allTransactions.slice(i, i + 100);
-      const { error: txError } = await supabase.from('transactions').insert(batch);
-      if (txError) console.error('Batch insert error:', txError);
-    }
-
-    toast.success(`Dette ajoutée avec ${allTransactions.length} échéances générées`);
+    toast.success('Dette ajoutée');
     setSaving(false);
     reset();
     onAdded();
