@@ -158,8 +158,8 @@ const Debts = () => {
                     <span>{Math.round(repaidPct)}%</span>
                   </div>
                   <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
-                    {nextDate && <span>Prochaine : {formatDate(nextDate)}</span>}
-                    {endDate && <span>Fin estimée : {formatDate(endDate)}</span>}
+                    {nextDate && <span>Prochaine : {formatDateLong(nextDate)}</span>}
+                    {endDate && <span>Fin estimée : {formatDateLong(endDate)}</span>}
                   </div>
                 </div>
               );
