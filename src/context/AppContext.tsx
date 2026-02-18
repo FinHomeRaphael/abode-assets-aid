@@ -254,6 +254,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const { data: membershipData } = await supabase.from('household_members').select('*').eq('user_id', userId).limit(1).maybeSingle();
 
       if (!membershipData) {
+        // Auto-create household from signup metadata if available
+        const { data: { user } } = await supabase.auth.getUser();
+        const meta = user?.user_metadata;
+        if (meta?.last_name) {
+          try {
+            const householdName = `Famille ${meta.last_name}`;
+            const cur = meta.currency || 'EUR';
+            const { data: newH } = await supabase.from('households').insert({ name: householdName, default_currency: cur }).select().single();
+            if (newH) {
+              const hId = (newH as any).id;
+              await supabase.from('household_members').insert({ household_id: hId, user_id: userId, role: 'admin' });
+              setHouseholdId(hId);
+              await fetchHouseholdData(hId);
+              return;
+            }
+          } catch (err) {
+            console.error('Auto household creation error:', err);
+          }
+        }
         setHouseholdId(null);
         setLoading(false);
         fetchingRef.current = false;
