@@ -30,11 +30,15 @@ function LoadingScreen() {
 }
 
 function AppRoutes() {
-  const { isLoggedIn, isOnboarded, loading } = useApp();
+  const { isLoggedIn, isOnboarded, loading, logout } = useApp();
 
   if (loading) return <LoadingScreen />;
   if (!isLoggedIn) return <LoginPage />;
-  if (!isOnboarded) return <LoadingScreen />;
+  if (!isOnboarded) {
+    // User is logged in but has no household - show login with error
+    logout();
+    return <LoginPage />;
+  }
 
   return (
     <Routes>
