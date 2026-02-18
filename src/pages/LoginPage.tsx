@@ -1,21 +1,56 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useApp } from '@/context/AppContext';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const LoginPage = () => {
-  const { login } = useApp();
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) { toast.error('Veuillez remplir tous les champs'); return; }
     if (isRegister && !firstName) { toast.error('Veuillez entrer votre prénom'); return; }
-    login(email);
-    toast.success(isRegister ? 'Compte créé avec succès !' : 'Connexion réussie !');
+
+    setIsLoading(true);
+    try {
+      if (isRegister) {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { first_name: firstName } },
+        });
+        if (error) {
+          if (error.message.includes('already registered')) {
+            toast.error('Cet email est déjà utilisé');
+          } else {
+            toast.error(error.message);
+          }
+          return;
+        }
+        toast.success('Vérifiez votre email pour confirmer votre compte !');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          if (error.message.includes('Invalid login')) {
+            toast.error('Email ou mot de passe incorrect');
+          } else if (error.message.includes('Email not confirmed')) {
+            toast.error('Veuillez confirmer votre email avant de vous connecter');
+          } else {
+            toast.error(error.message);
+          }
+          return;
+        }
+        toast.success('Connexion réussie !');
+      }
+    } catch (err: any) {
+      toast.error('Une erreur est survenue');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -52,24 +87,17 @@ const LoginPage = () => {
               <label className="block text-sm font-medium mb-1.5">Mot de passe</label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
             </div>
-            <button type="submit" className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm">
-              {isRegister ? "Créer mon compte" : "Se connecter"}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
+            >
+              {isLoading ? '...' : (isRegister ? "Créer mon compte" : "Se connecter")}
             </button>
           </form>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
-              <div className="relative flex justify-center text-xs"><span className="bg-card px-3 text-muted-foreground">ou continuer avec</span></div>
-            </div>
-            <div className="flex gap-3 mt-4">
-              <button className="flex-1 py-3 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Google</button>
-              <button className="flex-1 py-3 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Apple</button>
-            </div>
-          </div>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-6">Démo : utilisez n'importe quel email pour accéder</p>
+        <p className="text-center text-xs text-muted-foreground mt-6">Créez un compte pour commencer à gérer vos finances</p>
       </motion.div>
     </div>
   );

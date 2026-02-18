@@ -18,9 +18,21 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function AppRoutes() {
-  const { isLoggedIn, isOnboarded } = useApp();
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center">
+        <div className="w-16 h-16 rounded-3xl bg-primary flex items-center justify-center text-primary-foreground text-2xl font-bold mx-auto mb-4 animate-pulse">F</div>
+        <p className="text-muted-foreground text-sm">Chargement...</p>
+      </div>
+    </div>
+  );
+}
 
+function AppRoutes() {
+  const { isLoggedIn, isOnboarded, loading } = useApp();
+
+  if (loading) return <LoadingScreen />;
   if (!isLoggedIn) return <LoginPage />;
   if (!isOnboarded) return <Onboarding />;
 
