@@ -155,6 +155,7 @@ const Dashboard = () => {
           <div>
             <p className="text-muted-foreground text-sm">Bonjour,</p>
             <h1 className="text-2xl font-bold">{currentUser?.name || 'Utilisateur'} 👋</h1>
+            {household?.name && <p className="text-sm text-muted-foreground">{household.name}</p>}
           </div>
           <button onClick={() => navigate('/profile')} className="w-11 h-11 rounded-2xl bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground">
             {currentUser ? getInitials(currentUser.name) : '?'}
