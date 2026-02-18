@@ -114,12 +114,12 @@ const LoginPage = () => {
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-4">
                 <div className="flex gap-3">
                   <div className="flex-1">
-                    <label className="block text-sm font-medium mb-1.5">Prénom</label>
-                    <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Thomas" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
-                  </div>
-                  <div className="flex-1">
                     <label className="block text-sm font-medium mb-1.5">Nom</label>
                     <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Dupont" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium mb-1.5">Prénom</label>
+                    <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Thomas" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                   </div>
                 </div>
                 <div>
