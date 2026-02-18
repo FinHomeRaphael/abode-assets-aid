@@ -86,7 +86,7 @@ const Profile = () => {
         {/* Household */}
         <div className="card-elevated p-5">
           <h2 className="font-semibold mb-3">🏠 {household.name}</h2>
-          <p className="text-sm text-muted-foreground">Créé le {formatDateLong(household.createdAt)}</p>
+          <p className="text-sm text-muted-foreground">Créé le {household.createdAt ? formatDateLong(household.createdAt) : '—'}</p>
         </div>
 
         {/* Currency */}
