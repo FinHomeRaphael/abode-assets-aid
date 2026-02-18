@@ -275,16 +275,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
           first_name: meta.first_name || user.email?.split('@')[0] || 'Utilisateur',
         }).select().single();
         
-        // If FK violation → user was deleted from auth.users, force logout
-        if (profileError?.code === '23503') {
-          console.error('User no longer exists in auth, forcing logout');
+        // If FK violation or any insert error → user may be deleted from auth.users, force logout
+        if (profileError) {
+          console.error('Profile creation failed, forcing logout:', profileError);
           resetState();
           setSession(null);
           setLoading(false);
+          fetchingRef.current = false;
           try {
             await supabase.auth.signOut({ scope: 'local' });
+          } catch {}
+          try {
             const storageKey = `sb-dxuyvirhlpdbytfqdmbr-auth-token`;
             localStorage.removeItem(storageKey);
+            sessionStorage.removeItem(storageKey);
           } catch {}
           return;
         }
