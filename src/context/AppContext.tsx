@@ -207,26 +207,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ===== Auth =====
   useEffect(() => {
+    let isMounted = true;
+
+    // Listener for ONGOING auth changes (does NOT control loading)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, sess) => {
+      if (!isMounted) return;
       setSession(sess);
       if (sess?.user) {
-        setTimeout(() => fetchUserData(sess.user.id), 0);
+        setTimeout(() => fetchUserData(sess.user), 0);
       } else {
         resetState();
         setLoading(false);
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session: sess } }) => {
-      setSession(sess);
-      if (sess?.user) {
-        fetchUserData(sess.user.id);
-      } else {
-        setLoading(false);
+    // INITIAL load (controls loading)
+    const initializeAuth = async () => {
+      try {
+        const { data: { session: sess } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        setSession(sess);
+        if (sess?.user) {
+          await fetchUserData(sess.user);
+        }
+      } catch (err) {
+        console.error('Init auth error:', err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    initializeAuth();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   function resetState() {
@@ -242,27 +258,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAccounts([]);
   }
 
-  async function fetchUserData(userId: string) {
+  async function fetchUserData(user: { id: string; email?: string; user_metadata?: any }) {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
     try {
-      // 0. Check auth user still exists
-      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-      if (authError || !authUser) {
-        console.warn('Auth user not found, signing out');
-        await supabase.auth.signOut();
-        resetState();
-        return;
-      }
+      const userId = user.id;
+      const meta = user.user_metadata || {};
 
       // 1. Profile - create if missing
       let { data: profileData } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
       if (!profileData) {
-        const meta = authUser.user_metadata;
         const { data: newProfile } = await supabase.from('profiles').insert({
           id: userId,
-          email: authUser.email || '',
-          first_name: meta?.first_name || authUser.email?.split('@')[0] || 'Utilisateur',
+          email: user.email || '',
+          first_name: meta.first_name || user.email?.split('@')[0] || 'Utilisateur',
         }).select().single();
         if (newProfile) profileData = newProfile;
       }
@@ -273,8 +282,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (!membershipData) {
         // Auto-create household from signup metadata
-        const meta = authUser.user_metadata;
-        if (meta?.last_name) {
+        if (meta.last_name) {
           try {
             const householdName = `Famille ${meta.last_name}`;
             const cur = meta.currency || 'EUR';
@@ -290,10 +298,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             console.error('Auto household creation error:', err);
           }
         }
-        // No metadata and no household - sign out to avoid infinite loading
-        console.warn('No household and no metadata, signing out');
-        await supabase.auth.signOut();
-        resetState();
+        // No last_name metadata → can't create household, stay on loading/login
+        setHouseholdId(null);
         return;
       }
 
