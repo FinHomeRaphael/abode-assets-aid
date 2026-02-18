@@ -269,11 +269,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // 1. Profile - create if missing
       let { data: profileData } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
       if (!profileData) {
-        const { data: newProfile } = await supabase.from('profiles').insert({
+        const { data: newProfile, error: profileError } = await supabase.from('profiles').insert({
           id: userId,
           email: user.email || '',
           first_name: meta.first_name || user.email?.split('@')[0] || 'Utilisateur',
         }).select().single();
+        
+        // If FK violation → user was deleted from auth.users, force logout
+        if (profileError?.code === '23503') {
+          console.error('User no longer exists in auth, forcing logout');
+          resetState();
+          setSession(null);
+          setLoading(false);
+          try {
+            await supabase.auth.signOut({ scope: 'local' });
+            const storageKey = `sb-dxuyvirhlpdbytfqdmbr-auth-token`;
+            localStorage.removeItem(storageKey);
+          } catch {}
+          return;
+        }
         if (newProfile) profileData = newProfile;
       }
       if (profileData) setProfile(profileData as any);
