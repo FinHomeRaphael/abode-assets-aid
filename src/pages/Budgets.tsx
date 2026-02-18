@@ -357,6 +357,8 @@ const Budgets = () => {
           )}
         </AnimatePresence>
       </motion.div>
+      <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} onUpgrade={() => { setShowPaywall(false); setShowPremium(true); }} feature="budget(s)" limit={FREEMIUM_LIMITS.budgets} icon="📊" />
+      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} onCheckout={startCheckout} />
     </Layout>
   );
 };
