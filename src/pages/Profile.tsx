@@ -13,6 +13,11 @@ const Profile = () => {
   const { household, currentUser, logout, resetDemo, customCategories, deleteCustomCategory, getRecurringTransactions, deleteRecurring, getMemberById, changeCurrency, addMember, removeMember, updateMemberRole } = useApp();
   const { formatAmount, currency } = useCurrency();
   const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
   const recurringTx = getRecurringTransactions();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
@@ -231,7 +236,7 @@ const Profile = () => {
         <div className="space-y-2 pb-4">
           <button onClick={() => { toast.info('Export en cours...'); setTimeout(() => toast.success('Données exportées ✓'), 1500); }} className="w-full py-3 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">📁 Exporter mes données</button>
           <button onClick={resetDemo} className="w-full py-3 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">🔄 Réinitialiser les données de démo</button>
-          <button onClick={logout} className="w-full py-3 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold hover:bg-destructive/90 transition-colors">Déconnexion</button>
+          <button onClick={handleLogout} className="w-full py-3 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold hover:bg-destructive/90 transition-colors">Déconnexion</button>
         </div>
       </motion.div>
 
