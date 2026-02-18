@@ -7,6 +7,7 @@ import AddTransactionModal from '@/components/AddTransactionModal';
 import ScanTicketModal from '@/components/ScanTicketModal';
 import AddBudgetModal from '@/components/AddBudgetModal';
 import AddSavingsGoalModal from '@/components/AddSavingsGoalModal';
+import AddDebtModal from '@/components/AddDebtModal';
 
 interface LayoutProps {
   children: ReactNode;
@@ -26,6 +27,7 @@ const fabActions = [
   { label: 'Scanner un ticket', emoji: '📸', action: 'scan' },
   { label: 'Budget', emoji: '🎯', action: 'budget' },
   { label: 'Enveloppe', emoji: '🐷', action: 'savings' },
+  { label: 'Dette', emoji: '💸', action: 'debt' },
   { label: 'Compte', emoji: '🏦', action: 'account' },
   { label: 'Conseiller IA', emoji: '✨', action: 'chat' },
 ];
@@ -38,6 +40,7 @@ const Layout = ({ children }: LayoutProps) => {
   const [showScanModal, setShowScanModal] = useState(false);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
   const [showSavingsModal, setShowSavingsModal] = useState(false);
+  const [showDebtModal, setShowDebtModal] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
 
   const handleFabAction = (action: string) => {
@@ -46,6 +49,7 @@ const Layout = ({ children }: LayoutProps) => {
     else if (action === 'scan') setShowScanModal(true);
     else if (action === 'budget') setShowBudgetModal(true);
     else if (action === 'savings') setShowSavingsModal(true);
+    else if (action === 'debt') setShowDebtModal(true);
     else if (action === 'chat') navigate('/chat');
     else if (action === 'account') navigate('/savings?create=account');
   };
@@ -179,6 +183,7 @@ const Layout = ({ children }: LayoutProps) => {
       <ScanTicketModal open={showScanModal} onClose={() => setShowScanModal(false)} />
       <AddBudgetModal open={showBudgetModal} onClose={() => setShowBudgetModal(false)} />
       <AddSavingsGoalModal open={showSavingsModal} onClose={() => setShowSavingsModal(false)} />
+      <AddDebtModal open={showDebtModal} onClose={() => setShowDebtModal(false)} onAdded={() => setShowDebtModal(false)} />
     </div>
   );
 };
