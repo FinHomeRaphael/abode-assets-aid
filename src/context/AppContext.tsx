@@ -246,17 +246,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
     try {
-      // 1. Profile
-      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', userId).single();
+      // 0. Check auth user still exists
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      if (authError || !authUser) {
+        console.warn('Auth user not found, signing out');
+        await supabase.auth.signOut();
+        resetState();
+        return;
+      }
+
+      // 1. Profile - create if missing
+      let { data: profileData } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+      if (!profileData) {
+        const meta = authUser.user_metadata;
+        const { data: newProfile } = await supabase.from('profiles').insert({
+          id: userId,
+          email: authUser.email || '',
+          first_name: meta?.first_name || authUser.email?.split('@')[0] || 'Utilisateur',
+        }).select().single();
+        if (newProfile) profileData = newProfile;
+      }
       if (profileData) setProfile(profileData as any);
 
       // 2. Household membership
       const { data: membershipData } = await supabase.from('household_members').select('*').eq('user_id', userId).limit(1).maybeSingle();
 
       if (!membershipData) {
-        // Auto-create household from signup metadata if available
-        const { data: { user } } = await supabase.auth.getUser();
-        const meta = user?.user_metadata;
+        // Auto-create household from signup metadata
+        const meta = authUser.user_metadata;
         if (meta?.last_name) {
           try {
             const householdName = `Famille ${meta.last_name}`;
@@ -273,9 +290,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
             console.error('Auto household creation error:', err);
           }
         }
-        setHouseholdId(null);
-        setLoading(false);
-        fetchingRef.current = false;
+        // No metadata and no household - sign out to avoid infinite loading
+        console.warn('No household and no metadata, signing out');
+        await supabase.auth.signOut();
+        resetState();
         return;
       }
 
