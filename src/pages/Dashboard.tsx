@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatAmount as rawFormatAmount, formatDate, getBudgetStatus, getInitials } from '@/utils/format';
 import { useSubscription } from '@/hooks/useSubscription';
+import PremiumModal from '@/components/PremiumModal';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -78,10 +79,11 @@ function generateAIAdvices(
 const Dashboard = () => {
   const { transactions, budgets, household, getMemberById, getBudgetSpent, getMonthSavings, getTotalSavings, savingsGoals, getGoalSaved, getTransactionsForMonth, currentUser, householdId, accounts } = useApp();
   const { formatAmount, currency } = useCurrency();
-  const { isPremium } = useSubscription(householdId);
+  const { isPremium, startCheckout } = useSubscription(householdId);
   const navigate = useNavigate();
   const [showScan, setShowScan] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [showPremium, setShowPremium] = useState(false);
   const [debts, setDebts] = useState<Debt[]>([]);
 
   // Onboarding: show if user has no accounts and no transactions (first time)
@@ -251,7 +253,7 @@ const Dashboard = () => {
             </button>
             <button onClick={() => {
               if (!isPremium) {
-                toast('🔒 Rapport mensuel réservé aux abonnés Premium', { description: 'Passez à Premium pour accéder aux rapports détaillés.' });
+                setShowPremium(true);
                 return;
               }
               setShowReport(true);
@@ -378,6 +380,7 @@ const Dashboard = () => {
 
       <ScanTicketModal open={showScan} onClose={() => setShowScan(false)} />
       <MonthlyReportModal open={showReport} onClose={() => setShowReport(false)} />
+      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} onCheckout={startCheckout} />
       <OnboardingModal open={showOnboarding} onComplete={handleOnboardingComplete} />
     </Layout>
   );
