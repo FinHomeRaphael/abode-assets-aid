@@ -393,8 +393,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [dbCategories]);
 
   // ===== Auth Actions =====
-  const logout = () => {
-    supabase.auth.signOut();
+  const logout = async () => {
+    try {
+      resetState();
+      setSession(null);
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Logout error:', err);
+      // Force reset even if signOut fails
+      setSession(null);
+      resetState();
+    }
   };
 
   const completeOnboarding = async (householdName: string, currency: string) => {
