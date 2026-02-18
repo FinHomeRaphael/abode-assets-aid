@@ -120,19 +120,19 @@ const Layout = ({ children }: LayoutProps) => {
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 glass border-t border-border/50 safe-area-bottom">
-        <div className="flex justify-around items-center py-2 px-2">
-          {navItems.slice(0, 2).map(item => {
+        <div className="flex justify-around items-center py-2 px-1">
+          {navItems.slice(0, 3).map(item => {
             const isActive = location.pathname === item.path;
             return (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-all ${
+                className={`flex flex-col items-center gap-0.5 py-1 px-1.5 rounded-xl transition-all min-w-0 ${
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
-                <span className={`text-xl ${isActive ? 'scale-110' : ''} transition-transform`}>{item.emoji}</span>
-                <span className={`text-[10px] font-medium ${isActive ? 'text-primary' : ''}`}>{item.label}</span>
+                <span className={`text-lg ${isActive ? 'scale-110' : ''} transition-transform`}>{item.emoji}</span>
+                <span className={`text-[9px] font-medium truncate ${isActive ? 'text-primary' : ''}`}>{item.label}</span>
               </button>
             );
           })}
@@ -153,18 +153,18 @@ const Layout = ({ children }: LayoutProps) => {
             </button>
           </div>
 
-          {navItems.slice(2).map(item => {
+          {navItems.slice(3).map(item => {
             const isActive = location.pathname === item.path;
             return (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-all ${
+                className={`flex flex-col items-center gap-0.5 py-1 px-1.5 rounded-xl transition-all min-w-0 ${
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
-                <span className={`text-xl ${isActive ? 'scale-110' : ''} transition-transform`}>{item.emoji}</span>
-                <span className={`text-[10px] font-medium ${isActive ? 'text-primary' : ''}`}>{item.label}</span>
+                <span className={`text-lg ${isActive ? 'scale-110' : ''} transition-transform`}>{item.emoji}</span>
+                <span className={`text-[9px] font-medium truncate ${isActive ? 'text-primary' : ''}`}>{item.label}</span>
               </button>
             );
           })}
