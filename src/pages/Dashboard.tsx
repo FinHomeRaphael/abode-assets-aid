@@ -5,6 +5,7 @@ import { formatAmount as rawFormatAmount, formatDate, getBudgetStatus, getInitia
 import { useCurrency } from '@/hooks/useCurrency';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
+import OnboardingModal from '@/components/OnboardingModal';
 import ScanTicketModal from '@/components/ScanTicketModal';
 import MonthlyReportModal from '@/components/MonthlyReportModal';
 import ConvertedAmount from '@/components/ConvertedAmount';
@@ -73,12 +74,24 @@ function generateAIAdvices(
 }
 
 const Dashboard = () => {
-  const { transactions, budgets, household, getMemberById, getBudgetSpent, getMonthSavings, getTotalSavings, savingsGoals, getGoalSaved, getTransactionsForMonth, currentUser, householdId } = useApp();
+  const { transactions, budgets, household, getMemberById, getBudgetSpent, getMonthSavings, getTotalSavings, savingsGoals, getGoalSaved, getTransactionsForMonth, currentUser, householdId, accounts } = useApp();
   const { formatAmount, currency } = useCurrency();
   const navigate = useNavigate();
   const [showScan, setShowScan] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [debts, setDebts] = useState<Debt[]>([]);
+
+  // Onboarding: show if user has no accounts and no transactions (first time)
+  const onboardingKey = `finehome_onboarding_done_${currentUser?.id}`;
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem(onboardingKey);
+  });
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    if (currentUser?.id) localStorage.setItem(onboardingKey, '1');
+  };
 
   // Fetch debts for dashboard card
   const fetchDebts = useCallback(async () => {
@@ -354,6 +367,7 @@ const Dashboard = () => {
 
       <ScanTicketModal open={showScan} onClose={() => setShowScan(false)} />
       <MonthlyReportModal open={showReport} onClose={() => setShowReport(false)} />
+      <OnboardingModal open={showOnboarding} onComplete={handleOnboardingComplete} />
     </Layout>
   );
 };
