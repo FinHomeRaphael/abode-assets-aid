@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
 import { formatDateLong, getInitials, formatDate } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
@@ -9,12 +9,24 @@ import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import ConvertedAmount from '@/components/ConvertedAmount';
 import InviteMemberModal from '@/components/InviteMemberModal';
+import PremiumModal from '@/components/PremiumModal';
 import { supabase } from '@/integrations/supabase/client';
+import { useSubscription, FREEMIUM_LIMITS } from '@/hooks/useSubscription';
 
 const Profile = () => {
-  const { household, currentUser, logout, resetDemo, customCategories, deleteCustomCategory, getRecurringTransactions, deleteRecurring, getMemberById, changeCurrency, addMember, removeMember, updateMemberRole, householdId } = useApp();
+  const { household, currentUser, logout, resetDemo, customCategories, deleteCustomCategory, getRecurringTransactions, deleteRecurring, getMemberById, changeCurrency, addMember, removeMember, updateMemberRole, householdId, budgets, savingsGoals } = useApp();
   const { formatAmount, currency } = useCurrency();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { isPremium, subscriptionEnd, startCheckout, openPortal, verifyWithStripe } = useSubscription(householdId);
+
+  // Check for checkout success
+  useEffect(() => {
+    if (searchParams.get('checkout') === 'success') {
+      toast.success('🎉 Bienvenue en Premium !');
+      verifyWithStripe();
+    }
+  }, [searchParams, verifyWithStripe]);
 
   const handleLogout = async () => {
     await logout();
@@ -32,6 +44,7 @@ const Profile = () => {
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [currencySearch, setCurrencySearch] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   // Pending invitations
   const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
@@ -64,13 +77,11 @@ const Profile = () => {
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       }).eq('id', inv.id);
       const inviteUrl = `${window.location.origin}/signup?invitation=${newToken}`;
-      console.log('🔗 Nouveau lien d\'invitation:', inviteUrl);
       toast.success(`Invitation renvoyée à ${inv.email}`);
       toast.info(`🔗 ${inviteUrl}`, { duration: 15000 });
       fetchInvitations();
     } else {
       const inviteUrl = `${window.location.origin}/signup?invitation=${inv.token}`;
-      console.log('🔗 Lien d\'invitation:', inviteUrl);
       toast.info(`🔗 ${inviteUrl}`, { duration: 15000 });
     }
   };
@@ -91,6 +102,15 @@ const Profile = () => {
     toast.success(`${name} retiré(e) du foyer`);
   };
 
+  // Fetch debts count for usage display
+  const [debtsCount, setDebtsCount] = useState(0);
+  useEffect(() => {
+    if (!householdId) return;
+    supabase.from('debts').select('id', { count: 'exact', head: true }).eq('household_id', householdId).then(({ count }) => {
+      setDebtsCount(count || 0);
+    });
+  }, [householdId]);
+
   return (
     <Layout>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-2xl mx-auto space-y-4">
@@ -105,6 +125,57 @@ const Profile = () => {
             <p className="font-bold text-lg">{currentUser?.name}</p>
             <p className="text-sm text-muted-foreground">{currentUser?.email}</p>
           </div>
+        </div>
+
+        {/* Subscription Section */}
+        <div className="card-elevated p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">
+              {isPremium ? '⭐ Mon abonnement' : '📋 Mon abonnement'}
+            </h2>
+            <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${
+              isPremium ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'bg-muted text-muted-foreground'
+            }`}>
+              {isPremium ? '⭐ Premium' : 'Freemium'}
+            </span>
+          </div>
+
+          {isPremium ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Tout est débloqué ! Profitez de FineHome sans limites.
+              </p>
+              {subscriptionEnd && (
+                <p className="text-xs text-muted-foreground">
+                  Prochain paiement : {formatDateLong(subscriptionEnd)}
+                </p>
+              )}
+              <button
+                onClick={openPortal}
+                className="w-full py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors"
+              >
+                Gérer mon abonnement
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* Usage indicators */}
+              <div className="space-y-2">
+                <UsageRow label="Membres" current={household.members.length} max={FREEMIUM_LIMITS.members} />
+                <UsageRow label="Budgets" current={budgets.length} max={FREEMIUM_LIMITS.budgets} />
+                <UsageRow label="Objectifs d'épargne" current={savingsGoals.length} max={FREEMIUM_LIMITS.savingsGoals} />
+                <UsageRow label="Dettes" current={debtsCount} max={FREEMIUM_LIMITS.debts} />
+                <UsageRow label="Catégories perso" current={customCategories.length} max={FREEMIUM_LIMITS.customCategories} />
+              </div>
+
+              <button
+                onClick={() => setShowPremiumModal(true)}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold hover:opacity-90 transition-opacity shadow-sm"
+              >
+                ⭐ Passer à Premium
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Household */}
@@ -122,19 +193,31 @@ const Profile = () => {
                 {CURRENCY_SYMBOLS[household.currency] || household.currency} — {CURRENCY_NAMES[household.currency] || household.currency} ({household.currency})
               </p>
             </div>
-            <button
-              onClick={() => setShowCurrencyModal(true)}
-              className="h-10 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
-            >
-              Modifier
-            </button>
+            {isPremium ? (
+              <button
+                onClick={() => setShowCurrencyModal(true)}
+                className="h-10 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+              >
+                Modifier
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowPremiumModal(true)}
+                className="h-10 px-4 rounded-xl bg-muted text-muted-foreground text-sm font-medium"
+              >
+                🔒 Premium
+              </button>
+            )}
           </div>
         </div>
 
         {/* Members */}
         <div className="card-elevated p-5">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold">Membres ({household.members.length})</h2>
+            <h2 className="font-semibold">
+              Membres ({household.members.length})
+              {!isPremium && <span className="text-xs text-muted-foreground font-normal ml-1">/ {FREEMIUM_LIMITS.members}</span>}
+            </h2>
             <button onClick={() => setShowInviteModal(true)} className="text-sm text-primary font-medium hover:underline">+ Inviter un membre</button>
           </div>
           <div className="space-y-3">
@@ -232,7 +315,10 @@ const Profile = () => {
 
         {/* Custom Categories */}
         <div className="card-elevated p-5">
-          <h2 className="font-semibold mb-3">Catégories personnalisées</h2>
+          <h2 className="font-semibold mb-3">
+            Catégories personnalisées
+            {!isPremium && <span className="text-xs text-muted-foreground font-normal ml-1">({customCategories.length}/{FREEMIUM_LIMITS.customCategories})</span>}
+          </h2>
           {customCategories.length === 0 ? (
             <p className="text-sm text-muted-foreground">Aucune catégorie personnalisée.</p>
           ) : (
@@ -337,7 +423,24 @@ const Profile = () => {
 
       {/* Invite Modal */}
       <InviteMemberModal open={showInviteModal} onClose={() => setShowInviteModal(false)} onInviteSent={fetchInvitations} />
+      
+      {/* Premium Modal */}
+      <PremiumModal open={showPremiumModal} onClose={() => setShowPremiumModal(false)} onCheckout={startCheckout} />
     </Layout>
+  );
+};
+
+// Usage row component
+const UsageRow = ({ label, current, max }: { label: string; current: number; max: number }) => {
+  const pct = Math.min((current / max) * 100, 100);
+  const atLimit = current >= max;
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className={`font-medium ${atLimit ? 'text-destructive' : 'text-foreground'}`}>
+        {current}/{max}
+      </span>
+    </div>
   );
 };
 

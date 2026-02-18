@@ -3,6 +3,8 @@ import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import { useApp } from '@/context/AppContext';
 import { useCurrency } from '@/hooks/useCurrency';
+import { useSubscription } from '@/hooks/useSubscription';
+import PremiumModal from '@/components/PremiumModal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -23,12 +25,12 @@ function monthLabel(date: Date) {
   return new Intl.DateTimeFormat('fr-FR', { month: 'short' }).format(date);
 }
 
-// ===== Component =====
-
 const Insights = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const { transactions, budgets, savingsGoals, savingsDeposits, getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getGoalSaved } = useApp();
+  const { transactions, budgets, savingsGoals, savingsDeposits, getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getGoalSaved, householdId } = useApp();
   const { formatAmount } = useCurrency();
+  const { isPremium, startCheckout } = useSubscription(householdId);
+  const [showPremium, setShowPremium] = useState(false);
 
   // Current month transactions
   const monthTx = useMemo(() => getTransactionsForMonth(currentMonth), [currentMonth, getTransactionsForMonth]);
@@ -110,59 +112,41 @@ const Insights = () => {
   // Has enough data?
   const hasData = transactions.length >= 3;
 
-  // ===== BLOC 1: 3 key facts =====
+  // Key facts
   const keyFacts = useMemo(() => {
     if (!hasData) return [];
     const facts: { icon: string; text: string; priority: number }[] = [];
-
-    // Budget exceeded
     monthBudgets.forEach(b => {
       const spent = getBudgetSpent(b, currentMonth);
       if (spent > b.limit) {
         facts.push({ icon: '⚠️', text: `Tu as dépassé ton budget ${b.category} de ${formatAmount(spent - b.limit)}.`, priority: 1 });
       }
     });
-
-    // All budgets respected
     if (monthBudgets.length > 0 && facts.filter(f => f.icon === '⚠️').length === 0) {
       facts.push({ icon: '✅', text: 'Bravo ! Tu as respecté tous tes budgets ce mois.', priority: 2 });
     }
-
-    // Category vs average
     categorySpending.slice(0, 3).forEach(([cat, { amount }]) => {
       const avg = prev3MonthsAvg[cat];
       if (avg && avg > 0) {
         const diff = ((amount - avg) / avg) * 100;
         if (Math.abs(diff) > 15) {
-          facts.push({
-            icon: diff > 0 ? '📈' : '📉',
-            text: `Tu as dépensé ${Math.abs(Math.round(diff))}% ${diff > 0 ? 'de plus' : 'de moins'} en ${cat} que ta moyenne.`,
-            priority: diff > 0 ? 1.5 : 2.5,
-          });
+          facts.push({ icon: diff > 0 ? '📈' : '📉', text: `Tu as dépensé ${Math.abs(Math.round(diff))}% ${diff > 0 ? 'de plus' : 'de moins'} en ${cat} que ta moyenne.`, priority: diff > 0 ? 1.5 : 2.5 });
         }
       }
     });
-
-    // Fixed charges ratio
     const fixedCategories = ['Logement', 'Abonnements', 'Impôts'];
     const fixedTotal = expenses.filter(t => fixedCategories.includes(t.category)).reduce((s, t) => s + t.convertedAmount, 0);
     if (totalIncome > 0) {
       const ratio = Math.round((fixedTotal / totalIncome) * 100);
       facts.push({ icon: '🏠', text: `Tes charges fixes représentent ${ratio}% de tes revenus.`, priority: 3 });
     }
-
-    // Savings
     if (monthSavings > 0 && totalIncome > 0) {
       const pct = Math.round((monthSavings / totalIncome) * 100);
       facts.push({ icon: '🐷', text: `Tu as épargné ${formatAmount(monthSavings)}, soit ${pct}% de ton revenu.`, priority: 2.5 });
     }
-
-    // Debt payments
     debtPayments.forEach(t => {
       facts.push({ icon: '🏦', text: `Tu as remboursé ${formatAmount(t.convertedAmount)} de capital sur "${t.label.replace('Amortissement - ', '')}".`, priority: 3 });
     });
-
-    // Savings goals progress
     savingsGoals.forEach(g => {
       const saved = getGoalSaved(g.id);
       const pct = Math.round((saved / g.target) * 100);
@@ -170,16 +154,13 @@ const Insights = () => {
         facts.push({ icon: '🎯', text: `Tu as atteint ${pct}% de ton objectif "${g.name}".`, priority: 2.5 });
       }
     });
-
     return facts.sort((a, b) => a.priority - b.priority).slice(0, 3);
   }, [hasData, monthBudgets, getBudgetSpent, currentMonth, categorySpending, prev3MonthsAvg, expenses, totalIncome, monthSavings, debtPayments, savingsGoals, getGoalSaved, formatAmount]);
 
-  // ===== BLOC 4: Recommendations =====
+  // Recommendations
   const recommendations = useMemo(() => {
     if (!hasData) return [];
     const recs: { icon: string; text: string }[] = [];
-
-    // Underused budget
     monthBudgets.forEach(b => {
       const spent = getBudgetSpent(b, currentMonth);
       const pct = Math.round((spent / b.limit) * 100);
@@ -187,8 +168,6 @@ const Insights = () => {
         recs.push({ icon: '💡', text: `Tu n'as utilisé que ${pct}% de ton budget ${b.category}. Tu pourrais le réduire.` });
       }
     });
-
-    // Subscriptions ratio
     const abos = expenses.filter(t => t.category === 'Abonnements').reduce((s, t) => s + t.convertedAmount, 0);
     if (totalExpenses > 0 && abos > 0) {
       const pct = Math.round((abos / totalExpenses) * 100);
@@ -196,8 +175,6 @@ const Insights = () => {
         recs.push({ icon: '📱', text: `Tes abonnements représentent ${pct}% de tes dépenses : vérifie si tu les utilises tous.` });
       }
     }
-
-    // Savings/spending link
     if (categorySpending.length > 0 && savingsGoals.length > 0) {
       const topCat = categorySpending[0];
       const goal = savingsGoals[0];
@@ -211,8 +188,6 @@ const Insights = () => {
         }
       }
     }
-
-    // Encouragement
     const savingMonths = (() => {
       let count = 0;
       for (let i = 0; i < 6; i++) {
@@ -228,11 +203,62 @@ const Insights = () => {
     if (savingMonths >= 2) {
       recs.push({ icon: '✨', text: `Continue comme ça ! Tu épargnes régulièrement depuis ${savingMonths} mois.` });
     }
-
     return recs.slice(0, 3);
   }, [hasData, monthBudgets, getBudgetSpent, currentMonth, expenses, totalExpenses, categorySpending, savingsGoals, getGoalSaved, savingsDeposits, formatAmount]);
 
-  // ===== RENDER =====
+  // PAYWALL for free users
+  if (!isPremium) {
+    return (
+      <Layout>
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">💡 Insights</h1>
+              <p className="text-sm text-muted-foreground">Comprendre mon argent</p>
+            </div>
+          </div>
+
+          {/* Blurred preview */}
+          <div className="relative">
+            <div className="blur-sm pointer-events-none opacity-60 space-y-4">
+              <Card className="rounded-[20px]">
+                <CardContent className="p-5 space-y-3">
+                  <h2 className="text-base font-semibold">Faits marquants</h2>
+                  <div className="space-y-2.5">
+                    <div className="flex items-start gap-3 text-sm"><span className="text-lg">⚠️</span><span>Données masquées...</span></div>
+                    <div className="flex items-start gap-3 text-sm"><span className="text-lg">📈</span><span>Données masquées...</span></div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="rounded-[20px]">
+                <CardContent className="p-5 h-48 bg-muted/30" />
+              </Card>
+            </div>
+
+            {/* Overlay */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center space-y-4 bg-card/95 backdrop-blur-sm rounded-2xl p-8 shadow-lg max-w-sm">
+                <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center mx-auto">
+                  <span className="text-3xl">🔒</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">Fonctionnalité Premium</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Débloquez l'analyse comportementale de vos finances</p>
+                </div>
+                <button
+                  onClick={() => setShowPremium(true)}
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold hover:opacity-90 transition-opacity shadow-sm"
+                >
+                  ⭐ Débloquer Insights
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} onCheckout={startCheckout} />
+      </Layout>
+    );
+  }
 
   if (!hasData) {
     return (
@@ -240,9 +266,7 @@ const Insights = () => {
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <span className="text-6xl mb-4">🔍</span>
           <h2 className="text-xl font-bold text-foreground mb-2">Pas encore assez de données</h2>
-          <p className="text-muted-foreground max-w-sm">
-            Continue à enregistrer tes transactions pour générer des insights personnalisés !
-          </p>
+          <p className="text-muted-foreground max-w-sm">Continue à enregistrer tes transactions pour générer des insights personnalisés !</p>
         </div>
       </Layout>
     );
@@ -255,7 +279,6 @@ const Insights = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-foreground">💡 Insights</h1>
@@ -296,10 +319,7 @@ const Insights = () => {
                   return (
                     <div key={cat} className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="flex items-center gap-2">
-                          <span>{emoji}</span>
-                          <span className="font-medium text-foreground">{cat}</span>
-                        </span>
+                        <span className="flex items-center gap-2"><span>{emoji}</span><span className="font-medium text-foreground">{cat}</span></span>
                         <span className="text-muted-foreground">{formatAmount(amount)} · {pct}%</span>
                       </div>
                       <Progress value={pct} className="h-2" />
@@ -308,8 +328,6 @@ const Insights = () => {
                 })}
               </div>
             )}
-
-            {/* Leaks */}
             {leaks.length > 0 && (
               <div className="mt-4 pt-4 border-t border-border space-y-2">
                 <h3 className="text-sm font-semibold text-foreground">Fuites détectées</h3>
@@ -374,6 +392,7 @@ const Insights = () => {
           </Card>
         )}
       </div>
+      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} onCheckout={startCheckout} />
     </Layout>
   );
 };
