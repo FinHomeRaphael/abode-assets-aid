@@ -214,6 +214,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (!isMounted) return;
       setSession(sess);
       if (sess?.user) {
+        setLoading(true); // Keep loading while fetchUserData runs
         setTimeout(() => fetchUserData(sess.user), 0);
       } else {
         resetState();
