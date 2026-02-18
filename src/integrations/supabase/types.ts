@@ -252,6 +252,7 @@ export type Database = {
           invited_by: string | null
           role: string | null
           status: string | null
+          token: string | null
         }
         Insert: {
           created_at?: string | null
@@ -262,6 +263,7 @@ export type Database = {
           invited_by?: string | null
           role?: string | null
           status?: string | null
+          token?: string | null
         }
         Update: {
           created_at?: string | null
@@ -272,6 +274,7 @@ export type Database = {
           invited_by?: string | null
           role?: string | null
           status?: string | null
+          token?: string | null
         }
         Relationships: [
           {
@@ -507,6 +510,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invitation: {
+        Args: { _invitation_id: string }
+        Returns: undefined
+      }
+      decline_invitation: {
+        Args: { _currency?: string; _invitation_id: string }
+        Returns: undefined
+      }
       get_household_role: {
         Args: { _household_id: string; _user_id: string }
         Returns: string
@@ -516,6 +527,7 @@ export type Database = {
         Args: { _household_id: string; _user_id: string }
         Returns: boolean
       }
+      validate_invitation_token: { Args: { _token: string }; Returns: Json }
     }
     Enums: {
       [_ in never]: never

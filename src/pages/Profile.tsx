@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
-import { formatDateLong, getInitials } from '@/utils/format';
+import { formatDateLong, getInitials, formatDate } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES, CURRENCY_NAMES, CURRENCY_SYMBOLS } from '@/types/finance';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import ConvertedAmount from '@/components/ConvertedAmount';
+import InviteMemberModal from '@/components/InviteMemberModal';
+import { supabase } from '@/integrations/supabase/client';
 
 const Profile = () => {
-  const { household, currentUser, logout, resetDemo, customCategories, deleteCustomCategory, getRecurringTransactions, deleteRecurring, getMemberById, changeCurrency, addMember, removeMember, updateMemberRole } = useApp();
+  const { household, currentUser, logout, resetDemo, customCategories, deleteCustomCategory, getRecurringTransactions, deleteRecurring, getMemberById, changeCurrency, addMember, removeMember, updateMemberRole, householdId } = useApp();
   const { formatAmount, currency } = useCurrency();
   const navigate = useNavigate();
 
@@ -30,9 +32,48 @@ const Profile = () => {
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [currencySearch, setCurrencySearch] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteName, setInviteName] = useState('');
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
+
+  // Pending invitations
+  const [pendingInvitations, setPendingInvitations] = useState<any[]>([]);
+
+  const fetchInvitations = useCallback(async () => {
+    if (!householdId) return;
+    const { data } = await supabase
+      .from('invitations')
+      .select('*')
+      .eq('household_id', householdId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    setPendingInvitations(data || []);
+  }, [householdId]);
+
+  useEffect(() => { fetchInvitations(); }, [fetchInvitations]);
+
+  const cancelInvitation = async (id: string, email: string) => {
+    await supabase.from('invitations').delete().eq('id', id);
+    setPendingInvitations(prev => prev.filter(i => i.id !== id));
+    toast.success(`Invitation annulée pour ${email}`);
+  };
+
+  const resendInvitation = async (inv: any) => {
+    const isExpired = new Date(inv.expires_at) < new Date();
+    if (isExpired) {
+      const newToken = crypto.randomUUID();
+      await supabase.from('invitations').update({
+        token: newToken,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      }).eq('id', inv.id);
+      const inviteUrl = `${window.location.origin}/signup?invitation=${newToken}`;
+      console.log('🔗 Nouveau lien d\'invitation:', inviteUrl);
+      toast.success(`Invitation renvoyée à ${inv.email}`);
+      toast.info(`🔗 ${inviteUrl}`, { duration: 15000 });
+      fetchInvitations();
+    } else {
+      const inviteUrl = `${window.location.origin}/signup?invitation=${inv.token}`;
+      console.log('🔗 Lien d\'invitation:', inviteUrl);
+      toast.info(`🔗 ${inviteUrl}`, { duration: 15000 });
+    }
+  };
 
   const filteredCurrencies = CURRENCIES.filter(c => {
     const q = currencySearch.toLowerCase();
@@ -40,23 +81,6 @@ const Profile = () => {
     const name = CURRENCY_NAMES[c] || '';
     return c.toLowerCase().includes(q) || name.toLowerCase().includes(q);
   });
-
-  const handleInvite = () => {
-    if (!inviteName.trim() || !inviteEmail.trim()) {
-      toast.error('Remplissez tous les champs');
-      return;
-    }
-    if (household.members.some(m => m.email === inviteEmail.trim())) {
-      toast.error('Ce membre existe déjà');
-      return;
-    }
-    addMember(inviteName.trim(), inviteEmail.trim(), inviteRole);
-    toast.success(`${inviteName.trim()} ajouté(e) au foyer ✓`);
-    setShowInviteModal(false);
-    setInviteName('');
-    setInviteEmail('');
-    setInviteRole('member');
-  };
 
   const handleRemoveMember = (id: string, name: string) => {
     if (id === currentUser?.id) {
@@ -111,7 +135,7 @@ const Profile = () => {
         <div className="card-elevated p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold">Membres ({household.members.length})</h2>
-            <button onClick={() => setShowInviteModal(true)} className="text-sm text-primary font-medium hover:underline">+ Inviter</button>
+            <button onClick={() => setShowInviteModal(true)} className="text-sm text-primary font-medium hover:underline">+ Inviter un membre</button>
           </div>
           <div className="space-y-3">
             {household.members.map(m => (
@@ -142,6 +166,39 @@ const Profile = () => {
               </div>
             ))}
           </div>
+
+          {/* Pending Invitations */}
+          {pendingInvitations.length > 0 && (
+            <div className="mt-5 pt-4 border-t border-border">
+              <h3 className="text-sm font-semibold text-muted-foreground mb-3">📨 Invitations en attente ({pendingInvitations.length})</h3>
+              <div className="space-y-2">
+                {pendingInvitations.map(inv => {
+                  const isExpired = new Date(inv.expires_at) < new Date();
+                  return (
+                    <div key={inv.id} className="flex items-center justify-between py-2">
+                      <div>
+                        <p className="text-sm font-medium">{inv.email}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Envoyée le {inv.created_at ? formatDate(inv.created_at) : '—'}
+                          {isExpired && <span className="text-destructive ml-1">· Expirée</span>}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {isExpired && (
+                          <button onClick={() => resendInvitation(inv)} className="text-xs text-primary font-medium hover:underline">
+                            Renvoyer
+                          </button>
+                        )}
+                        <button onClick={() => cancelInvitation(inv.id, inv.email)} className="text-xs text-destructive font-medium hover:underline">
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Recurring Transactions */}
@@ -281,43 +338,7 @@ const Profile = () => {
       </AnimatePresence>
 
       {/* Invite Modal */}
-      <AnimatePresence>
-        {showInviteModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowInviteModal(false)}>
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={e => e.stopPropagation()} className="bg-card w-full max-w-md rounded-2xl shadow-card-lg p-6">
-              <h2 className="text-lg font-bold mb-5">Inviter un membre</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Nom</label>
-                  <input value={inviteName} onChange={e => setInviteName(e.target.value)} placeholder="Prénom ou nom complet" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" autoFocus />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Email</label>
-                  <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="email@exemple.com" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">Rôle</label>
-                  <div className="flex gap-2">
-                    <button onClick={() => setInviteRole('member')} className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-all ${inviteRole === 'member' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>
-                      👤 Membre
-                    </button>
-                    <button onClick={() => setInviteRole('admin')} className={`flex-1 py-3 rounded-xl border text-sm font-medium transition-all ${inviteRole === 'admin' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>
-                      👑 Admin
-                    </button>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1.5">
-                    {inviteRole === 'admin' ? 'Les admins peuvent gérer les membres et les paramètres du foyer.' : 'Les membres peuvent ajouter des transactions et consulter les données.'}
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button onClick={() => setShowInviteModal(false)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Annuler</button>
-                <button onClick={handleInvite} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">Inviter</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <InviteMemberModal open={showInviteModal} onClose={() => setShowInviteModal(false)} onInviteSent={fetchInvitations} />
     </Layout>
   );
 };

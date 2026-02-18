@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Lock } from 'lucide-react';
 
 const CURRENCY_OPTIONS = [
   { value: 'EUR', label: '🇪🇺 Euro (EUR)' },
@@ -12,8 +12,22 @@ const CURRENCY_OPTIONS = [
   { value: 'CHF', label: '🇨🇭 Franc suisse (CHF)' },
 ];
 
+interface InvitationInfo {
+  valid: boolean;
+  email?: string;
+  household_id?: string;
+  household_name?: string;
+  household_currency?: string;
+  member_count?: number;
+  inviter_name?: string;
+  invitation_id?: string;
+}
+
 const SignupPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const invitationToken = searchParams.get('invitation');
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -25,11 +39,41 @@ const SignupPage = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Invitation state
+  const [invitationInfo, setInvitationInfo] = useState<InvitationInfo | null>(null);
+  const [invitationLoading, setInvitationLoading] = useState(!!invitationToken);
+  const [invitationError, setInvitationError] = useState('');
+
+  useEffect(() => {
+    if (!invitationToken) return;
+    const validateToken = async () => {
+      setInvitationLoading(true);
+      try {
+        const { data, error } = await supabase.rpc('validate_invitation_token', { _token: invitationToken });
+        if (error) throw error;
+        const info = data as unknown as InvitationInfo;
+        if (info.valid) {
+          setInvitationInfo(info);
+          setEmail(info.email || '');
+        } else {
+          setInvitationError('Ce lien d\'invitation est invalide ou expiré.');
+        }
+      } catch {
+        setInvitationError('Erreur lors de la vérification de l\'invitation.');
+      } finally {
+        setInvitationLoading(false);
+      }
+    };
+    validateToken();
+  }, [invitationToken]);
+
+  const isInvited = !!invitationInfo?.valid;
+
   const validate = () => {
     const e: Record<string, string> = {};
     if (firstName.trim().length < 2) e.firstName = 'Le prénom doit contenir au moins 2 caractères';
     if (lastName.trim().length < 2) e.lastName = 'Le nom doit contenir au moins 2 caractères';
-    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'Adresse email invalide';
+    if (!isInvited && (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) e.email = 'Adresse email invalide';
     if (password.length < 8) e.password = 'Le mot de passe doit contenir au moins 8 caractères';
     if (password !== confirmPassword) e.confirmPassword = 'Les mots de passe ne correspondent pas';
     setErrors(e);
@@ -41,27 +85,39 @@ const SignupPage = () => {
     if (!validate()) return;
     setLoading(true);
     try {
+      const metadata: Record<string, any> = {
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+      };
+
+      if (isInvited) {
+        metadata.skip_household_creation = true;
+        metadata.invitation_id = invitationInfo!.invitation_id;
+      } else {
+        metadata.currency = currency;
+      }
+
       const { error } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: (isInvited ? invitationInfo!.email : email.trim()) as string,
         password,
         options: {
-          data: {
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-            currency,
-          },
+          data: metadata,
           emailRedirectTo: window.location.origin,
         },
       });
       if (error) {
         if (error.message.includes('already registered') || error.message.includes('already been registered')) {
-          toast.error('Cette adresse email est déjà utilisée');
+          toast.error('Cette adresse email est déjà utilisée. Connectez-vous pour accepter l\'invitation.');
         } else {
           toast.error(error.message);
         }
         return;
       }
-      toast.success('Compte créé ! Vérifiez votre email pour confirmer votre inscription.');
+      if (isInvited) {
+        toast.success('Compte créé ! Vous allez pouvoir rejoindre le foyer.');
+      } else {
+        toast.success('Compte créé ! Vérifiez votre email pour confirmer votre inscription.');
+      }
       navigate('/login');
     } catch {
       toast.error('Une erreur est survenue');
@@ -70,14 +126,54 @@ const SignupPage = () => {
     }
   };
 
+  if (invitationLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-3 animate-pulse">📨</div>
+          <p className="text-muted-foreground">Vérification de l'invitation...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (invitationToken && invitationError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md text-center">
+          <div className="text-4xl mb-3">❌</div>
+          <h1 className="text-xl font-bold mb-2">Invitation invalide</h1>
+          <p className="text-muted-foreground mb-6">{invitationError}</p>
+          <Link to="/signup" className="inline-block px-6 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
+            Créer un compte normalement
+          </Link>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="text-4xl mb-2">🏠</div>
+          <div className="text-4xl mb-2">{isInvited ? '📨' : '🏠'}</div>
           <h1 className="text-2xl font-bold text-foreground">FineHome</h1>
-          <p className="text-muted-foreground mt-1">Créez votre compte</p>
+          <p className="text-muted-foreground mt-1">
+            {isInvited ? `Rejoignez le foyer "${invitationInfo!.household_name}"` : 'Créez votre compte'}
+          </p>
         </div>
+
+        {isInvited && (
+          <div className="bg-muted rounded-xl p-4 mb-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-xl">🏠</div>
+            <div>
+              <p className="text-sm font-semibold">{invitationInfo!.household_name}</p>
+              <p className="text-xs text-muted-foreground">
+                Invité par {invitationInfo!.inviter_name} · {invitationInfo!.member_count} membre{(invitationInfo!.member_count || 0) > 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="bg-card rounded-2xl shadow-card-lg p-6 space-y-4">
           <div className="grid grid-cols-2 gap-3">
@@ -95,18 +191,32 @@ const SignupPage = () => {
 
           <div>
             <label className="block text-sm font-medium mb-1.5">Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="jean@exemple.com" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+            <div className="relative">
+              <input
+                type="email"
+                value={email}
+                onChange={e => !isInvited && setEmail(e.target.value)}
+                placeholder="jean@exemple.com"
+                readOnly={isInvited}
+                className={`w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring ${isInvited ? 'pr-10 bg-muted cursor-not-allowed' : ''}`}
+              />
+              {isInvited && (
+                <Lock size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              )}
+            </div>
             {errors.email && <p className="text-xs text-destructive mt-1">{errors.email}</p>}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Devise principale</label>
-            <select value={currency} onChange={e => setCurrency(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-              {CURRENCY_OPTIONS.map(c => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
-            </select>
-          </div>
+          {!isInvited && (
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Devise principale</label>
+              <select value={currency} onChange={e => setCurrency(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                {CURRENCY_OPTIONS.map(c => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium mb-1.5">Mot de passe</label>
@@ -131,7 +241,7 @@ const SignupPage = () => {
           </div>
 
           <button type="submit" disabled={loading} className="w-full py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50">
-            {loading ? 'Création...' : 'Créer mon compte'}
+            {loading ? 'Création...' : isInvited ? 'Créer mon compte et rejoindre' : 'Créer mon compte'}
           </button>
 
           <p className="text-center text-sm text-muted-foreground">
