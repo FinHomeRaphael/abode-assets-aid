@@ -62,12 +62,16 @@ const Debts = () => {
 
   // Next 5 upcoming payments across all debts
   const upcomingPayments = useMemo(() => {
-    const payments: { date: string; name: string; amount: number; emoji: string }[] = [];
+    const payments: { date: string; name: string; amount: number; emoji: string; detail?: string }[] = [];
     for (const d of debts) {
       if (d.remainingAmount <= 0) continue;
       const nextDate = d.nextPaymentDate || calculateNextPaymentDate(d);
       if (nextDate) {
-        payments.push({ date: nextDate, name: d.name, amount: d.paymentAmount, emoji: getDebtEmoji(d.type) });
+        const periodsYear = getPeriodsPerYear(d.paymentFrequency);
+        const interest = d.remainingAmount * (d.interestRate / 100 / periodsYear);
+        const total = d.paymentAmount + interest;
+        const detail = `Capital ${formatAmount(d.paymentAmount)} + Intérêts ${formatAmount(interest)}`;
+        payments.push({ date: nextDate, name: d.name, amount: total, emoji: getDebtEmoji(d.type), detail });
       }
     }
     return payments.sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
@@ -175,6 +179,7 @@ const Debts = () => {
                     <div>
                       <p className="text-sm font-medium">{p.name}</p>
                       <p className="text-xs text-muted-foreground">{formatDateLong(p.date)}</p>
+                      {p.detail && <p className="text-xs text-muted-foreground/70">{p.detail}</p>}
                     </div>
                   </div>
                   <p className="font-mono-amount text-sm font-semibold text-destructive">-{formatAmount(p.amount)}</p>
