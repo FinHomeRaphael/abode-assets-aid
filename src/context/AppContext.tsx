@@ -394,16 +394,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ===== Auth Actions =====
   const logout = async () => {
+    // Immediately clear UI state
+    resetState();
+    setSession(null);
+    setLoading(false);
     try {
-      resetState();
-      setSession(null);
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: 'local' });
     } catch (err) {
       console.error('Logout error:', err);
-      // Force reset even if signOut fails
-      setSession(null);
-      resetState();
     }
+    // Force-clear any persisted session from storage
+    try {
+      const storageKey = `sb-dxuyvirhlpdbytfqdmbr-auth-token`;
+      localStorage.removeItem(storageKey);
+      sessionStorage.removeItem(storageKey);
+    } catch {}
   };
 
   const completeOnboarding = async (householdName: string, currency: string) => {
