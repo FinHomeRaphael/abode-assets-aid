@@ -11,7 +11,7 @@ interface Props {
 }
 
 const InviteMemberModal = ({ open, onClose, onInviteSent }: Props) => {
-  const { householdId, currentUser } = useApp();
+  const { householdId, currentUser, household } = useApp();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -45,12 +45,24 @@ const InviteMemberModal = ({ open, onClose, onInviteSent }: Props) => {
       }
 
       const inviteUrl = `${window.location.origin}/signup?invitation=${token}`;
-      console.log('🔗 Lien d\'invitation:', inviteUrl);
-      toast.success(`Invitation envoyée à ${trimmed}`, {
-        description: 'Le lien a été affiché dans la console (mode test)',
-        duration: 8000,
+
+      // Send email via edge function
+      const { error: emailError } = await supabase.functions.invoke('send-invitation-email', {
+        body: {
+          email: trimmed,
+          inviterName: currentUser?.name || 'Quelqu\'un',
+          householdName: household.name,
+          inviteUrl,
+        },
       });
-      toast.info(`🔗 ${inviteUrl}`, { duration: 15000 });
+
+      if (emailError) {
+        console.error('Email send error:', emailError);
+        toast.warning(`Invitation créée mais l'email n'a pas pu être envoyé. Lien copié dans la console.`);
+        console.log('🔗 Lien d\'invitation:', inviteUrl);
+      } else {
+        toast.success(`Invitation envoyée par email à ${trimmed} ✉️`);
+      }
 
       setEmail('');
       onInviteSent();
@@ -69,7 +81,7 @@ const InviteMemberModal = ({ open, onClose, onInviteSent }: Props) => {
           <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} onClick={e => e.stopPropagation()} className="bg-card w-full max-w-md rounded-2xl shadow-card-lg p-6">
             <h2 className="text-lg font-bold mb-2">Inviter un membre</h2>
             <p className="text-sm text-muted-foreground mb-5">
-              Invitez quelqu'un à rejoindre votre foyer. Il recevra un lien d'inscription.
+              Invitez quelqu'un à rejoindre votre foyer. Il recevra un email avec un lien d'inscription.
             </p>
             <div className="space-y-4">
               <div>
