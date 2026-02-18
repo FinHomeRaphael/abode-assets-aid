@@ -354,7 +354,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const completeOnboarding = async (householdName: string, currency: string) => {
-    if (!session?.user) return;
+    if (!session?.user) throw new Error('Non authentifié');
     const userId = session.user.id;
 
     // Create household
@@ -365,9 +365,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .single();
 
     if (hError || !newHousehold) {
-      toast.error('Erreur lors de la création du foyer');
-      console.error(hError);
-      return;
+      console.error('Household creation error:', hError);
+      throw new Error(hError?.message || 'Erreur lors de la création du foyer');
     }
 
     const hId = (newHousehold as any).id;
@@ -378,9 +377,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .insert({ household_id: hId, user_id: userId, role: 'admin' });
 
     if (mError) {
-      toast.error('Erreur lors de l\'ajout au foyer');
-      console.error(mError);
-      return;
+      console.error('Membership creation error:', mError);
+      throw new Error(mError?.message || 'Erreur lors de l\'ajout au foyer');
     }
 
     setHouseholdId(hId);
