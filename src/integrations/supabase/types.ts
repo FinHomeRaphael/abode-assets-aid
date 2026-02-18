@@ -14,13 +14,498 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      accounts: {
+        Row: {
+          created_at: string | null
+          currency: string
+          household_id: string
+          id: string
+          is_archived: boolean | null
+          name: string
+          starting_balance: number
+          starting_date: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          currency?: string
+          household_id: string
+          id?: string
+          is_archived?: boolean | null
+          name: string
+          starting_balance?: number
+          starting_date?: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          currency?: string
+          household_id?: string
+          id?: string
+          is_archived?: boolean | null
+          name?: string
+          starting_balance?: number
+          starting_date?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounts_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      budgets: {
+        Row: {
+          alerts_enabled: boolean | null
+          category: string
+          created_at: string | null
+          emoji: string
+          end_month: string | null
+          household_id: string
+          id: string
+          is_recurring: boolean | null
+          limit_amount: number
+          month_year: string | null
+          period: string
+          start_month: string
+          updated_at: string | null
+        }
+        Insert: {
+          alerts_enabled?: boolean | null
+          category: string
+          created_at?: string | null
+          emoji?: string
+          end_month?: string | null
+          household_id: string
+          id?: string
+          is_recurring?: boolean | null
+          limit_amount: number
+          month_year?: string | null
+          period?: string
+          start_month: string
+          updated_at?: string | null
+        }
+        Update: {
+          alerts_enabled?: boolean | null
+          category?: string
+          created_at?: string | null
+          emoji?: string
+          end_month?: string | null
+          household_id?: string
+          id?: string
+          is_recurring?: boolean | null
+          limit_amount?: number
+          month_year?: string | null
+          period?: string
+          start_month?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budgets_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      categories: {
+        Row: {
+          created_at: string | null
+          emoji: string
+          household_id: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          emoji: string
+          household_id?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          emoji?: string
+          household_id?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "categories_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exchange_rates: {
+        Row: {
+          base_currency: string
+          id: string
+          rate: number
+          target_currency: string
+          updated_at: string | null
+        }
+        Insert: {
+          base_currency: string
+          id?: string
+          rate: number
+          target_currency: string
+          updated_at?: string | null
+        }
+        Update: {
+          base_currency?: string
+          id?: string
+          rate?: number
+          target_currency?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      household_members: {
+        Row: {
+          created_at: string | null
+          household_id: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          household_id: string
+          id?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          household_id?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_members_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      households: {
+        Row: {
+          created_at: string | null
+          default_currency: string | null
+          id: string
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          default_currency?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          default_currency?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      invitations: {
+        Row: {
+          created_at: string | null
+          email: string
+          expires_at: string | null
+          household_id: string
+          id: string
+          invited_by: string | null
+          role: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          expires_at?: string | null
+          household_id: string
+          id?: string
+          invited_by?: string | null
+          role?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          expires_at?: string | null
+          household_id?: string
+          id?: string
+          invited_by?: string | null
+          role?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitations_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_color: string | null
+          created_at: string | null
+          email: string
+          first_name: string
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_color?: string | null
+          created_at?: string | null
+          email: string
+          first_name: string
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_color?: string | null
+          created_at?: string | null
+          email?: string
+          first_name?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      savings_deposits: {
+        Row: {
+          amount: number
+          created_at: string | null
+          date: string
+          goal_id: string
+          household_id: string
+          id: string
+          member_id: string | null
+          notes: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          date: string
+          goal_id: string
+          household_id: string
+          id?: string
+          member_id?: string | null
+          notes?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          date?: string
+          goal_id?: string
+          household_id?: string
+          id?: string
+          member_id?: string | null
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "savings_deposits_goal_id_fkey"
+            columns: ["goal_id"]
+            isOneToOne: false
+            referencedRelation: "savings_goals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "savings_deposits_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      savings_goals: {
+        Row: {
+          created_at: string | null
+          currency: string
+          emoji: string
+          household_id: string
+          id: string
+          name: string
+          target_amount: number
+          target_date: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          currency?: string
+          emoji: string
+          household_id: string
+          id?: string
+          name: string
+          target_amount: number
+          target_date?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          currency?: string
+          emoji?: string
+          household_id?: string
+          id?: string
+          name?: string
+          target_amount?: number
+          target_date?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "savings_goals_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          account_id: string | null
+          amount: number
+          base_currency: string
+          category: string
+          converted_amount: number
+          created_at: string | null
+          currency: string
+          date: string
+          emoji: string
+          exchange_rate: number
+          household_id: string
+          id: string
+          is_recurring: boolean | null
+          label: string
+          member_id: string | null
+          notes: string | null
+          recurrence_day: number | null
+          recurring_end_month: string | null
+          recurring_source_id: string | null
+          recurring_start_month: string | null
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          base_currency: string
+          category: string
+          converted_amount: number
+          created_at?: string | null
+          currency: string
+          date: string
+          emoji?: string
+          exchange_rate?: number
+          household_id: string
+          id?: string
+          is_recurring?: boolean | null
+          label: string
+          member_id?: string | null
+          notes?: string | null
+          recurrence_day?: number | null
+          recurring_end_month?: string | null
+          recurring_source_id?: string | null
+          recurring_start_month?: string | null
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          base_currency?: string
+          category?: string
+          converted_amount?: number
+          created_at?: string | null
+          currency?: string
+          date?: string
+          emoji?: string
+          exchange_rate?: number
+          household_id?: string
+          id?: string
+          is_recurring?: boolean | null
+          label?: string
+          member_id?: string | null
+          notes?: string | null
+          recurrence_day?: number | null
+          recurring_end_month?: string | null
+          recurring_source_id?: string | null
+          recurring_start_month?: string | null
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_recurring_source_id_fkey"
+            columns: ["recurring_source_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_household_role: {
+        Args: { _household_id: string; _user_id: string }
+        Returns: string
+      }
+      get_user_household_id: { Args: { _user_id: string }; Returns: string }
+      is_household_member: {
+        Args: { _household_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
