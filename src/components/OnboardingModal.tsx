@@ -58,7 +58,7 @@ const OnboardingModal = ({ open, onComplete }: OnboardingModalProps) => {
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-sm rounded-[20px] p-0 gap-0 border-none [&>button]:hidden" onPointerDownOutside={e => e.preventDefault()}>
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-sm rounded-[20px] p-0 gap-0 border-none [&>button]:hidden mx-4" onPointerDownOutside={e => e.preventDefault()}>
         <AnimatePresence mode="wait">
           <motion.div
             key={step}
