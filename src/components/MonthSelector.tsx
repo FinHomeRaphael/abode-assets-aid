@@ -1,4 +1,7 @@
 import React from 'react';
+import { useSubscription } from '@/hooks/useSubscription';
+import { useApp } from '@/context/AppContext';
+import { toast } from 'sonner';
 
 interface Props {
   currentMonth: Date;
@@ -6,11 +9,17 @@ interface Props {
 }
 
 const MonthSelector = ({ currentMonth, onChange }: Props) => {
+  const { householdId } = useApp();
+  const { isMonthAllowed, isPremium } = useSubscription(householdId);
   const label = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(currentMonth);
 
   const prev = () => {
     const d = new Date(currentMonth);
     d.setMonth(d.getMonth() - 1);
+    if (!isMonthAllowed(d)) {
+      toast.error('🔒 Historique limité à 3 mois avec le plan gratuit');
+      return;
+    }
     onChange(d);
   };
 

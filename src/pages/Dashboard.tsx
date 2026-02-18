@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatAmount as rawFormatAmount, formatDate, getBudgetStatus, getInitials } from '@/utils/format';
+import { useSubscription } from '@/hooks/useSubscription';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -11,6 +12,7 @@ import MonthlyReportModal from '@/components/MonthlyReportModal';
 import ConvertedAmount from '@/components/ConvertedAmount';
 import { supabase } from '@/integrations/supabase/client';
 import { Debt, getDebtEmoji, calculateNextPaymentDate } from '@/types/debt';
+import { toast } from 'sonner';
 
 function generateAIAdvices(
   budgets: { category: string; emoji: string; spent: number; limit: number }[],
@@ -76,6 +78,7 @@ function generateAIAdvices(
 const Dashboard = () => {
   const { transactions, budgets, household, getMemberById, getBudgetSpent, getMonthSavings, getTotalSavings, savingsGoals, getGoalSaved, getTransactionsForMonth, currentUser, householdId, accounts } = useApp();
   const { formatAmount, currency } = useCurrency();
+  const { isPremium } = useSubscription(householdId);
   const navigate = useNavigate();
   const [showScan, setShowScan] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -246,13 +249,20 @@ const Dashboard = () => {
                 <p className="text-xs text-muted-foreground">Ajouter via photo</p>
               </div>
             </button>
-            <button onClick={() => setShowReport(true)} className="card-elevated p-4 flex flex-col items-center gap-2 card-hover text-center">
+            <button onClick={() => {
+              if (!isPremium) {
+                toast('🔒 Rapport mensuel réservé aux abonnés Premium', { description: 'Passez à Premium pour accéder aux rapports détaillés.' });
+                return;
+              }
+              setShowReport(true);
+            }} className="card-elevated p-4 flex flex-col items-center gap-2 card-hover text-center relative">
+              {!isPremium && <span className="absolute top-2 right-2 text-xs">🔒</span>}
               <div className="w-11 h-11 rounded-2xl bg-success/10 flex items-center justify-center">
                 <span className="text-xl">📊</span>
               </div>
               <div>
                 <p className="text-sm font-semibold">Rapport mensuel</p>
-                <p className="text-xs text-muted-foreground">Analyser le mois</p>
+                <p className="text-xs text-muted-foreground">{isPremium ? 'Analyser le mois' : 'Premium'}</p>
               </div>
             </button>
           </div>
