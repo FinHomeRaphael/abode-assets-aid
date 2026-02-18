@@ -155,6 +155,80 @@ export type Database = {
           },
         ]
       }
+      debts: {
+        Row: {
+          category_id: string | null
+          created_at: string | null
+          currency: string
+          duration_years: number
+          household_id: string
+          id: string
+          initial_amount: number
+          interest_rate: number
+          last_payment_date: string | null
+          lender: string | null
+          name: string
+          next_payment_date: string | null
+          payment_amount: number
+          payment_day: number
+          payment_frequency: string
+          remaining_amount: number
+          start_date: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string | null
+          currency?: string
+          duration_years: number
+          household_id: string
+          id?: string
+          initial_amount: number
+          interest_rate?: number
+          last_payment_date?: string | null
+          lender?: string | null
+          name: string
+          next_payment_date?: string | null
+          payment_amount: number
+          payment_day?: number
+          payment_frequency?: string
+          remaining_amount: number
+          start_date: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string | null
+          currency?: string
+          duration_years?: number
+          household_id?: string
+          id?: string
+          initial_amount?: number
+          interest_rate?: number
+          last_payment_date?: string | null
+          lender?: string | null
+          name?: string
+          next_payment_date?: string | null
+          payment_amount?: number
+          payment_day?: number
+          payment_frequency?: string
+          remaining_amount?: number
+          start_date?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debts_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exchange_rates: {
         Row: {
           base_currency: string
@@ -418,10 +492,13 @@ export type Database = {
           created_at: string | null
           currency: string
           date: string
+          debt_id: string | null
+          debt_payment_type: string | null
           emoji: string
           exchange_rate: number
           household_id: string
           id: string
+          is_auto_generated: boolean | null
           is_recurring: boolean | null
           label: string
           member_id: string | null
@@ -442,10 +519,13 @@ export type Database = {
           created_at?: string | null
           currency: string
           date: string
+          debt_id?: string | null
+          debt_payment_type?: string | null
           emoji?: string
           exchange_rate?: number
           household_id: string
           id?: string
+          is_auto_generated?: boolean | null
           is_recurring?: boolean | null
           label: string
           member_id?: string | null
@@ -466,10 +546,13 @@ export type Database = {
           created_at?: string | null
           currency?: string
           date?: string
+          debt_id?: string | null
+          debt_payment_type?: string | null
           emoji?: string
           exchange_rate?: number
           household_id?: string
           id?: string
+          is_auto_generated?: boolean | null
           is_recurring?: boolean | null
           label?: string
           member_id?: string | null
@@ -487,6 +570,13 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_debt_id_fkey"
+            columns: ["debt_id"]
+            isOneToOne: false
+            referencedRelation: "debts"
             referencedColumns: ["id"]
           },
           {

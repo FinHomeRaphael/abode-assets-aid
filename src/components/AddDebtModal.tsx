@@ -1,0 +1,223 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useApp } from '@/context/AppContext';
+import { supabase } from '@/integrations/supabase/client';
+import { DEBT_TYPES, PAYMENT_FREQUENCIES, calculateNextPaymentDate } from '@/types/debt';
+import { EXPENSE_CATEGORIES, CATEGORY_EMOJIS } from '@/types/finance';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  onAdded: () => void;
+}
+
+const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
+  const { householdId, household, customCategories } = useApp();
+  const [type, setType] = useState('mortgage');
+  const [name, setName] = useState('');
+  const [lender, setLender] = useState('');
+  const [initialAmount, setInitialAmount] = useState('');
+  const [remainingAmount, setRemainingAmount] = useState('');
+  const [interestRate, setInterestRate] = useState('');
+  const [durationYears, setDurationYears] = useState('');
+  const [startDate, setStartDate] = useState<Date>(new Date());
+  const [paymentFrequency, setPaymentFrequency] = useState('monthly');
+  const [paymentDay, setPaymentDay] = useState('1');
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [categoryId, setCategoryId] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const allExpenseCategories = [...EXPENSE_CATEGORIES, ...customCategories.filter(c => c.type === 'expense').map(c => c.name)];
+
+  const reset = () => {
+    setType('mortgage'); setName(''); setLender(''); setInitialAmount(''); setRemainingAmount('');
+    setInterestRate(''); setDurationYears(''); setStartDate(new Date()); setPaymentFrequency('monthly');
+    setPaymentDay('1'); setPaymentAmount(''); setCategoryId('');
+  };
+
+  const handleSubmit = async () => {
+    if (!name.trim() || !initialAmount || !remainingAmount || !paymentAmount || !durationYears) return;
+    setSaving(true);
+
+    const debtData = {
+      household_id: householdId,
+      type,
+      name: name.trim(),
+      lender: lender.trim() || null,
+      initial_amount: parseFloat(initialAmount),
+      remaining_amount: parseFloat(remainingAmount),
+      currency: household.currency,
+      interest_rate: parseFloat(interestRate) || 0,
+      duration_years: parseFloat(durationYears),
+      start_date: startDate.toISOString().split('T')[0],
+      payment_frequency: paymentFrequency,
+      payment_day: parseInt(paymentDay) || 1,
+      payment_amount: parseFloat(paymentAmount),
+      category_id: categoryId || null,
+      next_payment_date: null as string | null,
+    };
+
+    // Calculate next payment date
+    const tempDebt = {
+      ...debtData,
+      id: '', householdId, initialAmount: debtData.initial_amount,
+      remainingAmount: debtData.remaining_amount, interestRate: debtData.interest_rate,
+      durationYears: debtData.duration_years, startDate: debtData.start_date,
+      paymentFrequency: debtData.payment_frequency as any, paymentDay: debtData.payment_day,
+      paymentAmount: debtData.payment_amount, createdAt: '', updatedAt: '',
+    };
+    debtData.next_payment_date = calculateNextPaymentDate(tempDebt as any) || null;
+
+    const { error } = await supabase.from('debts').insert(debtData);
+    setSaving(false);
+    if (error) { console.error('Insert debt error:', error); return; }
+    reset();
+    onAdded();
+  };
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 bg-foreground/20 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
+            onClick={e => e.stopPropagation()}
+            className="bg-card w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-card-lg max-h-[90vh] overflow-y-auto"
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-bold">➕ Ajouter une dette</h2>
+                <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg">✕</button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Type */}
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Type de crédit</label>
+                  <div className="flex flex-wrap gap-2">
+                    {DEBT_TYPES.map(dt => (
+                      <button key={dt.value} onClick={() => setType(dt.value)}
+                        className={`px-3 py-2 rounded-xl border text-sm transition-all ${type === dt.value ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>
+                        {dt.emoji} {dt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Name */}
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Nom du crédit</label>
+                  <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Crédit maison"
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+
+                {/* Lender */}
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Organisme prêteur <span className="text-muted-foreground">(optionnel)</span></label>
+                  <input value={lender} onChange={e => setLender(e.target.value)} placeholder="Ex: BNP Paribas"
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+
+                {/* Amounts */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Montant emprunté</label>
+                    <input type="number" step="0.01" value={initialAmount} onChange={e => setInitialAmount(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Capital restant dû</label>
+                    <input type="number" step="0.01" value={remainingAmount} onChange={e => setRemainingAmount(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+                </div>
+
+                {/* Rate & Duration */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Taux d'intérêt (%)</label>
+                    <input type="number" step="0.01" value={interestRate} onChange={e => setInterestRate(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Durée (années)</label>
+                    <input type="number" step="1" value={durationYears} onChange={e => setDurationYears(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+                </div>
+
+                {/* Start date */}
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Date de signature</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm text-left">
+                        {format(startDate, 'dd MMMM yyyy', { locale: fr })}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={startDate} onSelect={d => d && setStartDate(d)} className="p-3 pointer-events-auto" />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Frequency & Day */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Fréquence</label>
+                    <select value={paymentFrequency} onChange={e => setPaymentFrequency(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                      {PAYMENT_FREQUENCIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1.5">Jour de prélèvement</label>
+                    <input type="number" min="1" max="28" value={paymentDay} onChange={e => setPaymentDay(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
+                  </div>
+                </div>
+
+                {/* Payment amount */}
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Montant de l'échéance</label>
+                  <input type="number" step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+
+                {/* Category */}
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Catégorie pour les dépenses</label>
+                  <select value={categoryId} onChange={e => setCategoryId(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                    <option value="">Aucune</option>
+                    {allExpenseCategories.map(c => (
+                      <option key={c} value={c}>{CATEGORY_EMOJIS[c] || '📌'} {c}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Annuler</button>
+                <button onClick={handleSubmit} disabled={saving || !name.trim() || !initialAmount || !remainingAmount || !paymentAmount}
+                  className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50">
+                  {saving ? 'Ajout...' : 'Ajouter'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+export default AddDebtModal;
