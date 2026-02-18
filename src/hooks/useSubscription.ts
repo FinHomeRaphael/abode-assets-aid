@@ -66,13 +66,13 @@ export function useSubscription(householdId: string) {
   const verifyWithStripe = useCallback(async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session?.access_token) return;
 
       const { data, error } = await supabase.functions.invoke('check-subscription', {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
-      if (!error && data) {
+      if (!error && data && !data.error) {
         setState(prev => ({
           ...prev,
           plan: data.subscribed ? 'premium' : 'free',
