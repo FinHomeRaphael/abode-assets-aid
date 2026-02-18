@@ -34,7 +34,7 @@ function AppRoutes() {
 
   if (loading) return <LoadingScreen />;
   if (!isLoggedIn) return <LoginPage />;
-  if (!isOnboarded) return <LoginPage />;
+  if (!isOnboarded) return <Onboarding />;
 
   return (
     <Routes>
