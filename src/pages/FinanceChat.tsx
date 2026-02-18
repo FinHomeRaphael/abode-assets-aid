@@ -1,10 +1,14 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { useCurrency } from '@/hooks/useCurrency';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import Layout from '@/components/Layout';
+import PaywallModal from '@/components/PaywallModal';
+import PremiumModal from '@/components/PremiumModal';
+import { useSubscription, FREEMIUM_LIMITS } from '@/hooks/useSubscription';
+import { supabase } from '@/integrations/supabase/client';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
@@ -16,9 +20,12 @@ const FinanceChat = () => {
     transactions, budgets, savingsGoals, savingsDeposits,
     household, currentUser, getTransactionsForMonth,
     getBudgetSpent, getGoalSaved, getMonthSavings, getTotalSavings,
-    getBudgetsForMonth,
+    getBudgetsForMonth, householdId,
   } = useApp();
   const { formatAmount } = useCurrency();
+  const { isPremium, startCheckout } = useSubscription(householdId);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [showPremium, setShowPremium] = useState(false);
 
   const [messages, setMessages] = useState<Msg[]>(() => {
     try {
@@ -114,9 +121,58 @@ Transactions récurrentes actives: ${recurringCount}
 Nombre total de transactions ce mois: ${monthTx.length}`;
   }, [transactions, budgets, savingsGoals, savingsDeposits, household, currentUser, getTransactionsForMonth, getBudgetSpent, getGoalSaved, getMonthSavings, getTotalSavings, getBudgetsForMonth, formatAmount]);
 
+  const checkAiLimit = useCallback(async (): Promise<boolean> => {
+    if (isPremium) return true;
+    try {
+      const { data: hData } = await supabase
+        .from('households')
+        .select('ai_advice_count_this_week, ai_advice_last_date')
+        .eq('id', householdId)
+        .single();
+      if (!hData) return true;
+      const lastDate = hData.ai_advice_last_date;
+      const now = new Date();
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - now.getDay());
+      weekStart.setHours(0, 0, 0, 0);
+      const isThisWeek = lastDate && new Date(lastDate) >= weekStart;
+      const count = isThisWeek ? hData.ai_advice_count_this_week : 0;
+      if (count >= FREEMIUM_LIMITS.aiAdvicePerWeek) {
+        setShowPaywall(true);
+        return false;
+      }
+      return true;
+    } catch {
+      return true;
+    }
+  }, [isPremium, householdId]);
+
+  const incrementAiCount = useCallback(async () => {
+    if (isPremium) return;
+    const today = new Date().toISOString().split('T')[0];
+    const { data: hData } = await supabase
+      .from('households')
+      .select('ai_advice_count_this_week, ai_advice_last_date')
+      .eq('id', householdId)
+      .single();
+    const now = new Date();
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - now.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    const isThisWeek = hData?.ai_advice_last_date && new Date(hData.ai_advice_last_date) >= weekStart;
+    const newCount = isThisWeek ? (hData?.ai_advice_count_this_week || 0) + 1 : 1;
+    await supabase.from('households').update({
+      ai_advice_count_this_week: newCount,
+      ai_advice_last_date: today,
+    }).eq('id', householdId);
+  }, [isPremium, householdId]);
+
   const sendMessage = async () => {
     const text = input.trim();
     if (!text || isLoading) return;
+
+    const allowed = await checkAiLimit();
+    if (!allowed) return;
 
     const userMsg: Msg = { role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
@@ -222,6 +278,7 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
       toast.error('Erreur de connexion au service IA');
     }
 
+    await incrementAiCount();
     setIsLoading(false);
   };
 
@@ -237,6 +294,7 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
   ];
 
   return (
+    <>
     <Layout>
       <div className="max-w-2xl mx-auto flex flex-col h-[calc(100dvh-8rem)] md:h-[calc(100dvh-8rem)] -mb-32 md:mb-0">
         {/* Header */}
@@ -338,6 +396,9 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
         </div>
       </div>
     </Layout>
+      <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} onUpgrade={() => { setShowPaywall(false); setShowPremium(true); }} feature="conseil(s) IA par semaine" limit={FREEMIUM_LIMITS.aiAdvicePerWeek} icon="✨" />
+      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} onCheckout={startCheckout} />
+    </>
   );
 };
 
