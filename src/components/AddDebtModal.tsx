@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
-import { DEBT_TYPES, PAYMENT_FREQUENCIES, calculateNextPaymentDate } from '@/types/debt';
+import { DEBT_TYPES, PAYMENT_FREQUENCIES } from '@/types/debt';
 import { EXPENSE_CATEGORIES, CATEGORY_EMOJIS } from '@/types/finance';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -16,7 +16,7 @@ interface Props {
 }
 
 const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
-  const { householdId, household, customCategories } = useApp();
+  const { householdId, household, customCategories, getActiveAccounts } = useApp();
   const [type, setType] = useState('mortgage');
   const [name, setName] = useState('');
   const [lender, setLender] = useState('');
@@ -29,14 +29,38 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
   const [paymentDay, setPaymentDay] = useState('1');
   const [paymentAmount, setPaymentAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [accountId, setAccountId] = useState('');
+  const [nextPaymentDate, setNextPaymentDate] = useState<Date>(new Date());
   const [saving, setSaving] = useState(false);
 
+  const activeAccounts = getActiveAccounts();
   const allExpenseCategories = [...EXPENSE_CATEGORIES, ...customCategories.filter(c => c.type === 'expense').map(c => c.name)];
+
+  // Auto-calculate interest based on remaining amount, rate and frequency
+  const periodsPerYear = useMemo(() => {
+    switch (paymentFrequency) {
+      case 'monthly': return 12;
+      case 'quarterly': return 4;
+      case 'semi-annual': return 2;
+      case 'annual': return 1;
+      default: return 12;
+    }
+  }, [paymentFrequency]);
+
+  const calculatedInterest = useMemo(() => {
+    const rem = parseFloat(remainingAmount) || 0;
+    const rate = parseFloat(interestRate) || 0;
+    return rem * (rate / 100) / periodsPerYear;
+  }, [remainingAmount, interestRate, periodsPerYear]);
+
+  const totalPayment = useMemo(() => {
+    return (parseFloat(paymentAmount) || 0) + calculatedInterest;
+  }, [paymentAmount, calculatedInterest]);
 
   const reset = () => {
     setType('mortgage'); setName(''); setLender(''); setInitialAmount(''); setRemainingAmount('');
     setInterestRate(''); setDurationYears(''); setStartDate(new Date()); setPaymentFrequency('monthly');
-    setPaymentDay('1'); setPaymentAmount(''); setCategoryId('');
+    setPaymentDay('1'); setPaymentAmount(''); setCategoryId(''); setAccountId(''); setNextPaymentDate(new Date());
   };
 
   const handleSubmit = async () => {
@@ -58,19 +82,9 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
       payment_day: parseInt(paymentDay) || 1,
       payment_amount: parseFloat(paymentAmount),
       category_id: categoryId || null,
-      next_payment_date: null as string | null,
+      account_id: accountId || null,
+      next_payment_date: nextPaymentDate.toISOString().split('T')[0],
     };
-
-    // Calculate next payment date
-    const tempDebt = {
-      ...debtData,
-      id: '', householdId, initialAmount: debtData.initial_amount,
-      remainingAmount: debtData.remaining_amount, interestRate: debtData.interest_rate,
-      durationYears: debtData.duration_years, startDate: debtData.start_date,
-      paymentFrequency: debtData.payment_frequency as any, paymentDay: debtData.payment_day,
-      paymentAmount: debtData.payment_amount, createdAt: '', updatedAt: '',
-    };
-    debtData.next_payment_date = calculateNextPaymentDate(tempDebt as any) || null;
 
     const { error } = await supabase.from('debts').insert(debtData);
     setSaving(false);
@@ -185,11 +199,51 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                   </div>
                 </div>
 
-                {/* Payment amount */}
+                {/* Amortissement (principal) */}
                 <div>
-                  <label className="block text-sm font-medium mb-1.5">Montant de l'échéance</label>
+                  <label className="block text-sm font-medium mb-1.5">Amortissement</label>
                   <input type="number" step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)}
+                    placeholder="Montant du remboursement du capital"
                     className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+
+                {/* Auto-calculated interest + total */}
+                <div className="rounded-xl border border-border bg-muted/50 p-3 space-y-1.5">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Intérêts (auto)</span>
+                    <span className="font-mono font-medium">{calculatedInterest.toFixed(2)} {household.currency}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-semibold border-t border-border pt-1.5">
+                    <span>Échéance totale</span>
+                    <span className="font-mono">{totalPayment.toFixed(2)} {household.currency}</span>
+                  </div>
+                </div>
+
+                {/* Next payment date */}
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Prochaine échéance</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm text-left">
+                        {format(nextPaymentDate, 'dd MMMM yyyy', { locale: fr })}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar mode="single" selected={nextPaymentDate} onSelect={d => d && setNextPaymentDate(d)} className="p-3 pointer-events-auto" />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {/* Account */}
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Compte pour les dépenses</label>
+                  <select value={accountId} onChange={e => setAccountId(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                    <option value="">Aucun</option>
+                    {activeAccounts.map(a => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Category */}

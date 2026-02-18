@@ -1,0 +1,1 @@
+ALTER TABLE public.debts ADD COLUMN account_id uuid REFERENCES public.accounts(id) DEFAULT NULL;

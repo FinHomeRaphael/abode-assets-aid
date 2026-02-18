@@ -157,6 +157,7 @@ export type Database = {
       }
       debts: {
         Row: {
+          account_id: string | null
           category_id: string | null
           created_at: string | null
           currency: string
@@ -178,6 +179,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          account_id?: string | null
           category_id?: string | null
           created_at?: string | null
           currency?: string
@@ -199,6 +201,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          account_id?: string | null
           category_id?: string | null
           created_at?: string | null
           currency?: string
@@ -220,6 +223,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "debts_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "debts_household_id_fkey"
             columns: ["household_id"]
