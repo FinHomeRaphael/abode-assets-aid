@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { DEBT_TYPES, PAYMENT_FREQUENCIES } from '@/types/debt';
 import { EXPENSE_CATEGORIES, CATEGORY_EMOJIS } from '@/types/finance';
 import { Calendar } from '@/components/ui/calendar';
@@ -79,16 +80,17 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
       duration_years: parseFloat(durationYears),
       start_date: startDate.toISOString().split('T')[0],
       payment_frequency: paymentFrequency,
-      payment_day: parseInt(paymentDay) || 1,
+      payment_day: Math.max(1, Math.min(28, parseInt(paymentDay) || 1)),
       payment_amount: parseFloat(paymentAmount),
       category_id: categoryId || null,
       account_id: accountId || null,
       next_payment_date: nextPaymentDate.toISOString().split('T')[0],
     };
 
-    const { error } = await supabase.from('debts').insert(debtData);
+    const { error } = await supabase.from('debts').insert(debtData as any);
     setSaving(false);
-    if (error) { console.error('Insert debt error:', error); return; }
+    if (error) { console.error('Insert debt error:', error); toast.error('Erreur lors de l\'ajout'); return; }
+    toast.success('Dette ajoutée');
     reset();
     onAdded();
   };
