@@ -8,23 +8,21 @@ const Onboarding = () => {
   const { completeOnboarding } = useApp();
   const [step, setStep] = useState(1);
   const [householdName, setHouseholdName] = useState('');
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [invites, setInvites] = useState<string[]>([]);
   const [currency, setCurrency] = useState('EUR');
   const [currencySearch, setCurrencySearch] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleInvite = () => {
-    if (inviteEmail && !invites.includes(inviteEmail)) {
-      setInvites([...invites, inviteEmail]);
-      setInviteEmail('');
-      toast.success('Invitation envoyée !');
-    }
-  };
-
-  const handleFinish = () => {
+  const handleFinish = async () => {
     if (!householdName) { toast.error('Veuillez nommer votre foyer'); return; }
-    completeOnboarding(householdName, currency);
-    toast.success('Bienvenue sur FineHome ! 🎉');
+    setIsSubmitting(true);
+    try {
+      await completeOnboarding(householdName, currency);
+      toast.success('Bienvenue sur FineHome ! 🎉');
+    } catch (err) {
+      toast.error('Erreur lors de la configuration');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -34,7 +32,7 @@ const Onboarding = () => {
           <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground text-xl font-bold mx-auto mb-3">F</div>
           <h1 className="text-xl font-bold">Configuration du foyer</h1>
           <div className="flex justify-center gap-2 mt-4">
-            {[1, 2, 3].map(s => (
+            {[1, 2].map(s => (
               <div key={s} className={`h-1.5 w-12 rounded-full transition-colors ${s <= step ? 'bg-primary' : 'bg-border'}`} />
             ))}
           </div>
@@ -52,30 +50,6 @@ const Onboarding = () => {
             )}
             {step === 2 && (
               <motion.div key="s2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <h2 className="text-lg font-bold mb-1">Invitez des membres</h2>
-                <p className="text-sm text-muted-foreground mb-4">Ajoutez les membres de votre foyer</p>
-                <div className="flex gap-2">
-                  <input type="email" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="email@exemple.com" className="flex-1 px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
-                  <button onClick={handleInvite} className="px-5 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">Inviter</button>
-                </div>
-                {invites.length > 0 && (
-                  <div className="mt-3 space-y-2">
-                    {invites.map(e => (
-                      <div key={e} className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-muted text-sm">
-                        <span>{e}</span>
-                        <span className="text-muted-foreground text-xs">Invité ✓</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <div className="flex gap-2 mt-4">
-                  <button onClick={() => setStep(1)} className="flex-1 py-3 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Retour</button>
-                  <button onClick={() => setStep(3)} className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">Continuer</button>
-                </div>
-              </motion.div>
-            )}
-            {step === 3 && (
-              <motion.div key="s3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                 <h2 className="text-lg font-bold mb-1">Devise principale</h2>
                 <p className="text-sm text-muted-foreground mb-3">Quelle devise utilisez-vous ?</p>
                 <input
@@ -107,8 +81,14 @@ const Onboarding = () => {
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setStep(2)} className="flex-1 py-3 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Retour</button>
-                  <button onClick={handleFinish} className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">Commencer 🚀</button>
+                  <button onClick={() => setStep(1)} className="flex-1 py-3 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Retour</button>
+                  <button
+                    onClick={handleFinish}
+                    disabled={isSubmitting}
+                    className="flex-1 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  >
+                    {isSubmitting ? 'Création...' : 'Commencer 🚀'}
+                  </button>
                 </div>
               </motion.div>
             )}
