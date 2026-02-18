@@ -103,7 +103,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [householdId, setHouseholdId] = useState('');
   const [currentUser, setCurrentUser] = useState<Member | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
-  const [householdData, setHouseholdData] = useState<{ name: string; currency: string; createdAt: string }>({ name: '', currency: 'EUR', createdAt: '' });
+  const [householdData, setHouseholdData] = useState<{ name: string; currency: string; createdAt: string; plan: string }>({ name: '', currency: 'EUR', createdAt: '', plan: 'free' });
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [budgets, setBudgets] = useState<Budget[]>([]);
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
@@ -163,6 +163,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         name: houseData.name,
         currency: houseData.default_currency || 'EUR',
         createdAt: houseData.created_at || '',
+        plan: (houseData as any).plan || 'free',
       });
 
       setCurrentUser({
@@ -332,7 +333,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setSavingsDeposits([]);
         setCustomCategories([]);
         setAccounts([]);
-        setHouseholdData({ name: '', currency: 'EUR', createdAt: '' });
+        setHouseholdData({ name: '', currency: 'EUR', createdAt: '', plan: 'free' });
         setHouseholdId('');
         setLoading(false);
       }

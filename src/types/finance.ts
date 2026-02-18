@@ -94,6 +94,7 @@ export interface Household {
   name: string;
   currency: string;
   createdAt: string;
+  plan: string;
   members: Member[];
 }
 

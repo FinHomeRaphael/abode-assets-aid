@@ -304,24 +304,45 @@ export type Database = {
       }
       households: {
         Row: {
+          ai_advice_count_this_week: number
+          ai_advice_last_date: string | null
           created_at: string | null
           default_currency: string | null
           id: string
           name: string
+          plan: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_end_date: string | null
+          subscription_status: string | null
           updated_at: string | null
         }
         Insert: {
+          ai_advice_count_this_week?: number
+          ai_advice_last_date?: string | null
           created_at?: string | null
           default_currency?: string | null
           id?: string
           name: string
+          plan?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_end_date?: string | null
+          subscription_status?: string | null
           updated_at?: string | null
         }
         Update: {
+          ai_advice_count_this_week?: number
+          ai_advice_last_date?: string | null
           created_at?: string | null
           default_currency?: string | null
           id?: string
           name?: string
+          plan?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_end_date?: string | null
+          subscription_status?: string | null
           updated_at?: string | null
         }
         Relationships: []

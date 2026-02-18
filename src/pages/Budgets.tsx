@@ -8,9 +8,15 @@ import { EXPENSE_CATEGORIES, CATEGORY_EMOJIS } from '@/types/finance';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
+import PaywallModal from '@/components/PaywallModal';
+import PremiumModal from '@/components/PremiumModal';
+import { useSubscription, FREEMIUM_LIMITS } from '@/hooks/useSubscription';
 
 const Budgets = () => {
-  const { budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth, getTransactionsForMonth, getMemberById } = useApp();
+  const { budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth, getTransactionsForMonth, getMemberById, householdId } = useApp();
+  const { isPremium, canAdd, startCheckout } = useSubscription(householdId);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [showPremium, setShowPremium] = useState(false);
   const { formatAmount } = useCurrency();
   const [showCreate, setShowCreate] = useState(false);
   const [newCategory, setNewCategory] = useState('');
@@ -104,9 +110,18 @@ const Budgets = () => {
     <Layout>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Budgets</h1>
-          <button onClick={() => setShowCreate(true)} className="h-10 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm">
-            + Créer
+          <h1 className="text-xl font-bold">
+            Budgets
+            {!isPremium && <span className="text-xs text-muted-foreground font-normal ml-2">{budgets.length}/{FREEMIUM_LIMITS.budgets}</span>}
+          </h1>
+          <button onClick={() => {
+            if (!canAdd('budgets', budgets.length)) {
+              setShowPaywall(true);
+              return;
+            }
+            setShowCreate(true);
+          }} className="h-10 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm">
+            {!canAdd('budgets', budgets.length) ? '🔒 + Créer' : '+ Créer'}
           </button>
         </div>
 

@@ -10,6 +10,7 @@ export const demoHousehold: Household = {
   name: 'Famille Dupont',
   currency: 'EUR',
   createdAt: '2024-06-15',
+  plan: 'free',
   members: demoMembers,
 };
 
