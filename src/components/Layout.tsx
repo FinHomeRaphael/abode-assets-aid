@@ -17,6 +17,7 @@ const navItems = [
   { path: '/transactions', label: 'Transactions', emoji: '💳' },
   { path: '/budgets', label: 'Budgets', emoji: '🎯' },
   { path: '/savings', label: 'Enveloppes', emoji: '🐷' },
+  { path: '/debts', label: 'Dettes', emoji: '🏦' },
 ];
 
 const fabActions = [

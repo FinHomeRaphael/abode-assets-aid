@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatAmount as rawFormatAmount, formatDate, getBudgetStatus, getInitials } from '@/utils/format';
@@ -8,6 +8,8 @@ import Layout from '@/components/Layout';
 import ScanTicketModal from '@/components/ScanTicketModal';
 import MonthlyReportModal from '@/components/MonthlyReportModal';
 import ConvertedAmount from '@/components/ConvertedAmount';
+import { supabase } from '@/integrations/supabase/client';
+import { Debt, getDebtEmoji, calculateNextPaymentDate } from '@/types/debt';
 
 function generateAIAdvices(
   budgets: { category: string; emoji: string; spent: number; limit: number }[],
@@ -71,11 +73,31 @@ function generateAIAdvices(
 }
 
 const Dashboard = () => {
-  const { transactions, budgets, household, getMemberById, getBudgetSpent, getMonthSavings, getTotalSavings, savingsGoals, getGoalSaved, getTransactionsForMonth, currentUser } = useApp();
+  const { transactions, budgets, household, getMemberById, getBudgetSpent, getMonthSavings, getTotalSavings, savingsGoals, getGoalSaved, getTransactionsForMonth, currentUser, householdId } = useApp();
   const { formatAmount, currency } = useCurrency();
   const navigate = useNavigate();
   const [showScan, setShowScan] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [debts, setDebts] = useState<Debt[]>([]);
+
+  // Fetch debts for dashboard card
+  const fetchDebts = useCallback(async () => {
+    if (!householdId) return;
+    const { data } = await supabase.from('debts').select('*').eq('household_id', householdId);
+    if (data) {
+      setDebts(data.map((d: any) => ({
+        id: d.id, householdId: d.household_id, type: d.type, name: d.name, lender: d.lender,
+        initialAmount: Number(d.initial_amount), remainingAmount: Number(d.remaining_amount),
+        currency: d.currency, interestRate: Number(d.interest_rate), durationYears: Number(d.duration_years),
+        startDate: d.start_date, paymentFrequency: d.payment_frequency, paymentDay: d.payment_day,
+        paymentAmount: Number(d.payment_amount), categoryId: d.category_id,
+        nextPaymentDate: d.next_payment_date, lastPaymentDate: d.last_payment_date,
+        createdAt: d.created_at, updatedAt: d.updated_at,
+      })));
+    }
+  }, [householdId]);
+
+  useEffect(() => { fetchDebts(); }, [fetchDebts]);
 
   const now = new Date();
   const monthTx = useMemo(() => getTransactionsForMonth(now), [getTransactionsForMonth]);
@@ -295,6 +317,37 @@ const Dashboard = () => {
                 })}
               </div>
             </div>
+
+            {/* Debts */}
+            {debts.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="font-semibold text-base">Dettes</h2>
+                  <button onClick={() => navigate('/debts')} className="text-sm text-primary font-medium hover:underline">Voir</button>
+                </div>
+                <div className="card-elevated p-4 space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Total restant dû</span>
+                    <span className="font-mono-amount font-semibold text-destructive">{formatAmount(debts.reduce((s, d) => s + d.remainingAmount, 0))}</span>
+                  </div>
+                  {(() => {
+                    const nextPayments = debts
+                      .filter(d => d.remainingAmount > 0)
+                      .map(d => ({ date: d.nextPaymentDate || calculateNextPaymentDate(d), amount: d.paymentAmount, name: d.name, emoji: getDebtEmoji(d.type) }))
+                      .filter(p => p.date)
+                      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+                    const next = nextPayments[0];
+                    if (!next) return null;
+                    return (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">{next.emoji} {next.name}</span>
+                        <span className="font-mono-amount text-xs">{formatAmount(next.amount)} · {formatDate(next.date!)}</span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
           </motion.div>
         </div>
       </motion.div>
