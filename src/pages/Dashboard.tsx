@@ -88,16 +88,22 @@ const Dashboard = () => {
   const [showPremium, setShowPremium] = useState(false);
   const [debts, setDebts] = useState<Debt[]>([]);
 
-  // Onboarding: show if user has no accounts and no transactions (first time)
-  const onboardingKey = `finehome_onboarding_done_${currentUser?.id}`;
-  const [showOnboarding, setShowOnboarding] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return !localStorage.getItem(onboardingKey);
-  });
+  // Onboarding: only show on very first login (persisted per user)
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  React.useEffect(() => {
+    if (!currentUser?.id) return;
+    const key = `finehome_onboarding_done_${currentUser.id}`;
+    if (!localStorage.getItem(key)) {
+      setShowOnboarding(true);
+    }
+  }, [currentUser?.id]);
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
-    if (currentUser?.id) localStorage.setItem(onboardingKey, '1');
+    if (currentUser?.id) {
+      localStorage.setItem(`finehome_onboarding_done_${currentUser.id}`, '1');
+    }
   };
 
   const handleOpenPaywall = async () => {
