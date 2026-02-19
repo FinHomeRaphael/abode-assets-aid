@@ -143,7 +143,7 @@ const Savings = () => {
   return (
     <Layout>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="space-y-3">
           <h1 className="text-xl font-bold">Enveloppes</h1>
           <div className="flex gap-2">
             <button onClick={() => setShowAddDeposit(true)} className="h-10 px-4 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">+ Verser</button>

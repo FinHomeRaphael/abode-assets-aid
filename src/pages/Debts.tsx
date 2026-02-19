@@ -105,7 +105,7 @@ const Debts = () => {
     <Layout>
       <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
         {/* Header */}
-        <motion.div variants={fadeUp} className="flex items-center justify-between">
+        <motion.div variants={fadeUp} className="space-y-3">
           <h1 className="text-xl font-bold">💳 Dettes</h1>
           <button onClick={() => {
             if (!canAdd('debts', debts.length)) {
