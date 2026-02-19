@@ -61,9 +61,8 @@ const Layout = ({ children }: LayoutProps) => {
       <header className="hidden md:block sticky top-0 z-30 glass border-b border-border/50">
         <div className="max-w-5xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <button onClick={() => navigate('/')} className="text-lg font-bold flex items-center gap-2">
+            <button onClick={() => navigate('/')} className="flex items-center">
               <img src={logo} alt="FinHome" className="w-8 h-8 rounded-xl object-cover" />
-              <span>FinHome</span>
             </button>
             <nav className="flex items-center gap-1">
               {navItems.map(item => (
