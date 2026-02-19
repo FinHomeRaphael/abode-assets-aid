@@ -112,9 +112,10 @@ export interface AppState {
 }
 
 export const EXPENSE_CATEGORIES = [
-  'Alimentation', 'Logement', 'Transport', 'Santé', 'Loisirs',
-  'Shopping', 'Abonnements', 'Éducation', 'Voyages', 'Restaurants',
-  'Services', 'Impôts', 'Autre'
+  'Location', 'Commission', 'Restaurant + sorties', 'Assurance + RC Ménage',
+  'Internet-TV', 'Electricité', 'Cadeaux', 'Voyage',
+  'Frais annexe Maison', 'Amménagement', 'Banque', 'Epargne',
+  'Invitation', 'Noel', 'Mariage', 'Autre'
 ] as const;
 
 export const INCOME_CATEGORIES = [
@@ -200,18 +201,21 @@ export const CURRENCY_NAMES: Record<string, string> = {
 };
 
 export const CATEGORY_EMOJIS: Record<string, string> = {
-  Alimentation: '🛒',
-  Logement: '🏠',
-  Transport: '🚗',
-  Santé: '💊',
-  Loisirs: '🎬',
-  Shopping: '🛍️',
-  Abonnements: '📱',
-  Éducation: '📚',
-  Voyages: '✈️',
-  Restaurants: '🍽️',
-  Services: '🔧',
-  Impôts: '📄',
+  Location: '🏠',
+  Commission: '💼',
+  'Restaurant + sorties': '🍽️',
+  'Assurance + RC Ménage': '🛡️',
+  'Internet-TV': '📡',
+  Electricité: '⚡',
+  Cadeaux: '🎁',
+  Voyage: '✈️',
+  'Frais annexe Maison': '🏡',
+  Amménagement: '🪑',
+  Banque: '🏦',
+  Epargne: '🐖',
+  Invitation: '🎉',
+  Noel: '🎄',
+  Mariage: '💍',
   Salaire: '💰',
   Freelance: '💻',
   Investissement: '📈',
