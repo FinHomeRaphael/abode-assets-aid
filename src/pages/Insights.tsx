@@ -376,16 +376,22 @@ const Insights = () => {
                 </button>
               </div>
             </div>
-            <div className="h-48">
+            <div className={chartRange === 12 ? 'h-56 -mx-2' : 'h-48'}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} barSize={chartRange === 12 ? 20 : 32}>
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                <BarChart data={chartData} barSize={chartRange === 12 ? 16 : 32} margin={chartRange === 12 ? { left: 4, right: 4 } : undefined}>
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fontSize: chartRange === 12 ? 10 : 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                  />
                   <YAxis hide />
                   <Tooltip
                     formatter={(value: number) => [formatAmount(value), 'Dépenses']}
                     contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
                   />
-                  <Bar dataKey="total" radius={[6, 6, 0, 0]}>
+                  <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                     {chartData.map((entry, i) => (
                       <Cell key={i} fill={entry.total > chartAvg ? 'hsl(0 70% 55%)' : 'hsl(142 60% 50%)'} />
                     ))}
