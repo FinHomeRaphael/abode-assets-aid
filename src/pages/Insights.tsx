@@ -291,7 +291,7 @@ const Insights = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="space-y-3">
           <div>
             <h1 className="text-2xl font-bold text-foreground">💡 Insights</h1>
             <p className="text-sm text-muted-foreground">Comprendre mon argent</p>

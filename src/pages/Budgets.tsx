@@ -109,7 +109,7 @@ const Budgets = () => {
   return (
     <Layout>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="space-y-3">
           <h1 className="text-xl font-bold">
             Budgets
             {!isPremium && <span className="text-xs text-muted-foreground font-normal ml-2">{budgets.length}/{FREEMIUM_LIMITS.budgets}</span>}
