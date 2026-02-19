@@ -241,7 +241,7 @@ const Dashboard = () => {
         {/* Quick Actions */}
         <motion.div variants={fadeUp}>
           <h2 className="font-semibold text-base mb-3">Actions rapides</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <button onClick={() => navigate('/start-of-month')} className="card-elevated p-4 flex flex-col items-center gap-2 card-hover text-center">
               <div className="w-11 h-11 rounded-2xl bg-accent/10 flex items-center justify-center">
                 <span className="text-xl">🗓️</span>
@@ -288,9 +288,9 @@ const Dashboard = () => {
           </div>
         </motion.div>
 
-        <div className="grid lg:grid-cols-5 gap-6">
+        <div className="grid md:grid-cols-5 gap-6">
           {/* Transactions */}
-          <motion.div variants={fadeUp} className="lg:col-span-3">
+          <motion.div variants={fadeUp} className="md:col-span-3">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-base">Transactions récentes</h2>
               <button onClick={() => navigate('/transactions')} className="text-sm text-primary font-medium hover:underline">Voir tout</button>
@@ -312,7 +312,7 @@ const Dashboard = () => {
           </motion.div>
 
           {/* Right sidebar */}
-          <motion.div variants={fadeUp} className="lg:col-span-2 space-y-6">
+          <motion.div variants={fadeUp} className="md:col-span-2 space-y-6">
             {/* Budgets */}
             <div>
               <div className="flex items-center justify-between mb-3">

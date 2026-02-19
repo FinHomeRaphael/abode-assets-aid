@@ -95,9 +95,10 @@
     @apply border-border;
   }
 
-  body {
+  html, body {
     @apply bg-background text-foreground antialiased;
     font-family: var(--font-sans);
+    overflow-x: hidden;
   }
 }
 
