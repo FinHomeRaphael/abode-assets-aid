@@ -154,7 +154,7 @@ const Transactions = () => {
   return (
     <Layout>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="space-y-3">
           <h1 className="text-xl font-bold">Transactions</h1>
           <div className="flex gap-2">
             {selectMode ? (
