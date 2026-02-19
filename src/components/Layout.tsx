@@ -62,7 +62,7 @@ const Layout = ({ children }: LayoutProps) => {
         <div className="max-w-5xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <button onClick={() => navigate('/')} className="flex items-center">
-              <img src={logo} alt="FinHome" className="w-8 h-8 rounded-xl object-cover" />
+              <img src={logo} alt="FinHome" className="w-10 h-10 rounded-xl object-cover" />
             </button>
             <nav className="flex items-center gap-1">
               {navItems.map(item => (
