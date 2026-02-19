@@ -15,9 +15,9 @@ import PremiumModal from '@/components/PremiumModal';
 import { useSubscription, FREEMIUM_LIMITS } from '@/hooks/useSubscription';
 
 const Debts = () => {
-  const { householdId, transactions } = useApp();
+  const { householdId, transactions, currentUser } = useApp();
   const { formatAmount } = useCurrency();
-  const { isPremium, canAdd, startCheckout } = useSubscription(householdId);
+  const { isPremium, canAdd, presentOffering } = useSubscription(householdId, currentUser?.id);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -205,7 +205,7 @@ const Debts = () => {
       <AddDebtModal open={showAdd} onClose={() => setShowAdd(false)} onAdded={handleDebtAdded} />
       <DebtDetailModal debt={selectedDebt} onClose={() => setSelectedDebt(null)} onUpdated={handleDebtUpdated} />
       <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} onUpgrade={() => { setShowPaywall(false); setShowPremium(true); }} feature="dette(s)" limit={FREEMIUM_LIMITS.debts} icon="💳" />
-      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} onCheckout={startCheckout} />
+      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} presentOffering={presentOffering} />
     </Layout>
   );
 };

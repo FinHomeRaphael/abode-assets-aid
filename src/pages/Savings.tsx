@@ -17,10 +17,10 @@ const Savings = () => {
     savingsGoals, savingsDeposits, getGoalSaved, getGoalDeposits, getMonthSavings, getTotalSavings,
     addSavingsGoal, updateSavingsGoal, deleteSavingsGoal,
     addSavingsDeposit, deleteSavingsDeposit, household, getMemberById,
-    accounts, getActiveAccounts, getAccountBalance, addAccount, householdId,
+    accounts, getActiveAccounts, getAccountBalance, addAccount, householdId, currentUser,
   } = useApp();
   const { formatAmount } = useCurrency();
-  const { isPremium, canAdd, startCheckout } = useSubscription(householdId);
+  const { isPremium, canAdd, presentOffering } = useSubscription(householdId, currentUser?.id);
   const [showPaywall, setShowPaywall] = useState(false);
   const [showPremium, setShowPremium] = useState(false);
   const navigate = useNavigate();
@@ -490,7 +490,7 @@ const Savings = () => {
         </AnimatePresence>
       </motion.div>
       <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} onUpgrade={() => { setShowPaywall(false); setShowPremium(true); }} feature="objectif(s) d'enveloppe" limit={FREEMIUM_LIMITS.savingsGoals} icon="🎯" />
-      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} onCheckout={startCheckout} />
+      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} presentOffering={presentOffering} />
     </Layout>
   );
 };

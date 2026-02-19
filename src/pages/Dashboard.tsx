@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatAmount as rawFormatAmount, formatDate, getBudgetStatus, getInitials } from '@/utils/format';
 import { useSubscription } from '@/hooks/useSubscription';
-import { useRevenueCat } from '@/hooks/useRevenueCat';
 import PremiumModal from '@/components/PremiumModal';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useNavigate } from 'react-router-dom';
@@ -80,8 +79,7 @@ function generateAIAdvices(
 const Dashboard = () => {
   const { transactions, budgets, household, getMemberById, getBudgetSpent, getMonthSavings, getTotalSavings, savingsGoals, getGoalSaved, getTransactionsForMonth, currentUser, householdId, accounts } = useApp();
   const { formatAmount, currency } = useCurrency();
-  const { isPremium, startCheckout } = useSubscription(householdId);
-  const { isProUser, presentOffering, loading: rcLoading } = useRevenueCat(currentUser?.id);
+  const { isPremium, presentOffering } = useSubscription(householdId, currentUser?.id);
   const navigate = useNavigate();
   const paywallContainerRef = React.useRef<HTMLDivElement>(null);
   const [showRCPaywall, setShowRCPaywall] = useState(false);
@@ -249,8 +247,8 @@ const Dashboard = () => {
                 <span className="text-xl">⭐</span>
               </div>
               <div>
-                <p className="text-sm font-semibold">{isProUser ? 'Mon abonnement' : 'Passer Premium'}</p>
-                <p className="text-xs text-muted-foreground">{isProUser ? 'Gérer' : 'Débloquer tout'}</p>
+                <p className="text-sm font-semibold">{isPremium ? 'Mon abonnement' : 'Passer Premium'}</p>
+                <p className="text-xs text-muted-foreground">{isPremium ? 'Gérer' : 'Débloquer tout'}</p>
               </div>
             </button>
             <button onClick={() => navigate('/start-of-month')} className="card-elevated p-4 flex flex-col items-center gap-2 card-hover text-center">
@@ -409,7 +407,7 @@ const Dashboard = () => {
 
       <ScanTicketModal open={showScan} onClose={() => setShowScan(false)} />
       <MonthlyReportModal open={showReport} onClose={() => setShowReport(false)} />
-      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} onCheckout={startCheckout} />
+      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} presentOffering={presentOffering} />
       <OnboardingModal open={showOnboarding} onComplete={handleOnboardingComplete} />
 
       {/* RevenueCat Paywall Modal */}

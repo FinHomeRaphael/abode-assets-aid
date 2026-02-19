@@ -9,8 +9,8 @@ interface Props {
 }
 
 const MonthSelector = ({ currentMonth, onChange }: Props) => {
-  const { householdId } = useApp();
-  const { isMonthAllowed, isPremium, startCheckout } = useSubscription(householdId);
+  const { householdId, currentUser } = useApp();
+  const { isMonthAllowed, isPremium, presentOffering } = useSubscription(householdId, currentUser?.id);
   const [showPremium, setShowPremium] = useState(false);
   const label = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(currentMonth);
 
@@ -37,7 +37,7 @@ const MonthSelector = ({ currentMonth, onChange }: Props) => {
         <span className="text-sm font-medium capitalize min-w-[160px] text-center">{label}</span>
         <button onClick={next} className="w-8 h-8 rounded-md border border-border flex items-center justify-center hover:bg-secondary transition-colors text-sm">→</button>
       </div>
-      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} onCheckout={startCheckout} />
+      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} presentOffering={presentOffering} />
     </>
   );
 };
