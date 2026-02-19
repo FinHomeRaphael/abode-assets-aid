@@ -275,20 +275,13 @@ const Dashboard = () => {
                 <p className="text-xs text-muted-foreground">Ajouter via photo</p>
               </div>
             </button>
-            <button onClick={() => {
-              if (!isPremium) {
-                setShowPremium(true);
-                return;
-              }
-              setShowReport(true);
-            }} className="card-elevated p-4 flex flex-col items-center gap-2 card-hover text-center relative">
-              {!isPremium && <span className="absolute top-2 right-2 text-xs">🔒</span>}
+            <button onClick={() => setShowReport(true)} className="card-elevated p-4 flex flex-col items-center gap-2 card-hover text-center relative">
               <div className="w-11 h-11 rounded-2xl bg-success/10 flex items-center justify-center">
                 <span className="text-xl">📊</span>
               </div>
               <div>
                 <p className="text-sm font-semibold">Rapport mensuel</p>
-                <p className="text-xs text-muted-foreground">{isPremium ? 'Analyser le mois' : 'Premium'}</p>
+                <p className="text-xs text-muted-foreground">Analyser le mois</p>
               </div>
             </button>
           </div>

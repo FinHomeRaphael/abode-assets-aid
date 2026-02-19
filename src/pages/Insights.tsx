@@ -218,59 +218,7 @@ const Insights = () => {
     return recs.slice(0, 3);
   }, [hasData, monthBudgets, getBudgetSpent, currentMonth, expenses, totalExpenses, categorySpending, savingsGoals, getGoalSaved, savingsDeposits, formatAmount]);
 
-  // PAYWALL for free users
-  if (!isPremium) {
-    return (
-      <Layout>
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">💡 Insights</h1>
-              <p className="text-sm text-muted-foreground">Comprendre mon argent</p>
-            </div>
-          </div>
-
-          {/* Blurred preview */}
-          <div className="relative">
-            <div className="blur-sm pointer-events-none opacity-60 space-y-4">
-              <Card className="rounded-[20px]">
-                <CardContent className="p-5 space-y-3">
-                  <h2 className="text-base font-semibold">Faits marquants</h2>
-                  <div className="space-y-2.5">
-                    <div className="flex items-start gap-3 text-sm"><span className="text-lg">⚠️</span><span>Données masquées...</span></div>
-                    <div className="flex items-start gap-3 text-sm"><span className="text-lg">📈</span><span>Données masquées...</span></div>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="rounded-[20px]">
-                <CardContent className="p-5 h-48 bg-muted/30" />
-              </Card>
-            </div>
-
-            {/* Overlay */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center space-y-4 bg-card/95 backdrop-blur-sm rounded-2xl p-8 shadow-lg max-w-sm">
-                <div className="w-16 h-16 rounded-3xl bg-primary/10 flex items-center justify-center mx-auto">
-                  <span className="text-3xl">🔒</span>
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold">Fonctionnalité Premium</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Débloquez l'analyse comportementale de vos finances</p>
-                </div>
-                <button
-                  onClick={() => setShowPremium(true)}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold hover:opacity-90 transition-opacity shadow-sm"
-                >
-                  ⭐ Débloquer Insights
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} presentOffering={presentOffering} />
-      </Layout>
-    );
-  }
+  // Premium paywall removed - all users have access
 
   if (!hasData) {
     return (
