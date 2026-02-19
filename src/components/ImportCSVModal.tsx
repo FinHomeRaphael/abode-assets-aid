@@ -183,16 +183,35 @@ const ImportCSVModal = ({ open, onClose }: Props) => {
 
             {/* Step 1: Upload */}
             {step === 'upload' && !analyzing && (
-              <div>
+              <div className="space-y-4">
+                {/* Account selection FIRST */}
+                {activeAccounts.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">🏦 Compte débité *</label>
+                    <select
+                      value={accountId}
+                      onChange={e => setAccountId(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="">Sélectionner un compte...</option>
+                      {activeAccounts.map(a => (
+                        <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div
                   onDragOver={e => e.preventDefault()}
                   onDrop={handleDrop}
-                  className="border-2 border-dashed border-border rounded-xl p-10 text-center hover:border-primary/50 transition-colors cursor-pointer"
+                  className={`border-2 border-dashed border-border rounded-xl p-10 text-center hover:border-primary/50 transition-colors cursor-pointer ${activeAccounts.length > 0 && !accountId ? 'opacity-50 pointer-events-none' : ''}`}
                   onClick={() => fileRef.current?.click()}
                 >
                   <input ref={fileRef} type="file" accept=".csv,.tsv,.txt,.pdf,image/*" className="hidden" onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])} />
                   <div className="text-4xl mb-3">🤖</div>
-                  <p className="font-semibold mb-1">Glisse ton relevé bancaire ici</p>
+                  <p className="font-semibold mb-1">
+                    {activeAccounts.length > 0 && !accountId ? 'Choisis d\'abord un compte ci-dessus' : 'Glisse ton relevé bancaire ici'}
+                  </p>
                   <p className="text-sm text-muted-foreground mb-3">ou clique pour sélectionner un fichier</p>
                   <div className="flex flex-wrap justify-center gap-2 text-xs text-muted-foreground">
                     <span className="px-2 py-1 rounded-lg bg-muted">PDF</span>
@@ -201,23 +220,6 @@ const ImportCSVModal = ({ open, onClose }: Props) => {
                   </div>
                   <p className="text-xs text-muted-foreground mt-3">L'IA analyse ton fichier et extrait automatiquement les transactions</p>
                 </div>
-
-                {/* Account selection */}
-                {activeAccounts.length > 0 && (
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium mb-1">🏦 Compte de destination</label>
-                    <select
-                      value={accountId}
-                      onChange={e => setAccountId(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    >
-                      <option value="">Aucun (devise du foyer)</option>
-                      {activeAccounts.map(a => (
-                        <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
               </div>
             )}
 
