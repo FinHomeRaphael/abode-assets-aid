@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CURRENCIES, CURRENCY_NAMES, CURRENCY_SYMBOLS } from '@/types/finance';
+import logo from '@/assets/logo.png';
 
 const LoginPage = () => {
   const [isRegister, setIsRegister] = useState(false);
@@ -94,8 +95,8 @@ const LoginPage = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-3xl bg-primary flex items-center justify-center text-primary-foreground text-2xl font-bold mx-auto mb-4">F</div>
-          <h1 className="text-2xl font-bold mb-1">FineHome</h1>
+          <img src={logo} alt="FinHome" className="w-16 h-16 rounded-3xl mx-auto mb-4 object-cover" />
+          <h1 className="text-2xl font-bold mb-1">FinHome</h1>
           <p className="text-muted-foreground text-sm">Gérez les finances de votre foyer</p>
         </div>
 

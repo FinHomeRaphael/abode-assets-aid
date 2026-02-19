@@ -2,6 +2,7 @@ import React, { ReactNode, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
+import logo from '@/assets/logo.png';
 import { getInitials } from '@/utils/format';
 import AddTransactionModal from '@/components/AddTransactionModal';
 import ScanTicketModal from '@/components/ScanTicketModal';
@@ -61,8 +62,8 @@ const Layout = ({ children }: LayoutProps) => {
         <div className="container max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <button onClick={() => navigate('/')} className="text-lg font-bold flex items-center gap-2">
-              <span className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-primary-foreground text-sm">F</span>
-              <span>FineHome</span>
+              <img src={logo} alt="FinHome" className="w-8 h-8 rounded-xl object-cover" />
+              <span>FinHome</span>
             </button>
             <nav className="flex items-center gap-1">
               {navItems.map(item => (
