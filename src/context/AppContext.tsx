@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useMemo, useEf
 import { Transaction, Budget, Member, Household, SavingsGoal, SavingsDeposit, CustomCategory, Account, AccountType, DEFAULT_EXCHANGE_RATES } from '@/types/finance';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { formatLocalDate } from '@/utils/format';
 import { Session } from '@supabase/supabase-js';
 
 // ===== Helpers =====
@@ -16,8 +17,8 @@ function getExchangeRate(fromCurrency: string, toCurrency: string): number {
 function getMonthRange(date: Date): { start: string; end: string } {
   const y = date.getFullYear();
   const m = date.getMonth();
-  const start = new Date(y, m, 1).toISOString().split('T')[0];
-  const end = new Date(y, m + 1, 0).toISOString().split('T')[0];
+  const start = formatLocalDate(new Date(y, m, 1));
+  const end = formatLocalDate(new Date(y, m + 1, 0));
   return { start, end };
 }
 

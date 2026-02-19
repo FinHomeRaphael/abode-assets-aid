@@ -4,6 +4,7 @@ import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DEBT_TYPES, PAYMENT_FREQUENCIES } from '@/types/debt';
+import { formatLocalDate } from '@/utils/format';
 import { EXPENSE_CATEGORIES, CATEGORY_EMOJIS } from '@/types/finance';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -78,13 +79,13 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
       currency: household.currency,
       interest_rate: parseFloat(interestRate) || 0,
       duration_years: parseFloat(durationYears),
-      start_date: startDate.toISOString().split('T')[0],
+      start_date: formatLocalDate(startDate),
       payment_frequency: paymentFrequency,
       payment_day: Math.max(1, Math.min(28, parseInt(paymentDay) || 1)),
       payment_amount: parseFloat(paymentAmount),
       category_id: categoryId || null,
       account_id: accountId || null,
-      next_payment_date: nextPaymentDate.toISOString().split('T')[0],
+      next_payment_date: formatLocalDate(nextPaymentDate),
     };
 
     const { error } = await supabase.from('debts').insert(debtData as any);

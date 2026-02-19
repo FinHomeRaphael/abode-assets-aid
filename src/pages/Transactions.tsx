@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
-import { formatDate, formatDateLong } from '@/utils/format';
+import { formatDate, formatDateLong, formatLocalDate } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CURRENCIES, CATEGORY_EMOJIS } from '@/types/finance';
 import Layout from '@/components/Layout';
@@ -58,7 +58,7 @@ const Transactions = () => {
     setEditLabel(t.label);
     setEditAmount(String(t.amount));
     setEditCategory(t.category);
-    setEditDate(new Date(t.date));
+    setEditDate((() => { const [y,m,d] = t.date.split('-').map(Number); return new Date(y, m-1, d); })());
     setEditMemberId(t.memberId);
     setEditNotes(t.notes || '');
     setEditIsRecurring(!!t.isRecurring);
@@ -71,7 +71,7 @@ const Transactions = () => {
       label: editLabel.trim(),
       amount: parseFloat(editAmount),
       category: editCategory,
-      date: editDate.toISOString().split('T')[0],
+      date: formatLocalDate(editDate),
       memberId: editMemberId,
       notes: editNotes.trim() || undefined,
       emoji: CATEGORY_EMOJIS[editCategory] || editTarget.emoji,

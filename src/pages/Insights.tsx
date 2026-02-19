@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { formatLocalDate } from '@/utils/format';
 import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import { useApp } from '@/context/AppContext';
@@ -14,7 +15,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 function getMonthRange(date: Date) {
   const y = date.getFullYear();
   const m = date.getMonth();
-  return { start: new Date(y, m, 1).toISOString().split('T')[0], end: new Date(y, m + 1, 0).toISOString().split('T')[0] };
+  return { start: formatLocalDate(new Date(y, m, 1)), end: formatLocalDate(new Date(y, m + 1, 0)) };
 }
 
 function getMonthYearStr(date: Date) {

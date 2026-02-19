@@ -4,6 +4,7 @@ import { useApp } from '@/context/AppContext';
 import { CATEGORY_EMOJIS } from '@/types/finance';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { formatLocalDate } from '@/utils/format';
 
 interface Props {
   open: boolean;
@@ -104,7 +105,7 @@ const ImportCSVModal = ({ open, onClose }: Props) => {
         const amount = typeof t.amount === 'number' ? t.amount : parseFloat(t.amount) || 0;
         const type: 'income' | 'expense' = amount >= 0 ? 'income' : 'expense';
         return {
-          date: t.date || new Date().toISOString().split('T')[0],
+          date: t.date || formatLocalDate(new Date()),
           label: t.label || 'Sans libellé',
           amount: Math.abs(amount),
           type,

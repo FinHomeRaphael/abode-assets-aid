@@ -59,7 +59,10 @@ export function calculateNextPaymentDate(debt: Debt): string | undefined {
     else if (freq === 'semi-annual') next.setMonth(next.getMonth() + 6);
     else next.setFullYear(next.getFullYear() + 1);
   }
-  return next.toISOString().split('T')[0];
+  const ny = next.getFullYear();
+  const nm = String(next.getMonth() + 1).padStart(2, '0');
+  const nd = String(next.getDate()).padStart(2, '0');
+  return `${ny}-${nm}-${nd}`;
 }
 
 export function estimateEndDate(debt: Debt): string | undefined {
@@ -72,7 +75,8 @@ export function estimateEndDate(debt: Debt): string | undefined {
     const months = Math.ceil(periods * (12 / periodsPerYear));
     const end = new Date();
     end.setMonth(end.getMonth() + months);
-    return end.toISOString().split('T')[0];
+    const ey = end.getFullYear(); const em = String(end.getMonth() + 1).padStart(2, '0'); const ed = String(end.getDate()).padStart(2, '0');
+    return `${ey}-${em}-${ed}`;
   }
   
   // Use amortization formula to find remaining periods
@@ -85,5 +89,6 @@ export function estimateEndDate(debt: Debt): string | undefined {
   const months = Math.ceil(periods * (12 / periodsPerYear));
   const end = new Date();
   end.setMonth(end.getMonth() + months);
-  return end.toISOString().split('T')[0];
+  const ey2 = end.getFullYear(); const em2 = String(end.getMonth() + 1).padStart(2, '0'); const ed2 = String(end.getDate()).padStart(2, '0');
+  return `${ey2}-${em2}-${ed2}`;
 }
