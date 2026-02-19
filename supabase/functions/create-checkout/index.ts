@@ -7,6 +7,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const PRICE_ID_REGEX = /^price_[a-zA-Z0-9]{8,}$/;
+
+function validateRequest(body: unknown): { priceId: string } {
+  if (!body || typeof body !== "object") throw new Error("Invalid request body");
+  const { priceId } = body as Record<string, unknown>;
+
+  if (typeof priceId !== "string" || !PRICE_ID_REGEX.test(priceId)) {
+    throw new Error("Invalid priceId format");
+  }
+
+  return { priceId };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -40,8 +53,16 @@ serve(async (req) => {
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated");
 
-    const { priceId } = await req.json();
-    if (!priceId) throw new Error("Missing priceId");
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { priceId } = validateRequest(rawBody);
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", { apiVersion: "2025-08-27.basil" });
     
@@ -68,7 +89,8 @@ serve(async (req) => {
       status: 200,
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }), {
+    console.error("create-checkout error:", error);
+    return new Response(JSON.stringify({ error: "Erreur lors de la création du paiement" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
