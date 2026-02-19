@@ -194,9 +194,7 @@ const Dashboard = () => {
         {/* Balance card */}
         <motion.div variants={fadeUp} className="bg-primary rounded-3xl p-6 text-primary-foreground shadow-card-lg">
           <p className="text-primary-foreground/70 text-sm font-medium mb-1">Solde disponible (mois en cours)</p>
-          <p className={`text-3xl font-bold font-mono-amount tracking-tight ${balance >= 0 ? 'text-primary-foreground' : 'text-red-400'}`}>
-            {balance >= 0 ? '+' : ''}{formatAmount(balance)}
-          </p>
+          <p className="text-3xl font-bold font-mono-amount tracking-tight">{balance >= 0 ? '+' : ''}{formatAmount(balance)}</p>
           <div className="flex items-center gap-2 sm:gap-4 mt-4">
             <div className="flex-1 bg-primary-foreground/10 rounded-2xl p-2 sm:p-3 text-center">
               <p className="text-primary-foreground/60 text-[10px] sm:text-xs mb-0.5">Revenus</p>
