@@ -13,19 +13,25 @@ serve(async (req) => {
   }
 
   try {
-    // Verify webhook authorization (RevenueCat sends a shared secret)
+    // Verify webhook authorization
     const authHeader = req.headers.get("Authorization");
     const webhookSecret = Deno.env.get("REVENUECAT_WEBHOOK_SECRET");
 
-    if (webhookSecret && authHeader) {
-      const token = authHeader.replace("Bearer ", "");
-      if (token !== webhookSecret) {
-        console.error("Invalid webhook secret");
-        return new Response(JSON.stringify({ error: "Unauthorized" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+    if (!webhookSecret || !authHeader) {
+      console.error("Missing Authorization header or REVENUECAT_WEBHOOK_SECRET");
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    if (token !== webhookSecret) {
+      console.error("Authorization header mismatch");
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const body = await req.json();
