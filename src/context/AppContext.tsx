@@ -760,7 +760,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const getAccountBalance = useCallback((accountId: string) => {
     const account = accounts.find(a => a.id === accountId);
     if (!account) return 0;
-    const txs = transactions.filter(t => t.accountId === accountId && t.date >= account.startingDate);
+    const txs = transactions.filter(t => t.accountId === accountId);
     const income = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
     const expense = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
     return account.startingBalance + income - expense;
