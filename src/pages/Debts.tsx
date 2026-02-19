@@ -10,20 +10,16 @@ import AddDebtModal from '@/components/AddDebtModal';
 import DebtDetailModal from '@/components/DebtDetailModal';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import PaywallModal from '@/components/PaywallModal';
-import PremiumModal from '@/components/PremiumModal';
-import { useSubscription, FREEMIUM_LIMITS } from '@/hooks/useSubscription';
+import { useSubscription } from '@/hooks/useSubscription';
 
 const Debts = () => {
   const { householdId, transactions, currentUser } = useApp();
   const { formatAmount } = useCurrency();
-  const { isPremium, canAdd, presentOffering } = useSubscription(householdId, currentUser?.id);
+  const { canAdd } = useSubscription(householdId, currentUser?.id);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
-  const [showPaywall, setShowPaywall] = useState(false);
-  const [showPremium, setShowPremium] = useState(false);
 
   const fetchDebts = useCallback(async () => {
     if (!householdId) return;
@@ -107,14 +103,8 @@ const Debts = () => {
         {/* Header */}
         <motion.div variants={fadeUp} className="space-y-3">
           <h1 className="text-xl font-bold">💳 Dettes</h1>
-          <button onClick={() => {
-            if (!canAdd('debts', debts.length)) {
-              setShowPaywall(true);
-              return;
-            }
-            setShowAdd(true);
-          }} className="h-10 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm">
-            + Ajouter {!isPremium && <span className="text-xs opacity-70">({debts.length}/{FREEMIUM_LIMITS.debts})</span>}
+          <button onClick={() => setShowAdd(true)} className="h-10 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm">
+            + Ajouter
           </button>
         </motion.div>
 
@@ -204,8 +194,6 @@ const Debts = () => {
 
       <AddDebtModal open={showAdd} onClose={() => setShowAdd(false)} onAdded={handleDebtAdded} />
       <DebtDetailModal debt={selectedDebt} onClose={() => setSelectedDebt(null)} onUpdated={handleDebtUpdated} />
-      <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} onUpgrade={() => { setShowPaywall(false); setShowPremium(true); }} feature="dette(s)" limit={FREEMIUM_LIMITS.debts} icon="💳" />
-      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} presentOffering={presentOffering} />
     </Layout>
   );
 };

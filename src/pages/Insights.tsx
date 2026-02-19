@@ -4,8 +4,6 @@ import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import { useApp } from '@/context/AppContext';
 import { useCurrency } from '@/hooks/useCurrency';
-import { useSubscription } from '@/hooks/useSubscription';
-import PremiumModal from '@/components/PremiumModal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -31,8 +29,6 @@ const Insights = () => {
   const [chartRange, setChartRange] = useState<6 | 12>(12);
   const { transactions, budgets, savingsGoals, savingsDeposits, getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getGoalSaved, householdId, currentUser } = useApp();
   const { formatAmount } = useCurrency();
-  const { isPremium, presentOffering } = useSubscription(householdId, currentUser?.id);
-  const [showPremium, setShowPremium] = useState(false);
 
   // Current month transactions
   const monthTx = useMemo(() => getTransactionsForMonth(currentMonth), [currentMonth, getTransactionsForMonth]);
@@ -403,7 +399,7 @@ const Insights = () => {
           </Card>
         )}
       </div>
-      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} presentOffering={presentOffering} />
+      
     </Layout>
   );
 };
