@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Purchases } from '@revenuecat/purchases-js';
 
 // Replace with your actual RevenueCat Web Billing API key
-const REVENUECAT_API_KEY = 'YOUR_REVENUECAT_API_KEY';
+const REVENUECAT_API_KEY = import.meta.env.VITE_REVENUECAT_API_KEY || '';
 
 const ENTITLEMENT_ID = 'pro_access';
 
