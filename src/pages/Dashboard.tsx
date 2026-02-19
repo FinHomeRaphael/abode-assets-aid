@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatAmount as rawFormatAmount, formatDate, getBudgetStatus, getInitials } from '@/utils/format';
 import { useSubscription } from '@/hooks/useSubscription';
+import { useRevenueCat } from '@/hooks/useRevenueCat';
 import PremiumModal from '@/components/PremiumModal';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useNavigate } from 'react-router-dom';
@@ -80,7 +81,10 @@ const Dashboard = () => {
   const { transactions, budgets, household, getMemberById, getBudgetSpent, getMonthSavings, getTotalSavings, savingsGoals, getGoalSaved, getTransactionsForMonth, currentUser, householdId, accounts } = useApp();
   const { formatAmount, currency } = useCurrency();
   const { isPremium, startCheckout } = useSubscription(householdId);
+  const { isProUser, presentOffering, loading: rcLoading } = useRevenueCat(currentUser?.id);
   const navigate = useNavigate();
+  const paywallContainerRef = React.useRef<HTMLDivElement>(null);
+  const [showRCPaywall, setShowRCPaywall] = useState(false);
   const [showScan, setShowScan] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showPremium, setShowPremium] = useState(false);
@@ -96,6 +100,22 @@ const Dashboard = () => {
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
     if (currentUser?.id) localStorage.setItem(onboardingKey, '1');
+  };
+
+  const handleOpenPaywall = async () => {
+    setShowRCPaywall(true);
+    // Wait for container to mount
+    setTimeout(async () => {
+      if (paywallContainerRef.current) {
+        try {
+          await presentOffering(paywallContainerRef.current);
+        } catch (err) {
+          console.error('Paywall error:', err);
+        } finally {
+          setShowRCPaywall(false);
+        }
+      }
+    }, 100);
   };
 
   // Fetch debts for dashboard card
@@ -223,7 +243,16 @@ const Dashboard = () => {
         {/* Quick Actions */}
         <motion.div variants={fadeUp}>
           <h2 className="font-semibold text-base mb-3">Actions rapides</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <button onClick={handleOpenPaywall} className="card-elevated p-4 flex flex-col items-center gap-2 card-hover text-center">
+              <div className="w-11 h-11 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <span className="text-xl">⭐</span>
+              </div>
+              <div>
+                <p className="text-sm font-semibold">{isProUser ? 'Mon abonnement' : 'Passer Premium'}</p>
+                <p className="text-xs text-muted-foreground">{isProUser ? 'Gérer' : 'Débloquer tout'}</p>
+              </div>
+            </button>
             <button onClick={() => navigate('/start-of-month')} className="card-elevated p-4 flex flex-col items-center gap-2 card-hover text-center">
               <div className="w-11 h-11 rounded-2xl bg-accent/10 flex items-center justify-center">
                 <span className="text-xl">🗓️</span>
@@ -382,6 +411,34 @@ const Dashboard = () => {
       <MonthlyReportModal open={showReport} onClose={() => setShowReport(false)} />
       <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} onCheckout={startCheckout} />
       <OnboardingModal open={showOnboarding} onComplete={handleOnboardingComplete} />
+
+      {/* RevenueCat Paywall Modal */}
+      <AnimatePresence>
+        {showRCPaywall && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          >
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setShowRCPaywall(false)} />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-lg card-elevated p-6 max-h-[80vh] overflow-y-auto"
+            >
+              <button
+                onClick={() => setShowRCPaywall(false)}
+                className="absolute top-3 right-3 text-muted-foreground hover:text-foreground text-lg"
+              >
+                ✕
+              </button>
+              <div ref={paywallContainerRef} className="min-h-[200px]" />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Layout>
   );
 };
