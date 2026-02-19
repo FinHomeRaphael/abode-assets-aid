@@ -7,6 +7,7 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CURRENCIES, CATEGORY_EMOJIS } fr
 import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import AddTransactionModal from '@/components/AddTransactionModal';
+import ImportCSVModal from '@/components/ImportCSVModal';
 import ConvertedAmount from '@/components/ConvertedAmount';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -23,6 +24,7 @@ const Transactions = () => {
   const [filterCategory, setFilterCategory] = useState('all');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Edit modal state
   const [editTarget, setEditTarget] = useState<typeof transactions[0] | null>(null);
@@ -124,9 +126,14 @@ const Transactions = () => {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold">Transactions</h1>
-          <button onClick={() => setShowAddModal(true)} className="h-10 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm">
-            + Créer
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => setShowImportModal(true)} className="h-10 px-4 rounded-xl border border-border bg-card text-sm font-medium hover:bg-muted transition-colors">
+              📥 Import
+            </button>
+            <button onClick={() => setShowAddModal(true)} className="h-10 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm">
+              + Créer
+            </button>
+          </div>
         </div>
         <div className="flex justify-center">
           <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} />
@@ -219,6 +226,7 @@ const Transactions = () => {
       </motion.div>
 
       <AddTransactionModal open={showAddModal} onClose={() => setShowAddModal(false)} />
+      <ImportCSVModal open={showImportModal} onClose={() => setShowImportModal(false)} />
 
       {/* Edit Transaction Modal */}
       <AnimatePresence>
