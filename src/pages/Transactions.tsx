@@ -16,7 +16,7 @@ import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 const Transactions = () => {
-  const { transactions, getMemberById, household, getTransactionsForMonth, deleteTransaction, updateTransaction, softDeleteRecurringTransaction } = useApp();
+  const { transactions, getMemberById, household, getTransactionsForMonth, deleteTransaction, updateTransaction, softDeleteRecurringTransaction, accounts } = useApp();
   const { formatAmount, currency } = useCurrency();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
@@ -37,6 +37,7 @@ const Transactions = () => {
   const [editMemberId, setEditMemberId] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [editIsRecurring, setEditIsRecurring] = useState(false);
+  const [editAccountId, setEditAccountId] = useState('');
 
   // Delete recurring modal
   const [deleteRecTarget, setDeleteRecTarget] = useState<typeof transactions[0] | null>(null);
@@ -64,6 +65,7 @@ const Transactions = () => {
     setEditMemberId(t.memberId);
     setEditNotes(t.notes || '');
     setEditIsRecurring(!!t.isRecurring);
+    setEditAccountId(t.accountId || '');
   };
 
   const handleSaveEdit = () => {
@@ -79,6 +81,7 @@ const Transactions = () => {
       emoji: CATEGORY_EMOJIS[editCategory] || editTarget.emoji,
       isRecurring: editIsRecurring,
       recurrenceDay: editIsRecurring ? day : undefined,
+      accountId: editAccountId || undefined,
     });
     toast.success('Transaction modifiée ✓');
     setEditTarget(null);
@@ -365,6 +368,19 @@ const Transactions = () => {
                       ))}
                     </div>
                   </div>
+
+                  {/* Account selector */}
+                  {accounts.filter(a => !a.isArchived).length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">Compte</label>
+                      <select value={editAccountId} onChange={e => setEditAccountId(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                        <option value="">Aucun compte</option>
+                        {accounts.filter(a => !a.isArchived).map(a => (
+                          <option key={a.id} value={a.id}>{a.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   {/* Recurring toggle */}
                   <div className="flex items-center justify-between py-2 px-3 rounded-xl border border-border bg-secondary/30">
