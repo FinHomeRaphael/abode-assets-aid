@@ -93,15 +93,25 @@ const Insights = () => {
     return Object.values(groups).filter(g => g.count >= 5).sort((a, b) => b.total - a.total);
   }, [expenses]);
 
-  // Chart data (6 or 12 months)
+  // Chart data (6 rolling months or full calendar year)
   const chartData = useMemo(() => {
     const data: { month: string; total: number; date: Date }[] = [];
-    for (let i = chartRange - 1; i >= 0; i--) {
-      const d = new Date(currentMonth);
-      d.setMonth(d.getMonth() - i);
-      const tx = getTransactionsForMonth(d).filter(t => t.type === 'expense');
-      const total = tx.reduce((s, t) => s + t.convertedAmount, 0);
-      data.push({ month: monthLabel(d), total, date: d });
+    if (chartRange === 12) {
+      const year = currentMonth.getFullYear();
+      for (let m = 0; m < 12; m++) {
+        const d = new Date(year, m, 1);
+        const tx = getTransactionsForMonth(d).filter(t => t.type === 'expense');
+        const total = tx.reduce((s, t) => s + t.convertedAmount, 0);
+        data.push({ month: monthLabel(d), total, date: d });
+      }
+    } else {
+      for (let i = chartRange - 1; i >= 0; i--) {
+        const d = new Date(currentMonth);
+        d.setMonth(d.getMonth() - i);
+        const tx = getTransactionsForMonth(d).filter(t => t.type === 'expense');
+        const total = tx.reduce((s, t) => s + t.convertedAmount, 0);
+        data.push({ month: monthLabel(d), total, date: d });
+      }
     }
     return data;
   }, [currentMonth, chartRange, getTransactionsForMonth]);
@@ -348,7 +358,9 @@ const Insights = () => {
         <Card className="rounded-[20px]">
           <CardContent className="p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-foreground">Évolution des dépenses</h2>
+              <h2 className="text-base font-semibold text-foreground">
+                {chartRange === 12 ? `Dépenses ${currentMonth.getFullYear()}` : 'Évolution des dépenses'}
+              </h2>
               <div className="flex items-center bg-muted rounded-xl p-0.5">
                 <button
                   onClick={() => setChartRange(6)}
