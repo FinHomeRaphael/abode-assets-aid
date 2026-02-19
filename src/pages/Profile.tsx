@@ -18,15 +18,15 @@ const Profile = () => {
   const { formatAmount, currency } = useCurrency();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { isPremium, subscriptionEnd, startCheckout, openPortal, verifyWithStripe } = useSubscription(householdId);
+  const { isPremium, subscriptionEnd, presentOffering, verifyWithRevenueCat } = useSubscription(householdId, currentUser?.id);
 
   // Check for checkout success
   useEffect(() => {
     if (searchParams.get('checkout') === 'success') {
       toast.success('🎉 Bienvenue en Premium !');
-      verifyWithStripe();
+      verifyWithRevenueCat();
     }
-  }, [searchParams, verifyWithStripe]);
+  }, [searchParams, verifyWithRevenueCat]);
 
   const handleLogout = async () => {
     await logout();
@@ -151,7 +151,7 @@ const Profile = () => {
                 </p>
               )}
               <button
-                onClick={openPortal}
+                onClick={() => setShowPremiumModal(true)}
                 className="w-full py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors"
               >
                 Gérer mon abonnement
@@ -425,7 +425,7 @@ const Profile = () => {
       <InviteMemberModal open={showInviteModal} onClose={() => setShowInviteModal(false)} onInviteSent={fetchInvitations} />
       
       {/* Premium Modal */}
-      <PremiumModal open={showPremiumModal} onClose={() => setShowPremiumModal(false)} onCheckout={startCheckout} />
+      <PremiumModal open={showPremiumModal} onClose={() => setShowPremiumModal(false)} presentOffering={presentOffering} />
     </Layout>
   );
 };

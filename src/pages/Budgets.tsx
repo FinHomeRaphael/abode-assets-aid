@@ -13,8 +13,8 @@ import PremiumModal from '@/components/PremiumModal';
 import { useSubscription, FREEMIUM_LIMITS } from '@/hooks/useSubscription';
 
 const Budgets = () => {
-  const { budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth, getTransactionsForMonth, getMemberById, householdId } = useApp();
-  const { isPremium, canAdd, startCheckout } = useSubscription(householdId);
+  const { budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth, getTransactionsForMonth, getMemberById, householdId, currentUser } = useApp();
+  const { isPremium, canAdd, presentOffering } = useSubscription(householdId, currentUser?.id);
   const [showPaywall, setShowPaywall] = useState(false);
   const [showPremium, setShowPremium] = useState(false);
   const { formatAmount } = useCurrency();
@@ -358,7 +358,7 @@ const Budgets = () => {
         </AnimatePresence>
       </motion.div>
       <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} onUpgrade={() => { setShowPaywall(false); setShowPremium(true); }} feature="budget(s)" limit={FREEMIUM_LIMITS.budgets} icon="📊" />
-      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} onCheckout={startCheckout} />
+      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} presentOffering={presentOffering} />
     </Layout>
   );
 };

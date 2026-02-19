@@ -23,7 +23,7 @@ const FinanceChat = () => {
     getBudgetsForMonth, householdId,
   } = useApp();
   const { formatAmount } = useCurrency();
-  const { isPremium, startCheckout } = useSubscription(householdId);
+  const { isPremium, presentOffering } = useSubscription(householdId, currentUser?.id);
   const [showPaywall, setShowPaywall] = useState(false);
   const [showPremium, setShowPremium] = useState(false);
 
@@ -397,7 +397,7 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
       </div>
     </Layout>
       <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} onUpgrade={() => { setShowPaywall(false); setShowPremium(true); }} feature="conseil(s) IA par semaine" limit={FREEMIUM_LIMITS.aiAdvicePerWeek} icon="✨" />
-      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} onCheckout={startCheckout} />
+      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} presentOffering={presentOffering} />
     </>
   );
 };

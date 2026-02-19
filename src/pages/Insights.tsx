@@ -27,9 +27,9 @@ function monthLabel(date: Date) {
 
 const Insights = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const { transactions, budgets, savingsGoals, savingsDeposits, getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getGoalSaved, householdId } = useApp();
+  const { transactions, budgets, savingsGoals, savingsDeposits, getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getGoalSaved, householdId, currentUser } = useApp();
   const { formatAmount } = useCurrency();
-  const { isPremium, startCheckout } = useSubscription(householdId);
+  const { isPremium, presentOffering } = useSubscription(householdId, currentUser?.id);
   const [showPremium, setShowPremium] = useState(false);
 
   // Current month transactions
@@ -255,7 +255,7 @@ const Insights = () => {
             </div>
           </div>
         </div>
-        <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} onCheckout={startCheckout} />
+        <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} presentOffering={presentOffering} />
       </Layout>
     );
   }
@@ -392,7 +392,7 @@ const Insights = () => {
           </Card>
         )}
       </div>
-      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} onCheckout={startCheckout} />
+      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} presentOffering={presentOffering} />
     </Layout>
   );
 };

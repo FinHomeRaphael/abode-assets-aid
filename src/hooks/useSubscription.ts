@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { Purchases } from '@revenuecat/purchases-js';
 
-export const STRIPE_PRICES = {
-  monthly: 'price_1T2AGZEpsOFFNo5eZLdz8ZYn',
-  yearly: 'price_1T2AHAEpsOFFNo5eT1ilAEAS',
-};
+const REVENUECAT_API_KEY = import.meta.env.VITE_REVENUECAT_API_KEY || '';
+const ENTITLEMENT_ID = 'pro_access';
 
 export const FREEMIUM_LIMITS = {
   members: 2,
@@ -24,14 +23,28 @@ interface SubscriptionState {
   loading: boolean;
 }
 
-export function useSubscription(householdId: string) {
+export function useSubscription(householdId: string, userId?: string) {
   const [state, setState] = useState<SubscriptionState>({
     plan: 'free',
     subscribed: false,
     subscriptionEnd: null,
     loading: true,
   });
+  const purchasesRef = useRef<Purchases | null>(null);
+  const paywallContainerRef = useRef<HTMLDivElement | null>(null);
 
+  // Initialize RevenueCat SDK
+  useEffect(() => {
+    if (!userId || !REVENUECAT_API_KEY) return;
+    try {
+      const purchases = Purchases.configure(REVENUECAT_API_KEY, userId);
+      purchasesRef.current = purchases;
+    } catch (err: any) {
+      console.error('RevenueCat configure error:', err);
+    }
+  }, [userId]);
+
+  // Check subscription from local DB (set by webhook)
   const checkSubscription = useCallback(async () => {
     if (!householdId) {
       setState(prev => ({ ...prev, loading: false }));
@@ -39,7 +52,6 @@ export function useSubscription(householdId: string) {
     }
 
     try {
-      // First check local DB
       const { data: household } = await supabase
         .from('households')
         .select('plan, subscription_end_date, subscription_status')
@@ -62,26 +74,23 @@ export function useSubscription(householdId: string) {
     }
   }, [householdId]);
 
-  // Also verify with Stripe periodically
-  const verifyWithStripe = useCallback(async () => {
+  // Verify with RevenueCat SDK (checks entitlements directly)
+  const verifyWithRevenueCat = useCallback(async () => {
+    if (!purchasesRef.current) return;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) return;
-
-      const { data, error } = await supabase.functions.invoke('check-subscription', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-
-      if (!error && data && !data.error) {
+      const customerInfo = await purchasesRef.current.getCustomerInfo();
+      const isActive = customerInfo.entitlements.active[ENTITLEMENT_ID] !== undefined;
+      
+      if (isActive) {
         setState(prev => ({
           ...prev,
-          plan: data.subscribed ? 'premium' : 'free',
-          subscribed: data.subscribed,
-          subscriptionEnd: data.subscription_end,
+          plan: 'premium',
+          subscribed: true,
         }));
       }
-    } catch {
-      // Silent fail, local DB state is our fallback
+    } catch (err) {
+      console.error('RevenueCat verification error:', err);
+      // Silent fail, DB state is our fallback
     }
   }, []);
 
@@ -89,20 +98,19 @@ export function useSubscription(householdId: string) {
     checkSubscription();
   }, [checkSubscription]);
 
-  // Verify with Stripe on mount and every 60 seconds
+  // Verify with RevenueCat periodically
   useEffect(() => {
-    if (!householdId) return;
-    verifyWithStripe();
-    const interval = setInterval(verifyWithStripe, 60000);
+    if (!householdId || !userId) return;
+    verifyWithRevenueCat();
+    const interval = setInterval(verifyWithRevenueCat, 60000);
     return () => clearInterval(interval);
-  }, [householdId, verifyWithStripe]);
+  }, [householdId, userId, verifyWithRevenueCat]);
 
   const isPremium = state.plan === 'premium';
 
   const canAdd = useCallback((resource: keyof typeof FREEMIUM_LIMITS, currentCount: number) => {
     if (isPremium) return true;
-    const limit = FREEMIUM_LIMITS[resource];
-    return currentCount < limit;
+    return currentCount < FREEMIUM_LIMITS[resource];
   }, [isPremium]);
 
   const getLimit = useCallback((resource: keyof typeof FREEMIUM_LIMITS) => {
@@ -110,42 +118,37 @@ export function useSubscription(householdId: string) {
     return FREEMIUM_LIMITS[resource];
   }, [isPremium]);
 
-  const startCheckout = useCallback(async (plan: 'monthly' | 'yearly') => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+  // Present RevenueCat paywall
+  const presentOffering = useCallback(async (containerElement: HTMLElement) => {
+    if (!purchasesRef.current) {
+      console.error('RevenueCat not initialized');
+      return null;
+    }
 
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId: STRIPE_PRICES[plan] },
-        headers: { Authorization: `Bearer ${session.access_token}` },
+    try {
+      const result = await purchasesRef.current.presentPaywall({
+        htmlTarget: containerElement,
       });
 
-      if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
-    } catch (err) {
-      console.error('Checkout error:', err);
+      // After purchase flow, re-check entitlements and DB
+      await verifyWithRevenueCat();
+      await checkSubscription();
+
+      return result;
+    } catch (err: any) {
+      console.error('RevenueCat paywall error:', err);
       throw err;
     }
-  }, []);
+  }, [verifyWithRevenueCat, checkSubscription]);
 
-  const openPortal = useCallback(async () => {
+  // Get offerings manually
+  const getOfferings = useCallback(async () => {
+    if (!purchasesRef.current) return null;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
-
-      const { data, error } = await supabase.functions.invoke('customer-portal', {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-
-      if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
-    } catch (err) {
-      console.error('Portal error:', err);
-      throw err;
+      return await purchasesRef.current.getOfferings();
+    } catch (err: any) {
+      console.error('RevenueCat offerings error:', err);
+      return null;
     }
   }, []);
 
@@ -161,10 +164,11 @@ export function useSubscription(householdId: string) {
     isPremium,
     canAdd,
     getLimit,
-    startCheckout,
-    openPortal,
+    presentOffering,
+    getOfferings,
     isMonthAllowed,
     checkSubscription,
-    verifyWithStripe,
+    verifyWithRevenueCat,
+    purchases: purchasesRef.current,
   };
 }
