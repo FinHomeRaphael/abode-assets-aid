@@ -12,7 +12,7 @@ const ConvertedAmount = ({ transaction: t, className = '' }: Props) => {
   const needsConversion = t.currency !== t.baseCurrency;
 
   return (
-    <div className={`text-right ${className}`}>
+    <div className={`text-right whitespace-nowrap ${className}`}>
       <span className={`font-mono-amount text-sm font-bold block ${t.type === 'income' ? 'text-success' : ''}`}>
         {sign}{formatAmount(t.convertedAmount, t.baseCurrency)}
       </span>
