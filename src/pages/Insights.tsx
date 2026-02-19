@@ -357,10 +357,37 @@ const Insights = () => {
         {/* BLOC 3: Evolution chart */}
         <Card className="rounded-[20px]">
           <CardContent className="p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-foreground">
-                {chartRange === 12 ? `Dépenses ${currentMonth.getFullYear()}` : 'Évolution des dépenses'}
-              </h2>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-semibold text-foreground">
+                  {chartRange === 12 ? `Dépenses` : 'Évolution des dépenses'}
+                </h2>
+                {chartRange === 12 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        const d = new Date(currentMonth);
+                        d.setFullYear(d.getFullYear() - 1);
+                        setCurrentMonth(d);
+                      }}
+                      className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-sm"
+                    >
+                      ‹
+                    </button>
+                    <span className="text-sm font-semibold min-w-[3ch] text-center">{currentMonth.getFullYear()}</span>
+                    <button
+                      onClick={() => {
+                        const d = new Date(currentMonth);
+                        d.setFullYear(d.getFullYear() + 1);
+                        setCurrentMonth(d);
+                      }}
+                      className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-sm"
+                    >
+                      ›
+                    </button>
+                  </div>
+                )}
+              </div>
               <div className="flex items-center bg-muted rounded-xl p-0.5">
                 <button
                   onClick={() => setChartRange(6)}
