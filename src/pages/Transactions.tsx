@@ -25,6 +25,8 @@ const Transactions = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Edit modal state
   const [editTarget, setEditTarget] = useState<typeof transactions[0] | null>(null);
@@ -121,18 +123,62 @@ const Transactions = () => {
     return new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(date);
   };
 
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(t => t.id)));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    selectedIds.forEach(id => deleteTransaction(id));
+    toast.success(`${selectedIds.size} transaction(s) supprimée(s)`);
+    setSelectedIds(new Set());
+    setSelectMode(false);
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
   return (
     <Layout>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold">Transactions</h1>
           <div className="flex gap-2">
-            <button onClick={() => setShowImportModal(true)} className="h-10 px-4 rounded-xl border border-border bg-card text-sm font-medium hover:bg-muted transition-colors">
-              📥 Import
-            </button>
-            <button onClick={() => setShowAddModal(true)} className="h-10 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm">
-              + Créer
-            </button>
+            {selectMode ? (
+              <>
+                <button onClick={exitSelectMode} className="h-10 px-4 rounded-xl border border-border bg-card text-sm font-medium hover:bg-muted transition-colors">
+                  Annuler
+                </button>
+                <button onClick={toggleSelectAll} className="h-10 px-4 rounded-xl border border-border bg-card text-sm font-medium hover:bg-muted transition-colors">
+                  {selectedIds.size === filtered.length ? 'Tout désélect.' : 'Tout sélect.'}
+                </button>
+              </>
+            ) : (
+              <>
+                <button onClick={() => setSelectMode(true)} className="h-10 px-3 rounded-xl border border-border bg-card text-sm font-medium hover:bg-muted transition-colors">
+                  ☑️
+                </button>
+                <button onClick={() => setShowImportModal(true)} className="h-10 px-4 rounded-xl border border-border bg-card text-sm font-medium hover:bg-muted transition-colors">
+                  📥 Import
+                </button>
+                <button onClick={() => setShowAddModal(true)} className="h-10 px-5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm">
+                  + Créer
+                </button>
+              </>
+            )}
           </div>
         </div>
         <div className="flex justify-center">
@@ -187,12 +233,18 @@ const Transactions = () => {
               const isRecTemplate = t.isRecurring && !t.recurringSourceId;
               const isRecGenerated = !!t.recurringSourceId;
               const isStopped = isRecTemplate && !!t.recurringEndMonth;
+              const isSelected = selectedIds.has(t.id);
               return (
                 <div
                   key={t.id}
-                  className="flex items-center gap-3 px-3 sm:px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer"
-                  onClick={() => openEditModal(t)}
+                  className={`flex items-center gap-3 px-3 sm:px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`}
+                  onClick={() => selectMode ? toggleSelect(t.id) : openEditModal(t)}
                 >
+                  {selectMode && (
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/40'}`}>
+                      {isSelected && <span className="text-primary-foreground text-xs font-bold">✓</span>}
+                    </div>
+                  )}
                   <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-muted flex items-center justify-center text-base sm:text-lg shrink-0">{t.emoji}</div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold truncate flex items-center gap-1">
@@ -221,6 +273,24 @@ const Transactions = () => {
           )}
         </div>
         <p className="text-xs text-muted-foreground text-center">{filtered.length} transaction(s)</p>
+
+        {/* Bulk delete bar */}
+        <AnimatePresence>
+          {selectMode && selectedIds.size > 0 && (
+            <motion.div
+              initial={{ y: 80, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 80, opacity: 0 }}
+              className="fixed bottom-6 left-4 right-4 sm:left-auto sm:right-auto sm:bottom-8 sm:w-full sm:max-w-md sm:mx-auto z-40 flex items-center justify-between bg-destructive text-destructive-foreground rounded-2xl px-5 py-3.5 shadow-lg"
+              style={{ left: '50%', transform: 'translateX(-50%)' }}
+            >
+              <span className="text-sm font-semibold">{selectedIds.size} sélectionnée(s)</span>
+              <button onClick={handleBulkDelete} className="px-4 py-2 rounded-xl bg-destructive-foreground/20 text-sm font-bold hover:bg-destructive-foreground/30 transition-colors">
+                🗑️ Supprimer
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
 
       <AddTransactionModal open={showAddModal} onClose={() => setShowAddModal(false)} />
