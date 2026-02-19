@@ -418,6 +418,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (updates.date !== undefined) dbUpdates.date = updates.date;
     if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
     if (updates.emoji !== undefined) dbUpdates.emoji = updates.emoji;
+    if ('accountId' in updates) dbUpdates.account_id = updates.accountId || null;
 
     if (Object.keys(dbUpdates).length > 0) {
       supabase.from('transactions').update(dbUpdates).eq('id', id).then(({ error }) => {
