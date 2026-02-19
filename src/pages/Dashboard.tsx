@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatAmount as rawFormatAmount, formatDate, getBudgetStatus, getInitials } from '@/utils/format';
 import { useSubscription } from '@/hooks/useSubscription';
-import PremiumModal from '@/components/PremiumModal';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -79,13 +78,9 @@ function generateAIAdvices(
 const Dashboard = () => {
   const { transactions, budgets, household, getMemberById, getBudgetSpent, getMonthSavings, getTotalSavings, savingsGoals, getGoalSaved, getTransactionsForMonth, currentUser, householdId, accounts } = useApp();
   const { formatAmount, currency } = useCurrency();
-  const { isPremium, presentOffering } = useSubscription(householdId, currentUser?.id);
   const navigate = useNavigate();
-  const paywallContainerRef = React.useRef<HTMLDivElement>(null);
-  const [showRCPaywall, setShowRCPaywall] = useState(false);
   const [showScan, setShowScan] = useState(false);
   const [showReport, setShowReport] = useState(false);
-  const [showPremium, setShowPremium] = useState(false);
   const [debts, setDebts] = useState<Debt[]>([]);
 
   // Onboarding: only show on very first login (persisted per user)
@@ -106,21 +101,6 @@ const Dashboard = () => {
     }
   };
 
-  const handleOpenPaywall = async () => {
-    setShowRCPaywall(true);
-    // Wait for container to mount
-    setTimeout(async () => {
-      if (paywallContainerRef.current) {
-        try {
-          await presentOffering(paywallContainerRef.current);
-        } catch (err) {
-          console.error('Paywall error:', err);
-        } finally {
-          setShowRCPaywall(false);
-        }
-      }
-    }, 100);
-  };
 
   // Fetch debts for dashboard card
   const fetchDebts = useCallback(async () => {
@@ -397,36 +377,7 @@ const Dashboard = () => {
 
       <ScanTicketModal open={showScan} onClose={() => setShowScan(false)} />
       <MonthlyReportModal open={showReport} onClose={() => setShowReport(false)} />
-      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} presentOffering={presentOffering} />
       <OnboardingModal open={showOnboarding} onComplete={handleOnboardingComplete} />
-
-      {/* RevenueCat Paywall Modal */}
-      <AnimatePresence>
-        {showRCPaywall && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          >
-            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setShowRCPaywall(false)} />
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-lg card-elevated p-6 max-h-[80vh] overflow-y-auto"
-            >
-              <button
-                onClick={() => setShowRCPaywall(false)}
-                className="absolute top-3 right-3 text-muted-foreground hover:text-foreground text-lg"
-              >
-                ✕
-              </button>
-              <div ref={paywallContainerRef} className="min-h-[200px]" />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </Layout>
   );
 };

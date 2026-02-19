@@ -5,9 +5,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import Layout from '@/components/Layout';
-import PaywallModal from '@/components/PaywallModal';
-import PremiumModal from '@/components/PremiumModal';
-import { useSubscription, FREEMIUM_LIMITS } from '@/hooks/useSubscription';
+import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
 import { formatLocalDate } from '@/utils/format';
 
@@ -24,9 +22,7 @@ const FinanceChat = () => {
     getBudgetsForMonth, householdId,
   } = useApp();
   const { formatAmount } = useCurrency();
-  const { isPremium, presentOffering } = useSubscription(householdId, currentUser?.id);
-  const [showPaywall, setShowPaywall] = useState(false);
-  const [showPremium, setShowPremium] = useState(false);
+  const { isPremium } = useSubscription(householdId, currentUser?.id);
 
   const [messages, setMessages] = useState<Msg[]>(() => {
     try {
@@ -123,50 +119,12 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
   }, [transactions, budgets, savingsGoals, savingsDeposits, household, currentUser, getTransactionsForMonth, getBudgetSpent, getGoalSaved, getMonthSavings, getTotalSavings, getBudgetsForMonth, formatAmount]);
 
   const checkAiLimit = useCallback(async (): Promise<boolean> => {
-    if (isPremium) return true;
-    try {
-      const { data: hData } = await supabase
-        .from('households')
-        .select('ai_advice_count_this_week, ai_advice_last_date')
-        .eq('id', householdId)
-        .single();
-      if (!hData) return true;
-      const lastDate = hData.ai_advice_last_date;
-      const now = new Date();
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - now.getDay());
-      weekStart.setHours(0, 0, 0, 0);
-      const isThisWeek = lastDate && new Date(lastDate) >= weekStart;
-      const count = isThisWeek ? hData.ai_advice_count_this_week : 0;
-      if (count >= FREEMIUM_LIMITS.aiAdvicePerWeek) {
-        setShowPaywall(true);
-        return false;
-      }
-      return true;
-    } catch {
-      return true;
-    }
-  }, [isPremium, householdId]);
+    return true;
+  }, []);
 
   const incrementAiCount = useCallback(async () => {
-    if (isPremium) return;
-    const today = formatLocalDate(new Date());
-    const { data: hData } = await supabase
-      .from('households')
-      .select('ai_advice_count_this_week, ai_advice_last_date')
-      .eq('id', householdId)
-      .single();
-    const now = new Date();
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay());
-    weekStart.setHours(0, 0, 0, 0);
-    const isThisWeek = hData?.ai_advice_last_date && new Date(hData.ai_advice_last_date) >= weekStart;
-    const newCount = isThisWeek ? (hData?.ai_advice_count_this_week || 0) + 1 : 1;
-    await supabase.from('households').update({
-      ai_advice_count_this_week: newCount,
-      ai_advice_last_date: today,
-    }).eq('id', householdId);
-  }, [isPremium, householdId]);
+    // No limits
+  }, []);
 
   const sendMessage = async () => {
     const text = input.trim();
@@ -404,8 +362,6 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
         </div>
       </div>
     </Layout>
-      <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} onUpgrade={() => { setShowPaywall(false); setShowPremium(true); }} feature="conseil(s) IA par semaine" limit={FREEMIUM_LIMITS.aiAdvicePerWeek} icon="✨" />
-      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} presentOffering={presentOffering} />
     </>
   );
 };

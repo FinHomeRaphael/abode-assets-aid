@@ -1,7 +1,4 @@
-import React, { useState } from 'react';
-import { useSubscription } from '@/hooks/useSubscription';
-import { useApp } from '@/context/AppContext';
-import PremiumModal from '@/components/PremiumModal';
+import React from 'react';
 
 interface Props {
   currentMonth: Date;
@@ -9,18 +6,11 @@ interface Props {
 }
 
 const MonthSelector = ({ currentMonth, onChange }: Props) => {
-  const { householdId, currentUser } = useApp();
-  const { isMonthAllowed, isPremium, presentOffering } = useSubscription(householdId, currentUser?.id);
-  const [showPremium, setShowPremium] = useState(false);
   const label = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(currentMonth);
 
   const prev = () => {
     const d = new Date(currentMonth);
     d.setMonth(d.getMonth() - 1);
-    if (!isMonthAllowed(d)) {
-      setShowPremium(true);
-      return;
-    }
     onChange(d);
   };
 
@@ -31,14 +21,11 @@ const MonthSelector = ({ currentMonth, onChange }: Props) => {
   };
 
   return (
-    <>
-      <div className="flex items-center gap-3">
-        <button onClick={prev} className="w-8 h-8 rounded-md border border-border flex items-center justify-center hover:bg-secondary transition-colors text-sm">←</button>
-        <span className="text-sm font-medium capitalize min-w-[160px] text-center">{label}</span>
-        <button onClick={next} className="w-8 h-8 rounded-md border border-border flex items-center justify-center hover:bg-secondary transition-colors text-sm">→</button>
-      </div>
-      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} presentOffering={presentOffering} />
-    </>
+    <div className="flex items-center gap-3">
+      <button onClick={prev} className="w-8 h-8 rounded-md border border-border flex items-center justify-center hover:bg-secondary transition-colors text-sm">←</button>
+      <span className="text-sm font-medium capitalize min-w-[160px] text-center">{label}</span>
+      <button onClick={next} className="w-8 h-8 rounded-md border border-border flex items-center justify-center hover:bg-secondary transition-colors text-sm">→</button>
+    </div>
   );
 };
 

@@ -8,9 +8,7 @@ import { EMOJI_LIST, CURRENCIES, CURRENCY_SYMBOLS, ACCOUNT_TYPES, SavingsGoal, A
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
-import PaywallModal from '@/components/PaywallModal';
-import PremiumModal from '@/components/PremiumModal';
-import { useSubscription, FREEMIUM_LIMITS } from '@/hooks/useSubscription';
+import { useSubscription } from '@/hooks/useSubscription';
 
 const Savings = () => {
   const {
@@ -20,9 +18,7 @@ const Savings = () => {
     accounts, getActiveAccounts, getAccountBalance, addAccount, householdId, currentUser,
   } = useApp();
   const { formatAmount } = useCurrency();
-  const { isPremium, canAdd, presentOffering } = useSubscription(householdId, currentUser?.id);
-  const [showPaywall, setShowPaywall] = useState(false);
-  const [showPremium, setShowPremium] = useState(false);
+  const { canAdd } = useSubscription(householdId, currentUser?.id);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -147,14 +143,8 @@ const Savings = () => {
           <h1 className="text-xl font-bold">Enveloppes</h1>
           <div className="flex gap-2">
             <button onClick={() => setShowAddDeposit(true)} className="h-10 px-4 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">+ Verser</button>
-            <button onClick={() => {
-              if (!canAdd('savingsGoals', savingsGoals.length)) {
-                setShowPaywall(true);
-                return;
-              }
-              setShowCreateGoal(true);
-            }} className="h-10 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm">
-              + Objectif {!isPremium && <span className="text-xs opacity-70">({savingsGoals.length}/{FREEMIUM_LIMITS.savingsGoals})</span>}
+            <button onClick={() => setShowCreateGoal(true)} className="h-10 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm">
+              + Objectif
             </button>
           </div>
         </div>
@@ -489,8 +479,6 @@ const Savings = () => {
           )}
         </AnimatePresence>
       </motion.div>
-      <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} onUpgrade={() => { setShowPaywall(false); setShowPremium(true); }} feature="objectif(s) d'enveloppe" limit={FREEMIUM_LIMITS.savingsGoals} icon="🎯" />
-      <PremiumModal open={showPremium} onClose={() => setShowPremium(false)} presentOffering={presentOffering} />
     </Layout>
   );
 };
