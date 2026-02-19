@@ -255,6 +255,23 @@ const ImportCSVModal = ({ open, onClose }: Props) => {
                   ))}
                 </div>
 
+                {/* Account selection in preview */}
+                {activeAccounts.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">🏦 Compte débité</label>
+                    <select
+                      value={accountId}
+                      onChange={e => setAccountId(e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-input bg-card text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="">Aucun (devise du foyer)</option>
+                      {activeAccounts.map(a => (
+                        <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <div className="flex gap-3">
                   <button onClick={() => { setStep('upload'); setMapped([]); }} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">← Retour</button>
                   <button onClick={handleImport} disabled={importing || selectedCount === 0} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50">
