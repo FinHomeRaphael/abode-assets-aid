@@ -4,6 +4,7 @@ import { useApp } from '@/context/AppContext';
 import { CATEGORY_EMOJIS, EXPENSE_CATEGORIES } from '@/types/finance';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { formatLocalDate } from '@/utils/format';
 
 interface Props {
   open: boolean;
@@ -42,7 +43,7 @@ const ScanTicketModal = ({ open, onClose }: Props) => {
 
         setMerchant(data.merchant || 'Inconnu');
         setAmount(String(data.amount || 0));
-        setDate(data.date || new Date().toISOString().split('T')[0]);
+        setDate(data.date || formatLocalDate(new Date()));
         setCategory(data.category || 'Alimentation');
         setCurrency(data.currency || household.currency);
         setStep('review');
@@ -52,7 +53,7 @@ const ScanTicketModal = ({ open, onClose }: Props) => {
         // Fallback to empty review
         setMerchant('');
         setAmount('');
-        setDate(new Date().toISOString().split('T')[0]);
+        setDate(formatLocalDate(new Date()));
         setCategory('Alimentation');
         setStep('review');
       }

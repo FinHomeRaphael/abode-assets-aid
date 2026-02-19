@@ -9,6 +9,7 @@ import PaywallModal from '@/components/PaywallModal';
 import PremiumModal from '@/components/PremiumModal';
 import { useSubscription, FREEMIUM_LIMITS } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
+import { formatLocalDate } from '@/utils/format';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
@@ -149,7 +150,7 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
 
   const incrementAiCount = useCallback(async () => {
     if (isPremium) return;
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatLocalDate(new Date());
     const { data: hData } = await supabase
       .from('households')
       .select('ai_advice_count_this_week, ai_advice_last_date')

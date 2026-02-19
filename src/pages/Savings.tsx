@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
-import { formatDateLong } from '@/utils/format';
+import { formatDateLong, formatLocalDate } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
 import { EMOJI_LIST, CURRENCIES, CURRENCY_SYMBOLS, ACCOUNT_TYPES, SavingsGoal, AccountType } from '@/types/finance';
 import { toast } from 'sonner';
@@ -49,7 +49,7 @@ const Savings = () => {
   const [depositGoalId, setDepositGoalId] = useState('');
   const [depositAmount, setDepositAmount] = useState('');
   const [depositMemberId, setDepositMemberId] = useState(household.members[0]?.id || '');
-  const [depositDate, setDepositDate] = useState(new Date().toISOString().split('T')[0]);
+  const [depositDate, setDepositDate] = useState(formatLocalDate(new Date()));
 
   // Edit goal state
   const [editGoal, setEditGoal] = useState<SavingsGoal | null>(null);
@@ -65,7 +65,7 @@ const Savings = () => {
   const [accType, setAccType] = useState<AccountType>('courant');
   const [accCurrency, setAccCurrency] = useState(household.currency);
   const [accBalance, setAccBalance] = useState('');
-  const [accDate, setAccDate] = useState(new Date().toISOString().split('T')[0]);
+  const [accDate, setAccDate] = useState(formatLocalDate(new Date()));
 
   const monthSavings = getMonthSavings(currentMonth);
   const totalSavings = getTotalSavings();
@@ -136,7 +136,7 @@ const Savings = () => {
     });
     toast.success('Compte créé ✓');
     setShowCreateAccount(false);
-    setAccName(''); setAccBalance(''); setAccDate(new Date().toISOString().split('T')[0]);
+    setAccName(''); setAccBalance(''); setAccDate(formatLocalDate(new Date()));
     setAccCurrency(household.currency);
   };
 

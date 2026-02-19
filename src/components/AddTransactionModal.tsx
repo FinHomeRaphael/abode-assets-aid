@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { formatLocalDate } from '@/utils/format';
 
 interface Props {
   open: boolean;
@@ -58,7 +59,7 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
       currency,
       category,
       memberId,
-      date: date.toISOString().split('T')[0],
+      date: formatLocalDate(date),
       notes: notes.trim() || undefined,
       emoji: customCat?.emoji || CATEGORY_EMOJIS[category] || '📌',
       isRecurring,

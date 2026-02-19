@@ -4,7 +4,7 @@ import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Debt, DEBT_TYPES, getDebtEmoji, getPeriodsPerYear, estimateEndDate } from '@/types/debt';
 import { useCurrency } from '@/hooks/useCurrency';
-import { formatDateLong } from '@/utils/format';
+import { formatDateLong, formatLocalDate } from '@/utils/format';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 
@@ -58,7 +58,7 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
 
     const interestAmount = debt.remainingAmount * rate;
     const principalAmount = debt.paymentAmount; // paymentAmount = amortissement only
-    const paymentDate = debt.nextPaymentDate || new Date().toISOString().split('T')[0];
+    const paymentDate = debt.nextPaymentDate || formatLocalDate(new Date());
     const currency = debt.currency;
 
     // Create interest transaction
