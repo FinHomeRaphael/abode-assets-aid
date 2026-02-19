@@ -56,10 +56,10 @@ const Layout = ({ children }: LayoutProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Desktop header */}
       <header className="hidden md:block sticky top-0 z-30 glass border-b border-border/50">
-        <div className="container max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-8">
             <button onClick={() => navigate('/')} className="text-lg font-bold flex items-center gap-2">
               <img src={logo} alt="FinHome" className="w-8 h-8 rounded-xl object-cover" />
@@ -70,7 +70,7 @@ const Layout = ({ children }: LayoutProps) => {
                 <button
                   key={item.path}
                   onClick={() => navigate(item.path)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                  className={`px-3 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap ${
                     location.pathname === item.path
                       ? 'bg-primary text-primary-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted'
