@@ -6,6 +6,25 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const MAX_FILE_CONTENT_LENGTH = 5_000_000; // 5MB
+const VALID_FILE_TYPES = ["pdf", "csv", "text"];
+
+function validateRequest(body: unknown): { fileContent: string; fileType: string } {
+  if (!body || typeof body !== "object") throw new Error("Invalid request body");
+  const { fileContent, fileType } = body as Record<string, unknown>;
+
+  if (typeof fileContent !== "string" || fileContent.length === 0 || fileContent.length > MAX_FILE_CONTENT_LENGTH) {
+    throw new Error("Invalid or too large file content");
+  }
+
+  const ft = typeof fileType === "string" ? fileType.toLowerCase() : "text";
+  if (!VALID_FILE_TYPES.includes(ft)) {
+    throw new Error("Invalid file type. Must be one of: " + VALID_FILE_TYPES.join(", "));
+  }
+
+  return { fileContent: fileContent as string, fileType: ft };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -33,9 +52,16 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { fileContent, fileType } = await req.json();
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    if (!fileContent) throw new Error("No file content provided");
+    const { fileContent, fileType } = validateRequest(rawBody);
 
     const systemPrompt = `Tu es un expert en extraction de données bancaires. L'utilisateur te fournit le contenu d'un relevé bancaire (PDF converti en texte ou image base64).
 
@@ -113,7 +139,7 @@ RÈGLES CRITIQUES :
       }
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw new Error("Erreur du service IA");
     }
 
     const data = await response.json();
@@ -138,7 +164,7 @@ RÈGLES CRITIQUES :
     });
   } catch (e) {
     console.error("parse-bank-statement error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+    return new Response(JSON.stringify({ error: "Erreur lors de l'analyse du relevé" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

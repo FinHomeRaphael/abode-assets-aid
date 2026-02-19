@@ -6,6 +6,37 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const MAX_MESSAGES = 50;
+const MAX_MESSAGE_CONTENT_LENGTH = 10000;
+const MAX_FINANCIAL_CONTEXT_LENGTH = 100000;
+
+function validateRequest(body: unknown): { messages: { role: string; content: string }[]; financialContext: string } {
+  if (!body || typeof body !== "object") throw new Error("Invalid request body");
+  const { messages, financialContext } = body as Record<string, unknown>;
+
+  if (!Array.isArray(messages) || messages.length === 0 || messages.length > MAX_MESSAGES) {
+    throw new Error("Invalid messages: must be a non-empty array with at most " + MAX_MESSAGES + " items");
+  }
+
+  for (const msg of messages) {
+    if (!msg || typeof msg !== "object") throw new Error("Invalid message format");
+    const { role, content } = msg as Record<string, unknown>;
+    if (role !== "user" && role !== "assistant") throw new Error("Invalid message role");
+    if (typeof content !== "string" || content.length === 0 || content.length > MAX_MESSAGE_CONTENT_LENGTH) {
+      throw new Error("Invalid message content");
+    }
+  }
+
+  if (typeof financialContext !== "string" || financialContext.length > MAX_FINANCIAL_CONTEXT_LENGTH) {
+    throw new Error("Invalid financialContext");
+  }
+
+  return {
+    messages: messages.map((m: any) => ({ role: m.role as string, content: m.content as string })),
+    financialContext: financialContext as string,
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -30,7 +61,17 @@ serve(async (req) => {
       });
     }
 
-    const { messages, financialContext } = await req.json();
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { messages, financialContext } = validateRequest(rawBody);
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -90,7 +131,7 @@ RÈGLES :
     });
   } catch (e) {
     console.error("finance-chat error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erreur inconnue" }), {
+    return new Response(JSON.stringify({ error: "Erreur de traitement de la requête" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

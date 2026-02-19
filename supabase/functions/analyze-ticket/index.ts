@@ -7,6 +7,19 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const MAX_IMAGE_LENGTH = 10_000_000; // ~10MB base64
+
+function validateRequest(body: unknown): { imageBase64: string } {
+  if (!body || typeof body !== "object") throw new Error("Invalid request body");
+  const { imageBase64 } = body as Record<string, unknown>;
+
+  if (typeof imageBase64 !== "string" || imageBase64.length === 0 || imageBase64.length > MAX_IMAGE_LENGTH) {
+    throw new Error("Invalid or too large image data");
+  }
+
+  return { imageBase64: imageBase64 as string };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -33,14 +46,16 @@ serve(async (req) => {
       });
     }
 
-    const { imageBase64 } = await req.json();
-
-    if (!imageBase64) {
-      return new Response(
-        JSON.stringify({ error: "No image provided" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    let rawBody: unknown;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
+
+    const { imageBase64 } = validateRequest(rawBody);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -119,7 +134,7 @@ serve(async (req) => {
       }
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw new Error("Erreur du service IA");
     }
 
     const data = await response.json();
@@ -137,7 +152,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("analyze-ticket error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "Erreur lors de l'analyse du ticket" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
