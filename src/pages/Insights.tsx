@@ -28,6 +28,7 @@ function monthLabel(date: Date) {
 
 const Insights = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [chartRange, setChartRange] = useState<6 | 12>(12);
   const { transactions, budgets, savingsGoals, savingsDeposits, getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getGoalSaved, householdId, currentUser } = useApp();
   const { formatAmount } = useCurrency();
   const { isPremium, presentOffering } = useSubscription(householdId, currentUser?.id);
@@ -92,10 +93,10 @@ const Insights = () => {
     return Object.values(groups).filter(g => g.count >= 5).sort((a, b) => b.total - a.total);
   }, [expenses]);
 
-  // 6-month chart data
-  const sixMonthData = useMemo(() => {
+  // Chart data (6 or 12 months)
+  const chartData = useMemo(() => {
     const data: { month: string; total: number; date: Date }[] = [];
-    for (let i = 5; i >= 0; i--) {
+    for (let i = chartRange - 1; i >= 0; i--) {
       const d = new Date(currentMonth);
       d.setMonth(d.getMonth() - i);
       const tx = getTransactionsForMonth(d).filter(t => t.type === 'expense');
@@ -103,12 +104,12 @@ const Insights = () => {
       data.push({ month: monthLabel(d), total, date: d });
     }
     return data;
-  }, [currentMonth, getTransactionsForMonth]);
+  }, [currentMonth, chartRange, getTransactionsForMonth]);
 
-  const sixMonthAvg = useMemo(() => {
-    const totals = sixMonthData.map(d => d.total);
+  const chartAvg = useMemo(() => {
+    const totals = chartData.map(d => d.total);
     return totals.reduce((s, v) => s + v, 0) / Math.max(totals.length, 1);
-  }, [sixMonthData]);
+  }, [chartData]);
 
   // Has enough data?
   const hasData = transactions.length >= 3;
@@ -274,8 +275,8 @@ const Insights = () => {
   }
 
   const top3 = categorySpending.slice(0, 3);
-  const currentMonthData = sixMonthData[sixMonthData.length - 1];
-  const diffPct = sixMonthAvg > 0 ? Math.round(((currentMonthData.total - sixMonthAvg) / sixMonthAvg) * 100) : 0;
+  const currentMonthData = chartData[chartData.length - 1];
+  const diffPct = chartAvg > 0 ? Math.round(((currentMonthData.total - chartAvg) / chartAvg) * 100) : 0;
 
   return (
     <Layout>
@@ -343,29 +344,45 @@ const Insights = () => {
           </CardContent>
         </Card>
 
-        {/* BLOC 3: 6-month chart */}
+        {/* BLOC 3: Evolution chart */}
         <Card className="rounded-[20px]">
           <CardContent className="p-5 space-y-4">
-            <h2 className="text-base font-semibold text-foreground">Évolution sur 6 mois</h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-foreground">Évolution des dépenses</h2>
+              <div className="flex items-center bg-muted rounded-xl p-0.5">
+                <button
+                  onClick={() => setChartRange(6)}
+                  className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${chartRange === 6 ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                >
+                  6 mois
+                </button>
+                <button
+                  onClick={() => setChartRange(12)}
+                  className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${chartRange === 12 ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
+                >
+                  1 an
+                </button>
+              </div>
+            </div>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={sixMonthData} barSize={32}>
-                  <XAxis dataKey="month" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                <BarChart data={chartData} barSize={chartRange === 12 ? 20 : 32}>
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                   <YAxis hide />
                   <Tooltip
                     formatter={(value: number) => [formatAmount(value), 'Dépenses']}
                     contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
                   />
-                  <Bar dataKey="total" radius={[8, 8, 0, 0]}>
-                    {sixMonthData.map((entry, i) => (
-                      <Cell key={i} fill={entry.total > sixMonthAvg ? 'hsl(0 70% 55%)' : 'hsl(142 60% 50%)'} />
+                  <Bar dataKey="total" radius={[6, 6, 0, 0]}>
+                    {chartData.map((entry, i) => (
+                      <Cell key={i} fill={entry.total > chartAvg ? 'hsl(0 70% 55%)' : 'hsl(142 60% 50%)'} />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-sm text-muted-foreground">
-              <span>Moyenne : {formatAmount(sixMonthAvg)}/mois</span>
+              <span>Moyenne : {formatAmount(chartAvg)}/mois</span>
               <span>
                 Ce mois : {formatAmount(currentMonthData.total)}{' '}
                 <span className={diffPct > 0 ? 'text-destructive' : 'text-green-600'}>
