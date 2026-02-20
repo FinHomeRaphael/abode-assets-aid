@@ -183,6 +183,22 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
               };
 
               const totalAccountsBalance = activeAccounts.reduce((sum, acc) => sum + getAccountBalanceAtMonth(acc.id), 0);
+
+              // Solde du mois précédent pour comparaison
+              const prevEndOfMonth = new Date(month.getFullYear(), month.getMonth(), 0);
+              const prevEndDateStr = `${prevEndOfMonth.getFullYear()}-${String(prevEndOfMonth.getMonth() + 1).padStart(2, '0')}-${String(prevEndOfMonth.getDate()).padStart(2, '0')}`;
+              const getAccountBalanceAtPrevMonth = (accId: string) => {
+                const account = accounts.find(a => a.id === accId);
+                if (!account) return 0;
+                const txs = allTransactions.filter(t => t.accountId === accId && t.date <= prevEndDateStr);
+                const incomeSum = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+                const expenseSum = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+                return account.startingBalance + incomeSum - expenseSum;
+              };
+              const prevTotalAccountsBalance = activeAccounts.reduce((sum, acc) => sum + getAccountBalanceAtPrevMonth(acc.id), 0);
+              const balanceDiff = totalAccountsBalance - prevTotalAccountsBalance;
+              const balanceDiffPct = prevTotalAccountsBalance !== 0 ? ((balanceDiff) / Math.abs(prevTotalAccountsBalance)) * 100 : null;
+
               return (
                 <>
                   {/* Solde des comptes à fin de mois */}
@@ -191,6 +207,17 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                       <div className="bg-primary/10 rounded-xl p-4 text-center mb-2">
                         <p className="text-xs text-muted-foreground mb-1">Solde total des comptes (fin de mois)</p>
                         <p className={`text-xl font-bold font-mono ${totalAccountsBalance >= 0 ? 'text-primary' : 'text-destructive'}`}>{formatAmount(totalAccountsBalance)}</p>
+                        <div className="flex items-center justify-center gap-2 mt-1">
+                          <span className={`text-xs font-mono font-semibold ${balanceDiff >= 0 ? 'text-success' : 'text-destructive'}`}>
+                            {balanceDiff >= 0 ? '+' : ''}{formatAmount(balanceDiff)}
+                          </span>
+                          {balanceDiffPct !== null && (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${balanceDiff >= 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
+                              {balanceDiff >= 0 ? '↑' : '↓'} {Math.abs(balanceDiffPct).toFixed(1)}%
+                            </span>
+                          )}
+                          <span className="text-[10px] text-muted-foreground">vs mois préc.</span>
+                        </div>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {activeAccounts.map(acc => {
