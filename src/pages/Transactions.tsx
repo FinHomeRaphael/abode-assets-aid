@@ -7,6 +7,7 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CURRENCIES, CATEGORY_EMOJIS } fr
 import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import AddTransactionModal from '@/components/AddTransactionModal';
+import AddTransferModal from '@/components/AddTransferModal';
 import ImportCSVModal from '@/components/ImportCSVModal';
 import ConvertedAmount from '@/components/ConvertedAmount';
 import { Calendar } from '@/components/ui/calendar';
@@ -25,6 +26,7 @@ const Transactions = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showAddModal, setShowAddModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -174,6 +176,9 @@ const Transactions = () => {
                 <button onClick={() => setSelectMode(true)} className="h-10 px-3 rounded-xl border border-border bg-card text-sm font-medium hover:bg-muted transition-colors">
                   ☑️
                 </button>
+                <button onClick={() => setShowTransferModal(true)} className="h-10 px-4 rounded-xl border border-border bg-card text-sm font-medium hover:bg-muted transition-colors">
+                  🔄 Transfert
+                </button>
                 <button onClick={() => setShowImportModal(true)} className="h-10 px-4 rounded-xl border border-border bg-card text-sm font-medium hover:bg-muted transition-colors">
                   📥 Import
                 </button>
@@ -297,6 +302,7 @@ const Transactions = () => {
       </motion.div>
 
       <AddTransactionModal open={showAddModal} onClose={() => setShowAddModal(false)} />
+      <AddTransferModal open={showTransferModal} onClose={() => setShowTransferModal(false)} />
       <ImportCSVModal open={showImportModal} onClose={() => setShowImportModal(false)} />
 
       {/* Edit Transaction Modal */}

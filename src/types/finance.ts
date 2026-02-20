@@ -201,6 +201,7 @@ export const CURRENCY_NAMES: Record<string, string> = {
 };
 
 export const CATEGORY_EMOJIS: Record<string, string> = {
+  Transfert: '🔄',
   Location: '🏠',
   Commission: '💼',
   'Restaurant + sorties': '🍽️',
