@@ -56,7 +56,7 @@ function generateReportAdvice(
 }
 
 const MonthlyReportModal = ({ open, onClose }: Props) => {
-  const { getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getMonthSavings, savingsGoals, getGoalSaved, getActiveAccounts, getAccountBalance, householdId, accounts } = useApp();
+  const { getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getMonthSavings, savingsGoals, getGoalSaved, getActiveAccounts, getAccountBalance, householdId, accounts, transactions: allTransactions } = useApp();
   const { formatAmount, currency } = useCurrency();
   const [month, setMonth] = useState(new Date());
 
@@ -169,19 +169,32 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
             {/* Financial summary */}
             {(() => {
               const activeAccounts = getActiveAccounts();
-              const totalAccountsBalance = activeAccounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
+              // Calculer le solde de chaque compte à la fin du mois sélectionné
+              const endOfMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0); // dernier jour du mois
+              const endDateStr = `${endOfMonth.getFullYear()}-${String(endOfMonth.getMonth() + 1).padStart(2, '0')}-${String(endOfMonth.getDate()).padStart(2, '0')}`;
+              
+              const getAccountBalanceAtMonth = (accId: string) => {
+                const account = accounts.find(a => a.id === accId);
+                if (!account) return 0;
+                const txs = allTransactions.filter(t => t.accountId === accId && t.date <= endDateStr);
+                const incomeSum = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+                const expenseSum = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+                return account.startingBalance + incomeSum - expenseSum;
+              };
+
+              const totalAccountsBalance = activeAccounts.reduce((sum, acc) => sum + getAccountBalanceAtMonth(acc.id), 0);
               return (
                 <>
-                  {/* Solde instantané des comptes */}
+                  {/* Solde des comptes à fin de mois */}
                   {activeAccounts.length > 0 && (
                     <div className="mb-4">
                       <div className="bg-primary/10 rounded-xl p-4 text-center mb-2">
-                        <p className="text-xs text-muted-foreground mb-1">Solde total des comptes</p>
+                        <p className="text-xs text-muted-foreground mb-1">Solde total des comptes (fin de mois)</p>
                         <p className={`text-xl font-bold font-mono ${totalAccountsBalance >= 0 ? 'text-primary' : 'text-destructive'}`}>{formatAmount(totalAccountsBalance)}</p>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {activeAccounts.map(acc => {
-                          const bal = getAccountBalance(acc.id);
+                          const bal = getAccountBalanceAtMonth(acc.id);
                           return (
                             <div key={acc.id} className="bg-secondary/50 rounded-lg p-2.5 text-center">
                               <p className="text-[10px] text-muted-foreground truncate">{acc.name}</p>
