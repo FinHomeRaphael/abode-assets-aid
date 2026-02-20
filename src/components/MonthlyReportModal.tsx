@@ -56,7 +56,7 @@ function generateReportAdvice(
 }
 
 const MonthlyReportModal = ({ open, onClose }: Props) => {
-  const { getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getMonthSavings, savingsGoals, getGoalSaved, getActiveAccounts, getAccountBalance, householdId } = useApp();
+  const { getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getMonthSavings, savingsGoals, getGoalSaved, getActiveAccounts, getAccountBalance, householdId, accounts } = useApp();
   const { formatAmount, currency } = useCurrency();
   const [month, setMonth] = useState(new Date());
 
@@ -86,7 +86,14 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   const income = transactions.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
   const expenses = transactions.filter(t => t.type === 'expense' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
   const savings = getMonthSavings(month);
-  const available = income - expenses - savings;
+
+  // Épargne via transferts : transferts entrants sur comptes de type 'epargne'
+  const epargneAccountIds = new Set(accounts.filter(a => a.type === 'epargne').map(a => a.id));
+  const transfersToEpargne = transactions
+    .filter(t => t.category === 'Transfert' && t.type === 'income' && t.accountId && epargneAccountIds.has(t.accountId))
+    .reduce((s, t) => s + t.convertedAmount, 0);
+
+  const available = income - expenses - savings - transfersToEpargne;
 
   const prevMonth = new Date(month);
   prevMonth.setMonth(prevMonth.getMonth() - 1);
@@ -177,7 +184,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                   )}
 
                   {/* Mois en cours */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                  <div className={`grid grid-cols-2 ${transfersToEpargne > 0 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-3 mb-6`}>
                     <div className="bg-secondary/50 rounded-xl p-3 text-center">
                       <p className="text-xs text-muted-foreground mb-1">Revenus</p>
                       <p className="font-mono font-bold text-success text-sm">+{formatAmount(income)}</p>
@@ -196,8 +203,14 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                       <p className="text-xs text-muted-foreground mb-1">Enveloppes</p>
                       <p className="font-mono font-bold text-primary text-sm">-{formatAmount(savings)}</p>
                     </div>
+                    {transfersToEpargne > 0 && (
+                      <div className="bg-secondary/50 rounded-xl p-3 text-center">
+                        <p className="text-xs text-muted-foreground mb-1">🐖 Épargne</p>
+                        <p className="font-mono font-bold text-primary text-sm">-{formatAmount(transfersToEpargne)}</p>
+                      </div>
+                    )}
                     <div className="bg-secondary/50 rounded-xl p-3 text-center">
-                      <p className="text-xs text-muted-foreground mb-1">Disponible (mois en cours)</p>
+                      <p className="text-xs text-muted-foreground mb-1">Disponible</p>
                       <p className={`font-mono font-bold text-sm ${available >= 0 ? 'text-success' : 'text-destructive'}`}>{available >= 0 ? '+' : ''}{formatAmount(available)}</p>
                     </div>
                   </div>
