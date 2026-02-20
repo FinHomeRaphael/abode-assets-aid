@@ -83,20 +83,20 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   useEffect(() => { if (open) fetchDebts(); }, [open, fetchDebts]);
 
   const transactions = useMemo(() => getTransactionsForMonth(month), [month, getTransactionsForMonth]);
-  const income = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
-  const expenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
+  const income = transactions.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const expenses = transactions.filter(t => t.type === 'expense' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
   const savings = getMonthSavings(month);
   const available = income - expenses - savings;
 
   const prevMonth = new Date(month);
   prevMonth.setMonth(prevMonth.getMonth() - 1);
   const prevTransactions = useMemo(() => getTransactionsForMonth(prevMonth), [prevMonth, getTransactionsForMonth]);
-  const prevExpenses = prevTransactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
-  const prevIncome = prevTransactions.filter(t => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
+  const prevExpenses = prevTransactions.filter(t => t.type === 'expense' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const prevIncome = prevTransactions.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
 
   const expensesByCategory = useMemo(() => {
     const map: Record<string, number> = {};
-    transactions.filter(t => t.type === 'expense').forEach(t => {
+    transactions.filter(t => t.type === 'expense' && t.category !== 'Transfert').forEach(t => {
       map[t.category] = (map[t.category] || 0) + t.convertedAmount;
     });
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
