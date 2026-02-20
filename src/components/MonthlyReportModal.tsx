@@ -87,14 +87,20 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   // Identifier les comptes épargne
   const epargneAccountIds = new Set(accounts.filter(a => a.type === 'epargne').map(a => a.id));
   
-  // Épargne = tout revenu (transfert ou direct) entrant sur un compte épargne
-  const totalEpargneComptes = transactions
+  // Épargne entrante = tout revenu sur un compte épargne
+  const epargneIn = transactions
     .filter(t => t.type === 'income' && t.accountId && epargneAccountIds.has(t.accountId))
     .reduce((s, t) => s + t.convertedAmount, 0);
+  // Épargne sortante = toute dépense sur un compte épargne
+  const epargneOut = transactions
+    .filter(t => t.type === 'expense' && t.accountId && epargneAccountIds.has(t.accountId))
+    .reduce((s, t) => s + t.convertedAmount, 0);
+  const totalEpargneComptes = epargneIn - epargneOut;
 
   // Revenus = hors transferts ET hors revenus directs sur comptes épargne
   const income = transactions.filter(t => t.type === 'income' && t.category !== 'Transfert' && !(t.accountId && epargneAccountIds.has(t.accountId))).reduce((s, t) => s + t.convertedAmount, 0);
-  const expenses = transactions.filter(t => t.type === 'expense' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  // Dépenses = hors transferts ET hors dépenses sur comptes épargne (déjà comptées dans épargne)
+  const expenses = transactions.filter(t => t.type === 'expense' && t.category !== 'Transfert' && !(t.accountId && epargneAccountIds.has(t.accountId))).reduce((s, t) => s + t.convertedAmount, 0);
   const savings = getMonthSavings(month);
 
   const available = income - expenses - savings;
