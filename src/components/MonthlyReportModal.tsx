@@ -194,7 +194,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                   )}
 
                   {/* Mois en cours */}
-                  <div className={`grid grid-cols-2 ${totalEpargneComptes > 0 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-3 mb-6`}>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
                     <div className="bg-secondary/50 rounded-xl p-3 text-center">
                       <p className="text-xs text-muted-foreground mb-1">Revenus</p>
                       <p className="font-mono font-bold text-success text-sm">+{formatAmount(income)}</p>
@@ -213,16 +213,24 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                       <p className="text-xs text-muted-foreground mb-1">Enveloppes</p>
                       <p className="font-mono font-bold text-primary text-sm">-{formatAmount(savings)}</p>
                     </div>
-                    {totalEpargneComptes > 0 && (
-                      <div className="bg-secondary/50 rounded-xl p-3 text-center">
-                        <p className="text-xs text-muted-foreground mb-1">🐖 Épargne</p>
-                        <p className="font-mono font-bold text-primary text-sm">{formatAmount(totalEpargneComptes)}</p>
+                  </div>
+                  {/* Épargne */}
+                  {(epargneIn > 0 || epargneOut > 0) && (
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 text-center">
+                        <p className="text-xs text-muted-foreground mb-1">🐖 Épargne versée</p>
+                        <p className="font-mono font-bold text-primary text-sm">+{formatAmount(epargneIn)}</p>
                       </div>
-                    )}
-                    <div className="bg-secondary/50 rounded-xl p-3 text-center">
-                      <p className="text-xs text-muted-foreground mb-1">Disponible</p>
-                      <p className={`font-mono font-bold text-sm ${available >= 0 ? 'text-success' : 'text-destructive'}`}>{available >= 0 ? '+' : ''}{formatAmount(available)}</p>
+                      <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-3 text-center">
+                        <p className="text-xs text-muted-foreground mb-1">🐖 Dép. épargne</p>
+                        <p className="font-mono font-bold text-destructive text-sm">-{formatAmount(epargneOut)}</p>
+                      </div>
                     </div>
+                  )}
+                  {/* Disponible */}
+                  <div className="bg-secondary/50 rounded-xl p-3 text-center mb-6">
+                    <p className="text-xs text-muted-foreground mb-1">Disponible</p>
+                    <p className={`font-mono font-bold text-sm ${available >= 0 ? 'text-success' : 'text-destructive'}`}>{available >= 0 ? '+' : ''}{formatAmount(available)}</p>
                   </div>
                 </>
               );
