@@ -4,9 +4,18 @@ import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import { useApp } from '@/context/AppContext';
 import { useCurrency } from '@/hooks/useCurrency';
-import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { Lightbulb, TrendingUp, BarChart3, Zap, AlertTriangle } from 'lucide-react';
+
+const SectionTitle = ({ icon: Icon, title }: { icon: React.ElementType; title: string }) => (
+  <div className="flex items-center gap-2 mb-3">
+    <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
+      <Icon className="w-3.5 h-3.5 text-primary" />
+    </div>
+    <h2 className="font-semibold text-sm">{title}</h2>
+  </div>
+);
 
 // ===== Helpers =====
 
@@ -220,9 +229,9 @@ const Insights = () => {
     return (
       <Layout>
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <span className="text-6xl mb-4">🔍</span>
-          <h2 className="text-xl font-bold text-foreground mb-2">Pas encore assez de données</h2>
-          <p className="text-muted-foreground max-w-sm">Continue à enregistrer tes transactions pour générer des insights personnalisés !</p>
+          <span className="text-5xl mb-4">🔍</span>
+          <h2 className="text-lg font-bold mb-2">Pas encore assez de données</h2>
+          <p className="text-sm text-muted-foreground max-w-sm">Continue à enregistrer tes transactions pour générer des insights personnalisés !</p>
         </div>
       </Layout>
     );
@@ -234,172 +243,138 @@ const Insights = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-5">
         <div className="space-y-3">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">💡 Insights</h1>
-            <p className="text-sm text-muted-foreground">Comprendre mon argent</p>
+            <h1 className="text-xl font-bold">Insights</h1>
+            <p className="text-xs text-muted-foreground">Comprendre mon argent</p>
           </div>
           <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} />
         </div>
 
-        {/* BLOC 1: Key Facts */}
-        <Card className="rounded-[20px]">
-          <CardContent className="p-5 space-y-3">
-            <h2 className="text-base font-semibold text-foreground">Faits marquants</h2>
+        {/* Key Facts */}
+        <div>
+          <SectionTitle icon={Lightbulb} title="Faits marquants" />
+          <div className="bg-secondary/20 border border-border/30 rounded-2xl p-4">
             {keyFacts.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Pas assez de données ce mois pour générer des faits.</p>
+              <p className="text-xs text-muted-foreground">Pas assez de données ce mois.</p>
             ) : (
               <div className="space-y-2.5">
                 {keyFacts.map((f, i) => (
-                  <div key={i} className="flex items-start gap-3 text-sm">
-                    <span className="text-lg flex-shrink-0">{f.icon}</span>
-                    <span className="text-foreground">{f.text}</span>
+                  <div key={i} className="flex items-start gap-3 text-xs">
+                    <span className="text-base flex-shrink-0">{f.icon}</span>
+                    <span className="text-foreground leading-relaxed">{f.text}</span>
                   </div>
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* BLOC 2: Top Categories & Leaks */}
-        <Card className="rounded-[20px]">
-          <CardContent className="p-5 space-y-4">
-            <h2 className="text-base font-semibold text-foreground">Top catégories</h2>
+        {/* Top Categories */}
+        <div>
+          <SectionTitle icon={TrendingUp} title="Top catégories" />
+          <div className="bg-secondary/20 border border-border/30 rounded-2xl p-4 space-y-3">
             {top3.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucune dépense ce mois.</p>
+              <p className="text-xs text-muted-foreground">Aucune dépense ce mois.</p>
             ) : (
               <div className="space-y-3">
                 {top3.map(([cat, { amount, emoji }]) => {
                   const pct = totalExpenses > 0 ? Math.round((amount / totalExpenses) * 100) : 0;
                   return (
                     <div key={cat} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="flex items-center gap-2"><span>{emoji}</span><span className="font-medium text-foreground">{cat}</span></span>
-                        <span className="text-muted-foreground">{formatAmount(amount)} · {pct}%</span>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-1.5"><span>{emoji}</span><span className="font-medium">{cat}</span></span>
+                        <span className="text-muted-foreground font-mono-amount">{formatAmount(amount)} · {pct}%</span>
                       </div>
-                      <Progress value={pct} className="h-2" />
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                      </div>
                     </div>
                   );
                 })}
               </div>
             )}
             {leaks.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-border space-y-2">
-                <h3 className="text-sm font-semibold text-foreground">Fuites détectées</h3>
+              <div className="mt-3 pt-3 border-t border-border/30 space-y-2">
+                <div className="flex items-center gap-1.5">
+                  <AlertTriangle className="w-3 h-3 text-warning" />
+                  <h3 className="text-xs font-semibold">Fuites détectées</h3>
+                </div>
                 {leaks.map((l, i) => (
-                  <div key={i} className="text-sm space-y-0.5">
-                    <p className="text-foreground">☕ {l.count} achats "{l.label}" ce mois = {formatAmount(l.total)}</p>
-                    <p className="text-muted-foreground text-xs">→ Si tu continues : {formatAmount(l.total * 12)}/an</p>
+                  <div key={i} className="text-xs space-y-0.5">
+                    <p>☕ {l.count} achats "{l.label}" = {formatAmount(l.total)}</p>
+                    <p className="text-muted-foreground text-[10px]">→ {formatAmount(l.total * 12)}/an</p>
                   </div>
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* BLOC 3: Evolution chart */}
-        <Card className="rounded-[20px]">
-          <CardContent className="p-5 space-y-4">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-semibold text-foreground">
-                  {chartRange === 12 ? `Dépenses` : 'Évolution des dépenses'}
-                </h2>
-                {chartRange === 12 && (
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => {
-                        const d = new Date(currentMonth);
-                        d.setFullYear(d.getFullYear() - 1);
-                        setCurrentMonth(d);
-                      }}
-                      className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-sm"
-                    >
-                      ‹
-                    </button>
-                    <span className="text-sm font-semibold min-w-[3ch] text-center">{currentMonth.getFullYear()}</span>
-                    <button
-                      onClick={() => {
-                        const d = new Date(currentMonth);
-                        d.setFullYear(d.getFullYear() + 1);
-                        setCurrentMonth(d);
-                      }}
-                      className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-sm"
-                    >
-                      ›
-                    </button>
-                  </div>
-                )}
+        {/* Chart */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
+                <BarChart3 className="w-3.5 h-3.5 text-primary" />
               </div>
-              <div className="flex items-center bg-muted rounded-xl p-0.5">
-                <button
-                  onClick={() => setChartRange(6)}
-                  className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${chartRange === 6 ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
-                >
-                  6 mois
-                </button>
-                <button
-                  onClick={() => setChartRange(12)}
-                  className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${chartRange === 12 ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}
-                >
-                  1 an
-                </button>
-              </div>
+              <h2 className="font-semibold text-sm">{chartRange === 12 ? 'Dépenses' : 'Évolution'}</h2>
+              {chartRange === 12 && (
+                <div className="flex items-center gap-1">
+                  <button onClick={() => { const d = new Date(currentMonth); d.setFullYear(d.getFullYear() - 1); setCurrentMonth(d); }} className="w-6 h-6 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-xs">‹</button>
+                  <span className="text-xs font-semibold min-w-[3ch] text-center">{currentMonth.getFullYear()}</span>
+                  <button onClick={() => { const d = new Date(currentMonth); d.setFullYear(d.getFullYear() + 1); setCurrentMonth(d); }} className="w-6 h-6 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-xs">›</button>
+                </div>
+              )}
             </div>
-            <div className={chartRange === 12 ? 'h-56 -mx-2' : 'h-48'}>
+            <div className="flex items-center bg-secondary/30 border border-border/30 rounded-xl p-0.5">
+              <button onClick={() => setChartRange(6)} className={`px-2.5 py-1 text-[10px] font-medium rounded-lg transition-all ${chartRange === 6 ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>6 mois</button>
+              <button onClick={() => setChartRange(12)} className={`px-2.5 py-1 text-[10px] font-medium rounded-lg transition-all ${chartRange === 12 ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>1 an</button>
+            </div>
+          </div>
+          <div className="bg-secondary/20 border border-border/30 rounded-2xl p-4">
+            <div className={chartRange === 12 ? 'h-48 -mx-2' : 'h-40'}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} barSize={chartRange === 12 ? 16 : 32} margin={chartRange === 12 ? { left: 4, right: 4 } : undefined}>
-                  <XAxis
-                    dataKey="month"
-                    tick={{ fontSize: chartRange === 12 ? 10 : 11 }}
-                    tickLine={false}
-                    axisLine={false}
-                    interval={0}
-                  />
+                <BarChart data={chartData} barSize={chartRange === 12 ? 14 : 28} margin={chartRange === 12 ? { left: 4, right: 4 } : undefined}>
+                  <XAxis dataKey="month" tick={{ fontSize: 9 }} tickLine={false} axisLine={false} interval={0} />
                   <YAxis hide />
-                  <Tooltip
-                    formatter={(value: number) => [formatAmount(value), 'Dépenses']}
-                    contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
-                  />
+                  <Tooltip formatter={(value: number) => [formatAmount(value), 'Dépenses']} contentStyle={{ borderRadius: 12, border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
                   <Bar dataKey="total" radius={[4, 4, 0, 0]}>
                     {chartData.map((entry, i) => (
-                      <Cell key={i} fill={entry.total > chartAvg ? 'hsl(0 70% 55%)' : 'hsl(142 60% 50%)'} />
+                      <Cell key={i} fill={entry.total > chartAvg ? 'hsl(0 70% 55%)' : 'hsl(152 69% 41%)'} />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-sm text-muted-foreground">
-              <span>Moyenne : {formatAmount(chartAvg)}/mois</span>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-[11px] text-muted-foreground mt-2">
+              <span>Moyenne : <span className="font-mono-amount">{formatAmount(chartAvg)}/mois</span></span>
               <span>
-                Ce mois : {formatAmount(currentMonthData.total)}{' '}
-                <span className={diffPct > 0 ? 'text-destructive' : 'text-green-600'}>
-                  ({diffPct > 0 ? '+' : ''}{diffPct}%)
-                </span>
+                Ce mois : <span className="font-mono-amount">{formatAmount(currentMonthData.total)}</span>{' '}
+                <span className={diffPct > 0 ? 'text-destructive' : 'text-success'}>({diffPct > 0 ? '+' : ''}{diffPct}%)</span>
               </span>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* BLOC 4: Recommendations */}
+        {/* Recommendations */}
         {recommendations.length > 0 && (
-          <Card className="rounded-[20px]">
-            <CardContent className="p-5 space-y-3">
-              <h2 className="text-base font-semibold text-foreground">Recommandations</h2>
+          <div>
+            <SectionTitle icon={Zap} title="Recommandations" />
+            <div className="bg-gradient-to-br from-primary/8 to-primary/3 border border-primary/15 rounded-2xl p-4">
               <div className="space-y-2.5">
                 {recommendations.map((r, i) => (
-                  <div key={i} className="flex items-start gap-3 text-sm">
-                    <span className="text-lg flex-shrink-0">{r.icon}</span>
-                    <span className="text-foreground">{r.text}</span>
+                  <div key={i} className="flex items-start gap-3 text-xs">
+                    <span className="text-base flex-shrink-0">{r.icon}</span>
+                    <span className="leading-relaxed">{r.text}</span>
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         )}
       </div>
-      
     </Layout>
   );
 };
