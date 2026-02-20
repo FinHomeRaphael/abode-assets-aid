@@ -125,8 +125,8 @@ const Dashboard = () => {
   const monthTx = useMemo(() => getTransactionsForMonth(now), [getTransactionsForMonth]);
 
   // Use frozen convertedAmount for totals
-  const totalIncome = monthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
-  const totalExpense = monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
+  const totalIncome = monthTx.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const totalExpense = monthTx.filter(t => t.type === 'expense' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
   const monthSavings = getMonthSavings(now);
   const totalSavings = getTotalSavings();
   const balance = totalIncome - totalExpense - monthSavings;
@@ -134,7 +134,7 @@ const Dashboard = () => {
   const prevMonth = new Date(now);
   prevMonth.setMonth(prevMonth.getMonth() - 1);
   const prevTx = useMemo(() => getTransactionsForMonth(prevMonth), [getTransactionsForMonth]);
-  const prevExpense = prevTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
+  const prevExpense = prevTx.filter(t => t.type === 'expense' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
 
   const budgetData = budgets.filter(b => b.period === 'monthly').map(b => ({
     ...b,
