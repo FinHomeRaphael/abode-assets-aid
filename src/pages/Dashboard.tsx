@@ -124,9 +124,14 @@ const Dashboard = () => {
   const now = new Date();
   const monthTx = useMemo(() => getTransactionsForMonth(now), [getTransactionsForMonth]);
 
-  // Use frozen convertedAmount for totals
-  const totalIncome = monthTx.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
-  const totalExpense = monthTx.filter(t => t.type === 'expense' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  // Comptes épargne
+  const epargneAccountIds = new Set(accounts.filter(a => a.type === 'epargne').map(a => a.id));
+  const epargneIn = monthTx.filter(t => t.type === 'income' && t.accountId && epargneAccountIds.has(t.accountId)).reduce((s, t) => s + t.convertedAmount, 0);
+  const epargneOut = monthTx.filter(t => t.type === 'expense' && t.accountId && epargneAccountIds.has(t.accountId)).reduce((s, t) => s + t.convertedAmount, 0);
+
+  // Revenus/dépenses hors transferts et hors comptes épargne
+  const totalIncome = monthTx.filter(t => t.type === 'income' && t.category !== 'Transfert' && !(t.accountId && epargneAccountIds.has(t.accountId))).reduce((s, t) => s + t.convertedAmount, 0);
+  const totalExpense = monthTx.filter(t => t.type === 'expense' && t.category !== 'Transfert' && !(t.accountId && epargneAccountIds.has(t.accountId))).reduce((s, t) => s + t.convertedAmount, 0);
   const monthSavings = getMonthSavings(now);
   const totalSavings = getTotalSavings();
   const balance = totalIncome - totalExpense - monthSavings;
@@ -175,7 +180,7 @@ const Dashboard = () => {
         <motion.div variants={fadeUp} className="bg-primary rounded-3xl p-6 text-primary-foreground shadow-card-lg">
           <p className="text-primary-foreground/70 text-sm font-medium mb-1">Solde disponible (mois en cours)</p>
           <p className="text-3xl font-bold font-mono-amount tracking-tight">{balance >= 0 ? '+ ' : '- '}{formatAmount(balance)}</p>
-          <div className="flex items-center gap-2 sm:gap-4 mt-4">
+          <div className="flex items-center gap-2 sm:gap-3 mt-4">
             <div className="flex-1 bg-primary-foreground/10 rounded-2xl p-2 sm:p-3 text-center">
               <p className="text-primary-foreground/60 text-[10px] sm:text-xs mb-0.5">Revenus</p>
               <p className="font-semibold font-mono-amount text-xs sm:text-sm whitespace-nowrap">+{formatAmount(totalIncome)}</p>
@@ -189,6 +194,18 @@ const Dashboard = () => {
               <p className="font-semibold font-mono-amount text-xs sm:text-sm whitespace-nowrap">{formatAmount(monthSavings)}</p>
             </div>
           </div>
+          {(epargneIn > 0 || epargneOut > 0) && (
+            <div className="flex items-center gap-2 sm:gap-3 mt-2">
+              <div className="flex-1 bg-primary-foreground/10 rounded-2xl p-2 sm:p-3 text-center">
+                <p className="text-primary-foreground/60 text-[10px] sm:text-xs mb-0.5">🐖 Épargne</p>
+                <p className="font-semibold font-mono-amount text-xs sm:text-sm whitespace-nowrap">+{formatAmount(epargneIn)}</p>
+              </div>
+              <div className="flex-1 bg-primary-foreground/10 rounded-2xl p-2 sm:p-3 text-center">
+                <p className="text-primary-foreground/60 text-[10px] sm:text-xs mb-0.5">🐖 Dép. épargne</p>
+                <p className="font-semibold font-mono-amount text-xs sm:text-sm whitespace-nowrap">-{formatAmount(epargneOut)}</p>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* AI Insight Carousel */}
