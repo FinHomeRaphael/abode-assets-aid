@@ -83,17 +83,21 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   useEffect(() => { if (open) fetchDebts(); }, [open, fetchDebts]);
 
   const transactions = useMemo(() => getTransactionsForMonth(month), [month, getTransactionsForMonth]);
-  const income = transactions.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  
+  // Identifier les comptes épargne
+  const epargneAccountIds = new Set(accounts.filter(a => a.type === 'epargne').map(a => a.id));
+  
+  // Épargne = tout revenu (transfert ou direct) entrant sur un compte épargne
+  const totalEpargneComptes = transactions
+    .filter(t => t.type === 'income' && t.accountId && epargneAccountIds.has(t.accountId))
+    .reduce((s, t) => s + t.convertedAmount, 0);
+
+  // Revenus = hors transferts ET hors revenus directs sur comptes épargne
+  const income = transactions.filter(t => t.type === 'income' && t.category !== 'Transfert' && !(t.accountId && epargneAccountIds.has(t.accountId))).reduce((s, t) => s + t.convertedAmount, 0);
   const expenses = transactions.filter(t => t.type === 'expense' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
   const savings = getMonthSavings(month);
 
-  // Épargne via transferts : transferts entrants sur comptes de type 'epargne'
-  const epargneAccountIds = new Set(accounts.filter(a => a.type === 'epargne').map(a => a.id));
-  const transfersToEpargne = transactions
-    .filter(t => t.category === 'Transfert' && t.type === 'income' && t.accountId && epargneAccountIds.has(t.accountId))
-    .reduce((s, t) => s + t.convertedAmount, 0);
-
-  const available = income - expenses - savings - transfersToEpargne;
+  const available = income - expenses - savings;
 
   const prevMonth = new Date(month);
   prevMonth.setMonth(prevMonth.getMonth() - 1);
@@ -184,7 +188,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                   )}
 
                   {/* Mois en cours */}
-                  <div className={`grid grid-cols-2 ${transfersToEpargne > 0 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-3 mb-6`}>
+                  <div className={`grid grid-cols-2 ${totalEpargneComptes > 0 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-3 mb-6`}>
                     <div className="bg-secondary/50 rounded-xl p-3 text-center">
                       <p className="text-xs text-muted-foreground mb-1">Revenus</p>
                       <p className="font-mono font-bold text-success text-sm">+{formatAmount(income)}</p>
@@ -203,10 +207,10 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                       <p className="text-xs text-muted-foreground mb-1">Enveloppes</p>
                       <p className="font-mono font-bold text-primary text-sm">-{formatAmount(savings)}</p>
                     </div>
-                    {transfersToEpargne > 0 && (
+                    {totalEpargneComptes > 0 && (
                       <div className="bg-secondary/50 rounded-xl p-3 text-center">
                         <p className="text-xs text-muted-foreground mb-1">🐖 Épargne</p>
-                        <p className="font-mono font-bold text-primary text-sm">-{formatAmount(transfersToEpargne)}</p>
+                        <p className="font-mono font-bold text-primary text-sm">{formatAmount(totalEpargneComptes)}</p>
                       </div>
                     )}
                     <div className="bg-secondary/50 rounded-xl p-3 text-center">
