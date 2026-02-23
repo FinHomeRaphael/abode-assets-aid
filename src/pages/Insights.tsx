@@ -227,11 +227,13 @@ const Insights = () => {
   if (!hasData) {
     return (
       <Layout>
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <span className="text-5xl mb-4">🔍</span>
-          <h2 className="text-lg font-bold mb-2">Pas encore assez de données</h2>
-          <p className="text-sm text-muted-foreground max-w-sm">Continue à enregistrer tes transactions pour générer des insights personnalisés !</p>
-        </div>
+        <PremiumGate feature="les insights" description="Analysez vos habitudes financières avec des graphiques et recommandations personnalisées.">
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <span className="text-5xl mb-4">🔍</span>
+            <h2 className="text-lg font-bold mb-2">Pas encore assez de données</h2>
+            <p className="text-sm text-muted-foreground max-w-sm">Continue à enregistrer tes transactions pour générer des insights personnalisés !</p>
+          </div>
+        </PremiumGate>
       </Layout>
     );
   }
