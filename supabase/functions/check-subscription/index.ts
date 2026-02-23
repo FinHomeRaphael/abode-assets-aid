@@ -50,6 +50,39 @@ serve(async (req) => {
     }
     const user = userData.user;
 
+    // Check DB plan override first
+    const adminClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      { auth: { persistSession: false } }
+    );
+
+    const { data: memberRow } = await adminClient
+      .from('household_members')
+      .select('household_id')
+      .eq('user_id', user.id)
+      .single();
+
+    if (memberRow) {
+      const { data: household } = await adminClient
+        .from('households')
+        .select('plan, subscription_status, subscription_end_date')
+        .eq('id', memberRow.household_id)
+        .single();
+
+      // If plan is manually set to premium in DB, honor it
+      if (household?.plan === 'premium' && household?.subscription_status === 'active') {
+        return new Response(JSON.stringify({
+          subscribed: true,
+          subscription_end: household.subscription_end_date,
+          customer_id: null,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+    }
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
@@ -80,19 +113,6 @@ serve(async (req) => {
         }
       }
       subscriptionId = subscription.id;
-
-      // Update household with subscription info using service role
-      const adminClient = createClient(
-        Deno.env.get("SUPABASE_URL") ?? "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
-        { auth: { persistSession: false } }
-      );
-
-      const { data: memberRow } = await adminClient
-        .from('household_members')
-        .select('household_id')
-        .eq('user_id', user.id)
-        .single();
 
       if (memberRow) {
         await adminClient
