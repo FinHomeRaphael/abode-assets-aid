@@ -9,7 +9,7 @@ import ScanTicketModal from '@/components/ScanTicketModal';
 import AddBudgetModal from '@/components/AddBudgetModal';
 import AddSavingsGoalModal from '@/components/AddSavingsGoalModal';
 import AddDebtModal from '@/components/AddDebtModal';
-import { Home, CreditCard, Target, PiggyBank, Landmark, Lightbulb, Plus, Camera, Sparkles, X } from 'lucide-react';
+import { Home, CreditCard, Target, PiggyBank, Landmark, Lightbulb, Plus, X } from 'lucide-react';
 import ScopeToggle from '@/components/ScopeToggle';
 
 interface LayoutProps {
@@ -60,13 +60,13 @@ const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Desktop header */}
-      <header className="hidden md:block sticky top-0 z-30 bg-card/80 backdrop-blur-xl border-b border-border/30">
-        <div className="max-w-5xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <button onClick={() => navigate('/')} className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0">
+      <header className="hidden md:block sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border">
+        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-8">
+            <button onClick={() => navigate('/')} className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
               <img src={logoSquare} alt="FinHome" className="w-full h-full object-cover" />
             </button>
-            <nav className="flex items-center gap-0.5">
+            <nav className="flex items-center gap-1">
               {navItems.map(item => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
@@ -74,25 +74,25 @@ const Layout = ({ children }: LayoutProps) => {
                   <button
                     key={item.path}
                     onClick={() => navigate(item.path)}
-                    className={`px-3 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 ${
                       isActive
                         ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-secondary/50'
+                        : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    <Icon className="w-3.5 h-3.5" />
+                    <Icon className="w-4 h-4" />
                     {item.label}
                   </button>
                 );
               })}
             </nav>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <ScopeToggle />
-            <button onClick={() => setShowAddModal(true)} className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm flex items-center gap-1.5">
-              <Plus className="w-3.5 h-3.5" /> Ajouter
+            <button onClick={() => setShowAddModal(true)} className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5">
+              <Plus className="w-4 h-4" /> Ajouter
             </button>
-            <button onClick={() => navigate('/profile')} className="w-9 h-9 rounded-xl bg-secondary/50 border border-border/30 flex items-center justify-center text-xs font-bold text-muted-foreground hover:bg-secondary transition-colors">
+            <button onClick={() => navigate('/profile')} className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground hover:bg-muted/80 transition-colors">
               {currentUser ? getInitials(currentUser.name) : '?'}
             </button>
           </div>
@@ -106,23 +106,23 @@ const Layout = ({ children }: LayoutProps) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="md:hidden fixed inset-0 z-40 bg-foreground/30 backdrop-blur-md"
+            transition={{ duration: 0.15 }}
+            className="md:hidden fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
             onClick={() => setFabOpen(false)}
           >
-            <div className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2" onClick={e => e.stopPropagation()}>
+            <div className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5" onClick={e => e.stopPropagation()}>
               {fabActions.map((item, i) => (
                 <motion.button
                   key={item.action}
-                  initial={{ opacity: 0, y: 20, scale: 0.8 }}
+                  initial={{ opacity: 0, y: 16, scale: 0.9 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.8 }}
-                  transition={{ delay: i * 0.04, type: 'spring', damping: 20, stiffness: 300 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.9 }}
+                  transition={{ delay: i * 0.03, type: 'spring', damping: 25, stiffness: 350 }}
                   onClick={() => handleFabAction(item.action)}
-                  className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-card/90 backdrop-blur-sm shadow-lg border border-border/30 active:scale-95 transition-transform"
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-card shadow-card-lg border border-border active:scale-95 transition-transform"
                 >
-                  <span className="text-lg">{item.emoji}</span>
-                  <span className="text-sm font-semibold text-foreground">{item.label}</span>
+                  <span className="text-base">{item.emoji}</span>
+                  <span className="text-sm font-medium text-foreground">{item.label}</span>
                 </motion.button>
               ))}
             </div>
@@ -131,8 +131,8 @@ const Layout = ({ children }: LayoutProps) => {
       </AnimatePresence>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border/30 safe-area-bottom">
-        <div className="flex justify-around items-center py-1.5 px-1">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-nav safe-area-bottom">
+        <div className="flex justify-around items-center h-16 px-2">
           {navItems.slice(0, 3).map(item => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
@@ -140,27 +140,24 @@ const Layout = ({ children }: LayoutProps) => {
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all ${
+                className={`flex flex-col items-center justify-center gap-0.5 w-14 h-full transition-colors ${
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
-                <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110' : ''}`} />
-                <span className={`text-[9px] font-medium ${isActive ? 'text-primary' : ''}`}>{item.label}</span>
+                <Icon className="w-5 h-5" />
+                <span className="text-[10px] font-medium">{item.label}</span>
               </button>
             );
           })}
 
           {/* FAB center button */}
-          <div className="relative -mt-6">
+          <div className="relative flex items-center justify-center">
             <button
               onClick={() => setFabOpen(prev => !prev)}
-              className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary/80 shadow-[0_4px_16px_-2px_hsl(var(--primary)/0.5)] flex items-center justify-center active:scale-90 transition-all"
+              className="w-11 h-11 -mt-5 rounded-full bg-primary shadow-md flex items-center justify-center active:scale-90 transition-transform"
             >
-              <motion.div
-                animate={{ rotate: fabOpen ? 45 : 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Plus className="w-6 h-6 text-primary-foreground" />
+              <motion.div animate={{ rotate: fabOpen ? 45 : 0 }} transition={{ duration: 0.15 }}>
+                <Plus className="w-5 h-5 text-primary-foreground" />
               </motion.div>
             </button>
           </div>
@@ -172,20 +169,20 @@ const Layout = ({ children }: LayoutProps) => {
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center gap-0.5 py-1 px-2 rounded-xl transition-all ${
+                className={`flex flex-col items-center justify-center gap-0.5 w-14 h-full transition-colors ${
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
-                <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-110' : ''}`} />
-                <span className={`text-[9px] font-medium ${isActive ? 'text-primary' : ''}`}>{item.label}</span>
+                <Icon className="w-5 h-5" />
+                <span className="text-[10px] font-medium">{item.label}</span>
               </button>
             );
           })}
         </div>
       </nav>
 
-      <main className="container max-w-5xl mx-auto px-4 md:px-6 py-5 pb-36 md:pb-8">
-        <div className="md:hidden mb-4">
+      <main className="max-w-5xl mx-auto px-4 md:px-6 py-4 pb-24 md:pb-8">
+        <div className="md:hidden mb-3">
           <ScopeToggle />
         </div>
         {children}

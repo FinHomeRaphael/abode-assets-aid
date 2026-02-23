@@ -230,7 +230,7 @@ const Transactions = () => {
         </div>
 
         {/* List */}
-        <div className="bg-secondary/20 border border-border/30 rounded-2xl divide-y divide-border/30 overflow-hidden">
+        <div className="bg-card border border-border rounded-xl divide-y divide-border overflow-hidden">
           {filtered.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-sm">Aucune transaction trouvée</div>
           ) : (

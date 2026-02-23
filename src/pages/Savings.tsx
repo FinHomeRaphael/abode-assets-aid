@@ -12,15 +12,13 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { PiggyBank, Wallet, Target, Plus, X, Trash2 } from 'lucide-react';
 
 const SectionTitle = ({ icon: Icon, title, action, onAction }: { icon: React.ElementType; title: string; action?: string; onAction?: () => void }) => (
-  <div className="flex items-center justify-between mb-3">
+  <div className="flex items-center justify-between mb-2">
     <div className="flex items-center gap-2">
-      <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
-        <Icon className="w-3.5 h-3.5 text-primary" />
-      </div>
+      <Icon className="w-4 h-4 text-muted-foreground" />
       <h2 className="font-semibold text-sm">{title}</h2>
     </div>
     {action && onAction && (
-      <button onClick={onAction} className="text-[10px] px-3 py-1.5 rounded-lg border border-border/30 bg-secondary/30 hover:bg-secondary/50 transition-colors font-medium">{action}</button>
+      <button onClick={onAction} className="text-[11px] px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted transition-colors font-medium">{action}</button>
     )}
   </div>
 );
@@ -150,7 +148,7 @@ const Savings = () => {
           </div>
 
           {activeAccounts.length === 0 ? (
-            <div className="bg-secondary/20 border border-border/30 rounded-2xl p-6 text-center text-muted-foreground text-sm">
+            <div className="bg-card border border-border rounded-xl p-6 text-center text-muted-foreground text-sm">
               Aucun compte créé.
               <button onClick={() => setShowCreateAccount(true)} className="block mx-auto mt-2 text-primary underline text-xs">Créer mon premier compte</button>
             </div>
@@ -160,7 +158,7 @@ const Savings = () => {
                 const bal = getAccountBalance(acc.id);
                 const typeInfo = ACCOUNT_TYPES.find(t => t.value === acc.type);
                 return (
-                  <div key={acc.id} onClick={() => navigate(`/account/${acc.id}`)} className="bg-secondary/20 border border-border/30 rounded-xl p-3.5 cursor-pointer hover:bg-secondary/30 transition-colors active:scale-[0.98]">
+                  <div key={acc.id} onClick={() => navigate(`/account/${acc.id}`)} className="bg-card border border-border rounded-xl p-3.5 cursor-pointer hover:bg-muted/50 transition-colors active:scale-[0.98]">
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-medium text-sm">{typeInfo?.emoji} {acc.name}</span>
                       <span className="text-[9px] px-1.5 py-0.5 rounded-lg bg-secondary/50 text-muted-foreground font-medium">{acc.currency}</span>
@@ -180,30 +178,30 @@ const Savings = () => {
         <div>
           <SectionTitle icon={PiggyBank} title="Objectifs d'enveloppe" />
 
-          <div className="grid grid-cols-3 gap-2 mb-3">
-            <div className="bg-primary/5 border border-primary/15 rounded-xl p-3 text-center">
-              <p className="text-[10px] text-muted-foreground mb-0.5">Ce mois</p>
-              <p className="font-mono-amount font-bold text-primary text-sm">{formatAmount(monthSavings)}</p>
+            <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="bg-card border border-border rounded-xl p-3 text-center">
+              <p className="text-[11px] text-muted-foreground mb-1">Ce mois</p>
+              <p className="font-mono-amount font-semibold text-primary text-sm">{formatAmount(monthSavings)}</p>
             </div>
-            <div className="bg-secondary/30 border border-border/30 rounded-xl p-3 text-center">
-              <p className="text-[10px] text-muted-foreground mb-0.5">Total cumulé</p>
-              <p className="font-mono-amount font-bold text-sm">{formatAmount(totalSavings)}</p>
+            <div className="bg-card border border-border rounded-xl p-3 text-center">
+              <p className="text-[11px] text-muted-foreground mb-1">Total cumulé</p>
+              <p className="font-mono-amount font-semibold text-sm">{formatAmount(totalSavings)}</p>
             </div>
-            <div className="bg-secondary/30 border border-border/30 rounded-xl p-3 text-center">
-              <p className="text-[10px] text-muted-foreground mb-0.5">Objectifs</p>
-              <p className="font-mono-amount font-bold text-sm">{savingsGoals.length}</p>
+            <div className="bg-card border border-border rounded-xl p-3 text-center">
+              <p className="text-[11px] text-muted-foreground mb-1">Objectifs</p>
+              <p className="font-mono-amount font-semibold text-sm">{savingsGoals.length}</p>
             </div>
           </div>
 
           {savingsGoals.length === 0 ? (
-            <div className="bg-secondary/20 border border-border/30 rounded-2xl p-8 text-center text-muted-foreground text-sm">Aucun objectif créé</div>
+            <div className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground text-sm">Aucun objectif créé</div>
           ) : (
             <div className="grid sm:grid-cols-2 gap-2">
               {savingsGoals.map(g => {
                 const saved = getGoalSaved(g.id);
                 const pct = Math.min((saved / g.target) * 100, 100);
                 return (
-                  <div key={g.id} onClick={() => openEditGoal(g)} className="bg-secondary/20 border border-border/30 rounded-2xl p-4 cursor-pointer hover:bg-secondary/30 transition-colors active:scale-[0.98]">
+                  <div key={g.id} onClick={() => openEditGoal(g)} className="bg-card border border-border rounded-xl p-4 cursor-pointer hover:bg-muted/50 transition-colors active:scale-[0.98]">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-semibold text-base">{g.emoji} {g.name}</span>
                       <div className="flex items-center gap-1.5">
