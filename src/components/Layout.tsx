@@ -25,11 +25,13 @@ const navItems = [
   { path: '/insights', label: 'Insights', icon: Lightbulb },
 ];
 
-// Mobile nav: only 4 items to avoid overflow
+// Mobile nav: all 6 items, icon-only to fit
 const mobileNavItems = [
   { path: '/', label: 'Accueil', icon: Home },
   { path: '/transactions', label: 'Transac.', icon: CreditCard },
   { path: '/budgets', label: 'Budgets', icon: Target },
+  { path: '/savings', label: 'Envel.', icon: PiggyBank },
+  { path: '/debts', label: 'Dettes', icon: Landmark },
   { path: '/insights', label: 'Insights', icon: Lightbulb },
 ];
 
@@ -68,7 +70,7 @@ const Layout = ({ children }: LayoutProps) => {
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Desktop header */}
-      <header className="hidden md:block sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border">
+      <header className="hidden lg:block sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-2">
           <div className="flex items-center gap-4 min-w-0">
             <button onClick={() => navigate('/')} className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
@@ -115,7 +117,7 @@ const Layout = ({ children }: LayoutProps) => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="md:hidden fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
+            className="lg:hidden fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
             onClick={() => setFabOpen(false)}
           >
             <div className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5" onClick={e => e.stopPropagation()}>
@@ -139,9 +141,9 @@ const Layout = ({ children }: LayoutProps) => {
       </AnimatePresence>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-nav safe-area-bottom">
-        <div className="flex justify-around items-center h-16 px-1">
-          {mobileNavItems.slice(0, 2).map(item => {
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-nav safe-area-bottom">
+        <div className="flex items-center h-14 px-1">
+          {mobileNavItems.slice(0, 3).map(item => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             return (
@@ -153,16 +155,16 @@ const Layout = ({ children }: LayoutProps) => {
                 }`}
               >
                 <Icon className="w-5 h-5" />
-                <span className="text-[10px] font-medium">{item.label}</span>
+                <span className="text-[9px] font-medium leading-tight">{item.label}</span>
               </button>
             );
           })}
 
           {/* FAB center button */}
-          <div className="relative flex items-center justify-center px-2">
+          <div className="relative flex items-center justify-center w-14 flex-shrink-0">
             <button
               onClick={() => setFabOpen(prev => !prev)}
-              className="w-12 h-12 -mt-6 rounded-full bg-primary shadow-md flex items-center justify-center active:scale-90 transition-transform"
+              className="w-11 h-11 -mt-5 rounded-full bg-primary shadow-md flex items-center justify-center active:scale-90 transition-transform"
             >
               <motion.div animate={{ rotate: fabOpen ? 45 : 0 }} transition={{ duration: 0.15 }}>
                 <Plus className="w-5 h-5 text-primary-foreground" />
@@ -170,7 +172,7 @@ const Layout = ({ children }: LayoutProps) => {
             </button>
           </div>
 
-          {mobileNavItems.slice(2).map(item => {
+          {mobileNavItems.slice(3).map(item => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             return (
@@ -182,15 +184,15 @@ const Layout = ({ children }: LayoutProps) => {
                 }`}
               >
                 <Icon className="w-5 h-5" />
-                <span className="text-[10px] font-medium">{item.label}</span>
+                <span className="text-[9px] font-medium leading-tight">{item.label}</span>
               </button>
             );
           })}
         </div>
       </nav>
 
-      <main className="max-w-5xl mx-auto px-4 md:px-6 py-4 pb-24 md:pb-8">
-        <div className="md:hidden mb-3">
+      <main className="max-w-5xl mx-auto px-4 lg:px-6 py-4 pb-24 lg:pb-8">
+        <div className="lg:hidden mb-3">
           <ScopeToggle />
         </div>
         {children}
