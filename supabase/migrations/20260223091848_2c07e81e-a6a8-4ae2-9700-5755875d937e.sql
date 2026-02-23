@@ -1,0 +1,2 @@
+
+ALTER TABLE public.profiles ADD COLUMN onboarding_done boolean NOT NULL DEFAULT false;

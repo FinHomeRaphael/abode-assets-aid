@@ -420,6 +420,7 @@ export type Database = {
           first_name: string
           id: string
           last_name: string | null
+          onboarding_done: boolean
           updated_at: string | null
         }
         Insert: {
@@ -429,6 +430,7 @@ export type Database = {
           first_name: string
           id: string
           last_name?: string | null
+          onboarding_done?: boolean
           updated_at?: string | null
         }
         Update: {
@@ -438,6 +440,7 @@ export type Database = {
           first_name?: string
           id?: string
           last_name?: string | null
+          onboarding_done?: boolean
           updated_at?: string | null
         }
         Relationships: []

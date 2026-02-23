@@ -62,13 +62,27 @@ const Dashboard = () => {
 
   React.useEffect(() => {
     if (!currentUser?.id) return;
-    const key = `finehome_onboarding_done_${currentUser.id}`;
-    if (!localStorage.getItem(key)) setShowOnboarding(true);
+    const checkOnboarding = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('onboarding_done')
+        .eq('id', currentUser.id)
+        .single();
+      if (data && !data.onboarding_done) {
+        setShowOnboarding(true);
+      }
+    };
+    checkOnboarding();
   }, [currentUser?.id]);
 
-  const handleOnboardingComplete = () => {
+  const handleOnboardingComplete = async () => {
     setShowOnboarding(false);
-    if (currentUser?.id) localStorage.setItem(`finehome_onboarding_done_${currentUser.id}`, '1');
+    if (currentUser?.id) {
+      await supabase
+        .from('profiles')
+        .update({ onboarding_done: true } as any)
+        .eq('id', currentUser.id);
+    }
   };
 
   const fetchDebts = useCallback(async () => {
