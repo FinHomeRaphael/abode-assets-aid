@@ -321,35 +321,55 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ===== Auth listener =====
   useEffect(() => {
+    let isMounted = true;
+
+    const clearUserState = () => {
+      setCurrentUser(null);
+      setMembers([]);
+      setTransactions([]);
+      setBudgets([]);
+      setSavingsGoals([]);
+      setSavingsDeposits([]);
+      setCustomCategories([]);
+      setAccounts([]);
+      setHouseholdData({ name: '', currency: 'EUR', createdAt: '', plan: 'free' });
+      setHouseholdId('');
+    };
+
+    // Listener for ONGOING auth changes (does NOT control loading)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!isMounted) return;
       setSession(newSession);
       if (newSession?.user) {
-        setTimeout(() => fetchUserData(newSession.user.id), 0);
+        // Defer to avoid Supabase deadlock
+        setTimeout(() => {
+          if (isMounted) fetchUserData(newSession.user.id);
+        }, 0);
       } else {
-        setCurrentUser(null);
-        setMembers([]);
-        setTransactions([]);
-        setBudgets([]);
-        setSavingsGoals([]);
-        setSavingsDeposits([]);
-        setCustomCategories([]);
-        setAccounts([]);
-        setHouseholdData({ name: '', currency: 'EUR', createdAt: '', plan: 'free' });
-        setHouseholdId('');
-        setLoading(false);
+        clearUserState();
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      if (s?.user) {
-        fetchUserData(s.user.id);
-      } else {
-        setLoading(false);
+    // INITIAL load (controls loading state)
+    const initializeAuth = async () => {
+      try {
+        const { data: { session: s } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        setSession(s);
+        if (s?.user) {
+          await fetchUserData(s.user.id);
+        }
+      } finally {
+        if (isMounted) setLoading(false);
       }
-    });
+    };
 
-    return () => subscription.unsubscribe();
+    initializeAuth();
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, [fetchUserData]);
 
   // ===== Auth Actions =====
