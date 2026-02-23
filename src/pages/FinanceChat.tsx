@@ -16,7 +16,7 @@ const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/finance-chat
 
 const FinanceChat = () => {
   const {
-    transactions, budgets, savingsGoals, savingsDeposits,
+    scopedTransactions: transactions, scopedBudgets: budgets, scopedSavingsGoals: savingsGoals, savingsDeposits,
     household, currentUser, getTransactionsForMonth,
     getBudgetSpent, getGoalSaved, getMonthSavings, getTotalSavings,
     getBudgetsForMonth, householdId,
