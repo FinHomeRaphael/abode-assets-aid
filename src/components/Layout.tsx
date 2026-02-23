@@ -131,7 +131,7 @@ const Layout = ({ children }: LayoutProps) => {
       </AnimatePresence>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-xl border-t border-border/30 safe-area-bottom">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border/30 safe-area-bottom">
         <div className="flex justify-around items-center py-1.5 px-1">
           {navItems.slice(0, 3).map(item => {
             const Icon = item.icon;
