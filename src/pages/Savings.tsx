@@ -30,7 +30,7 @@ const Savings = () => {
     scopedSavingsGoals: savingsGoals, savingsDeposits, getGoalSaved, getGoalDeposits, getMonthSavings, getTotalSavings,
     addSavingsGoal, updateSavingsGoal, deleteSavingsGoal,
     addSavingsDeposit, deleteSavingsDeposit, household, getMemberById,
-    accounts, getActiveAccounts, getAccountBalance, addAccount, householdId, currentUser,
+    scopedAccounts: accounts, getActiveAccounts, getAccountBalance, addAccount, householdId, currentUser,
   } = useApp();
   const { formatAmount } = useCurrency();
   const { canAdd } = useSubscription(householdId, currentUser?.id);
