@@ -66,6 +66,7 @@ export type Database = {
           alerts_enabled: boolean | null
           category: string
           created_at: string | null
+          created_by: string | null
           emoji: string
           end_month: string | null
           household_id: string
@@ -74,6 +75,7 @@ export type Database = {
           limit_amount: number
           month_year: string | null
           period: string
+          scope: string
           start_month: string
           updated_at: string | null
         }
@@ -81,6 +83,7 @@ export type Database = {
           alerts_enabled?: boolean | null
           category: string
           created_at?: string | null
+          created_by?: string | null
           emoji?: string
           end_month?: string | null
           household_id: string
@@ -89,6 +92,7 @@ export type Database = {
           limit_amount: number
           month_year?: string | null
           period?: string
+          scope?: string
           start_month: string
           updated_at?: string | null
         }
@@ -96,6 +100,7 @@ export type Database = {
           alerts_enabled?: boolean | null
           category?: string
           created_at?: string | null
+          created_by?: string | null
           emoji?: string
           end_month?: string | null
           household_id?: string
@@ -104,6 +109,7 @@ export type Database = {
           limit_amount?: number
           month_year?: string | null
           period?: string
+          scope?: string
           start_month?: string
           updated_at?: string | null
         }
@@ -125,6 +131,7 @@ export type Database = {
           id: string
           is_default: boolean | null
           name: string
+          scope: string
           type: string
         }
         Insert: {
@@ -134,6 +141,7 @@ export type Database = {
           id?: string
           is_default?: boolean | null
           name: string
+          scope?: string
           type: string
         }
         Update: {
@@ -143,6 +151,7 @@ export type Database = {
           id?: string
           is_default?: boolean | null
           name?: string
+          scope?: string
           type?: string
         }
         Relationships: [
@@ -160,6 +169,7 @@ export type Database = {
           account_id: string | null
           category_id: string | null
           created_at: string | null
+          created_by: string | null
           currency: string
           duration_years: number
           household_id: string
@@ -174,6 +184,7 @@ export type Database = {
           payment_day: number
           payment_frequency: string
           remaining_amount: number
+          scope: string
           start_date: string
           type: string
           updated_at: string | null
@@ -182,6 +193,7 @@ export type Database = {
           account_id?: string | null
           category_id?: string | null
           created_at?: string | null
+          created_by?: string | null
           currency?: string
           duration_years: number
           household_id: string
@@ -196,6 +208,7 @@ export type Database = {
           payment_day?: number
           payment_frequency?: string
           remaining_amount: number
+          scope?: string
           start_date: string
           type: string
           updated_at?: string | null
@@ -204,6 +217,7 @@ export type Database = {
           account_id?: string | null
           category_id?: string | null
           created_at?: string | null
+          created_by?: string | null
           currency?: string
           duration_years?: number
           household_id?: string
@@ -218,6 +232,7 @@ export type Database = {
           payment_day?: number
           payment_frequency?: string
           remaining_amount?: number
+          scope?: string
           start_date?: string
           type?: string
           updated_at?: string | null
@@ -472,33 +487,39 @@ export type Database = {
       savings_goals: {
         Row: {
           created_at: string | null
+          created_by: string | null
           currency: string
           emoji: string
           household_id: string
           id: string
           name: string
+          scope: string
           target_amount: number
           target_date: string | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           currency?: string
           emoji: string
           household_id: string
           id?: string
           name: string
+          scope?: string
           target_amount: number
           target_date?: string | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           currency?: string
           emoji?: string
           household_id?: string
           id?: string
           name?: string
+          scope?: string
           target_amount?: number
           target_date?: string | null
           updated_at?: string | null
@@ -521,6 +542,7 @@ export type Database = {
           category: string
           converted_amount: number
           created_at: string | null
+          created_by: string | null
           currency: string
           date: string
           debt_id: string | null
@@ -538,6 +560,7 @@ export type Database = {
           recurring_end_month: string | null
           recurring_source_id: string | null
           recurring_start_month: string | null
+          scope: string
           type: string
           updated_at: string | null
         }
@@ -548,6 +571,7 @@ export type Database = {
           category: string
           converted_amount: number
           created_at?: string | null
+          created_by?: string | null
           currency: string
           date: string
           debt_id?: string | null
@@ -565,6 +589,7 @@ export type Database = {
           recurring_end_month?: string | null
           recurring_source_id?: string | null
           recurring_start_month?: string | null
+          scope?: string
           type: string
           updated_at?: string | null
         }
@@ -575,6 +600,7 @@ export type Database = {
           category?: string
           converted_amount?: number
           created_at?: string | null
+          created_by?: string | null
           currency?: string
           date?: string
           debt_id?: string | null
@@ -592,6 +618,7 @@ export type Database = {
           recurring_end_month?: string | null
           recurring_source_id?: string | null
           recurring_start_month?: string | null
+          scope?: string
           type?: string
           updated_at?: string | null
         }

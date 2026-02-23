@@ -36,7 +36,7 @@ function monthLabel(date: Date) {
 const Insights = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [chartRange, setChartRange] = useState<6 | 12>(12);
-  const { transactions, budgets, savingsGoals, savingsDeposits, getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getGoalSaved, householdId, currentUser } = useApp();
+  const { scopedTransactions: transactions, scopedBudgets: budgets, scopedSavingsGoals: savingsGoals, savingsDeposits, getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getGoalSaved, householdId, currentUser } = useApp();
   const { formatAmount } = useCurrency();
 
   // Current month transactions

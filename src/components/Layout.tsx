@@ -10,6 +10,7 @@ import AddBudgetModal from '@/components/AddBudgetModal';
 import AddSavingsGoalModal from '@/components/AddSavingsGoalModal';
 import AddDebtModal from '@/components/AddDebtModal';
 import { Home, CreditCard, Target, PiggyBank, Landmark, Lightbulb, Plus, Camera, Sparkles, X } from 'lucide-react';
+import ScopeToggle from '@/components/ScopeToggle';
 
 interface LayoutProps {
   children: ReactNode;
@@ -87,6 +88,7 @@ const Layout = ({ children }: LayoutProps) => {
             </nav>
           </div>
           <div className="flex items-center gap-2">
+            <ScopeToggle />
             <button onClick={() => setShowAddModal(true)} className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm flex items-center gap-1.5">
               <Plus className="w-3.5 h-3.5" /> Ajouter
             </button>
@@ -183,6 +185,9 @@ const Layout = ({ children }: LayoutProps) => {
       </nav>
 
       <main className="container max-w-5xl mx-auto px-4 md:px-6 py-5 pb-36 md:pb-8">
+        <div className="md:hidden mb-4">
+          <ScopeToggle />
+        </div>
         {children}
       </main>
 
