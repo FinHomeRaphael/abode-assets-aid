@@ -10,12 +10,17 @@ import Layout from '@/components/Layout';
 import ConvertedAmount from '@/components/ConvertedAmount';
 import InviteMemberModal from '@/components/InviteMemberModal';
 import { supabase } from '@/integrations/supabase/client';
+import { useSubscription, PREMIUM_PRICE_MONTHLY, PREMIUM_PRICE_YEARLY } from '@/hooks/useSubscription';
+import { PaywallModal } from '@/components/PremiumPaywall';
+import { Crown } from 'lucide-react';
 
 const Profile = () => {
   const { household, currentUser, logout, resetDemo, customCategories, deleteCustomCategory, getRecurringTransactions, deleteRecurring, getMemberById, changeCurrency, addMember, removeMember, updateMemberRole, householdId, budgets, savingsGoals } = useApp();
   const { formatAmount, currency } = useCurrency();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { isPremium, subscriptionEnd, startCheckout, openPortal, checkSubscription } = useSubscription();
+  const [showPaywall, setShowPaywall] = useState(false);
   
 
   const handleLogout = async () => {
@@ -117,6 +122,36 @@ const Profile = () => {
           </div>
         </div>
 
+
+        {/* Subscription */}
+        <div className="card-elevated p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold flex items-center gap-2">
+              <Crown className="w-4 h-4 text-amber-500" />
+              Abonnement
+            </h2>
+            {isPremium ? (
+              <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-semibold">Premium</span>
+            ) : (
+              <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs font-semibold">Gratuit</span>
+            )}
+          </div>
+          {isPremium ? (
+            <div className="space-y-2">
+              {subscriptionEnd && <p className="text-sm text-muted-foreground">Renouvellement : {formatDateLong(subscriptionEnd)}</p>}
+              <button onClick={openPortal} className="w-full py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">
+                Gérer mon abonnement
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Débloquez toutes les fonctionnalités pour 4,99€/mois</p>
+              <button onClick={() => setShowPaywall(true)} className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity">
+                Passer à Premium
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Household */}
         <div className="card-elevated p-5">
@@ -352,7 +387,7 @@ const Profile = () => {
 
       {/* Invite Modal */}
       <InviteMemberModal open={showInviteModal} onClose={() => setShowInviteModal(false)} onInviteSent={fetchInvitations} />
-      
+      <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} feature="Premium" description="Débloquez toutes les fonctionnalités avancées." />
     </Layout>
   );
 };

@@ -1,0 +1,196 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Lock, Crown, Check, X } from 'lucide-react';
+import { useSubscription, PREMIUM_PRICE_MONTHLY, PREMIUM_PRICE_YEARLY } from '@/hooks/useSubscription';
+
+interface PaywallProps {
+  children: React.ReactNode;
+  feature: string;
+  description?: string;
+}
+
+const PremiumBadge = ({ onClick, className }: { onClick: () => void; className?: string }) => (
+  <button
+    onClick={onClick}
+    className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-medium hover:bg-amber-500/20 transition-colors ${className || ''}`}
+  >
+    <Lock className="w-3 h-3" />
+    Premium
+  </button>
+);
+
+export const PremiumLock = ({ feature, description }: { feature: string; description?: string }) => {
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  return (
+    <>
+      <PremiumBadge onClick={() => setShowPaywall(true)} />
+      <PaywallModal
+        open={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        feature={feature}
+        description={description}
+      />
+    </>
+  );
+};
+
+export const PremiumGate = ({ children, feature, description }: PaywallProps) => {
+  const { isPremium } = useSubscription();
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  if (isPremium) return <>{children}</>;
+
+  return (
+    <>
+      <div className="relative">
+        <div className="opacity-30 pointer-events-none blur-[2px] select-none">
+          {children}
+        </div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-background/60 backdrop-blur-sm rounded-xl">
+          <div className="flex flex-col items-center gap-3 text-center px-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg">
+              <Crown className="w-7 h-7 text-white" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base">Fonctionnalité Premium</h3>
+              <p className="text-sm text-muted-foreground mt-1">{description || `Passez à Premium pour débloquer ${feature}`}</p>
+            </div>
+            <button
+              onClick={() => setShowPaywall(true)}
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-semibold text-sm hover:opacity-90 transition-opacity shadow-md"
+            >
+              Débloquer Premium
+            </button>
+          </div>
+        </div>
+      </div>
+      <PaywallModal
+        open={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        feature={feature}
+        description={description}
+      />
+    </>
+  );
+};
+
+export const PaywallModal = ({ open, onClose, feature, description }: { open: boolean; onClose: () => void; feature: string; description?: string }) => {
+  const { startCheckout } = useSubscription();
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('yearly');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubscribe = async () => {
+    setLoading(true);
+    const priceId = billingPeriod === 'monthly' ? PREMIUM_PRICE_MONTHLY : PREMIUM_PRICE_YEARLY;
+    await startCheckout(priceId);
+    setLoading(false);
+  };
+
+  const features = [
+    'Dettes & crédits illimités',
+    'Insights & analyses avancées',
+    'Rapport mensuel détaillé',
+    'Comptes bancaires illimités',
+    'Enveloppes d\'épargne illimitées',
+    'Budgets illimités',
+  ];
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[70] bg-foreground/30 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 50, opacity: 0 }}
+            onClick={e => e.stopPropagation()}
+            className="bg-card w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-border shadow-xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg">
+                  <Crown className="w-6 h-6 text-white" />
+                </div>
+                <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <h2 className="text-xl font-bold mb-1">Passez à Premium</h2>
+              <p className="text-sm text-muted-foreground mb-5">
+                {description || `Débloquez ${feature} et toutes les fonctionnalités avancées.`}
+              </p>
+
+              {/* Billing toggle */}
+              <div className="flex bg-secondary rounded-xl p-1 mb-5">
+                <button
+                  onClick={() => setBillingPeriod('monthly')}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${billingPeriod === 'monthly' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}
+                >
+                  Mensuel
+                </button>
+                <button
+                  onClick={() => setBillingPeriod('yearly')}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors relative ${billingPeriod === 'yearly' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}
+                >
+                  Annuel
+                  <span className="absolute -top-2 -right-1 px-1.5 py-0.5 rounded-full bg-emerald-500 text-white text-[9px] font-bold">-20%</span>
+                </button>
+              </div>
+
+              {/* Price */}
+              <div className="text-center mb-5">
+                <div className="flex items-baseline justify-center gap-1">
+                  <span className="text-3xl font-bold">
+                    {billingPeriod === 'monthly' ? '4,99€' : '47,90€'}
+                  </span>
+                  <span className="text-muted-foreground text-sm">
+                    /{billingPeriod === 'monthly' ? 'mois' : 'an'}
+                  </span>
+                </div>
+                {billingPeriod === 'yearly' && (
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                    soit 3,99€/mois — vous économisez 12€/an
+                  </p>
+                )}
+              </div>
+
+              {/* Features */}
+              <div className="bg-secondary/50 rounded-xl p-4 mb-5 space-y-2.5">
+                {features.map((f, i) => (
+                  <div key={i} className="flex items-center gap-2.5 text-sm">
+                    <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                    <span>{f}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* CTA */}
+              <button
+                onClick={handleSubscribe}
+                disabled={loading}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-semibold text-sm hover:opacity-90 transition-opacity shadow-md disabled:opacity-50"
+              >
+                {loading ? 'Redirection...' : `S'abonner — ${billingPeriod === 'monthly' ? '4,99€/mois' : '47,90€/an'}`}
+              </button>
+
+              <p className="text-[10px] text-muted-foreground text-center mt-3">
+                Annulable à tout moment. Paiement sécurisé par Stripe.
+              </p>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
+export default PremiumGate;

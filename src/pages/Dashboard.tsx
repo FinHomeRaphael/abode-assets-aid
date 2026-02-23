@@ -12,7 +12,9 @@ import ConvertedAmount from '@/components/ConvertedAmount';
 import { supabase } from '@/integrations/supabase/client';
 import { Debt, getDebtEmoji, calculateNextPaymentDate } from '@/types/debt';
 import { toast } from 'sonner';
-import { TrendingUp, TrendingDown, Target, Wallet, PiggyBank, CreditCard, Calendar, Sparkles, Camera, BarChart3, ArrowRight, ChevronRight } from 'lucide-react';
+import { useSubscription } from '@/hooks/useSubscription';
+import { PaywallModal } from '@/components/PremiumPaywall';
+import { TrendingUp, TrendingDown, Target, Wallet, PiggyBank, CreditCard, Calendar, Sparkles, Camera, BarChart3, ArrowRight, ChevronRight, Lock } from 'lucide-react';
 
 function generateAIAdvices(
   budgets: { category: string; emoji: string; spent: number; limit: number }[],
@@ -57,6 +59,8 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [showScan, setShowScan] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const { isPremium } = useSubscription();
   const [debts, setDebts] = useState<Debt[]>([]);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -236,9 +240,10 @@ const Dashboard = () => {
             { icon: Calendar, label: 'Préparer', onClick: () => navigate('/start-of-month') },
             { icon: Sparkles, label: 'Chat IA', onClick: () => navigate('/chat') },
             { icon: Camera, label: 'Scanner', onClick: () => setShowScan(true) },
-            { icon: BarChart3, label: 'Rapport', onClick: () => setShowReport(true) },
-          ].map((item, i) => (
-            <button key={i} onClick={item.onClick} className="bg-card border border-border rounded-xl p-3 flex flex-col items-center gap-2 hover:bg-muted/50 transition-colors active:scale-95">
+            { icon: BarChart3, label: 'Rapport', onClick: () => isPremium ? setShowReport(true) : setShowPaywall(true), locked: !isPremium },
+          ].map((item: any, i: number) => (
+            <button key={i} onClick={item.onClick} className="bg-card border border-border rounded-xl p-3 flex flex-col items-center gap-2 hover:bg-muted/50 transition-colors active:scale-95 relative">
+              {item.locked && <Lock className="w-3 h-3 text-amber-500 absolute top-1.5 right-1.5" />}
               <item.icon className="w-5 h-5 text-muted-foreground" />
               <span className="text-[11px] font-medium">{item.label}</span>
             </button>
@@ -350,6 +355,7 @@ const Dashboard = () => {
       <ScanTicketModal open={showScan} onClose={() => setShowScan(false)} />
       <MonthlyReportModal open={showReport} onClose={() => setShowReport(false)} />
       <OnboardingModal open={showOnboarding} onComplete={handleOnboardingComplete} />
+      <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} feature="le rapport mensuel" description="Obtenez un rapport détaillé de vos finances chaque mois avec des conseils personnalisés." />
     </Layout>
   );
 };

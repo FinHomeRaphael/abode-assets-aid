@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import { useSubscription } from '@/hooks/useSubscription';
+import { PaywallModal } from '@/components/PremiumPaywall';
 import { PiggyBank, Wallet, Target, Plus, X, Trash2 } from 'lucide-react';
 
 const SectionTitle = ({ icon: Icon, title, action, onAction }: { icon: React.ElementType; title: string; action?: string; onAction?: () => void }) => (
@@ -38,7 +39,7 @@ const Savings = () => {
   const [showCreateGoal, setShowCreateGoal] = useState(false);
   const [showAddDeposit, setShowAddDeposit] = useState(false);
   const [showCreateAccount, setShowCreateAccount] = useState(() => searchParams.get('create') === 'account');
-
+  const [showPaywall, setShowPaywall] = useState(false);
   React.useEffect(() => {
     if (searchParams.get('create') === 'account') {
       setShowCreateAccount(true);
@@ -124,7 +125,13 @@ const Savings = () => {
             <button onClick={() => setShowAddDeposit(true)} className="h-9 px-3 rounded-xl border border-border/30 bg-secondary/30 text-sm font-medium hover:bg-secondary/50 transition-colors flex items-center gap-1.5">
               <Plus className="w-3.5 h-3.5" /> Verser
             </button>
-            <button onClick={() => setShowCreateGoal(true)} className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm flex items-center gap-1.5">
+            <button onClick={() => {
+              if (!canAdd('savingsGoals', savingsGoals.length)) {
+                setShowPaywall(true);
+                return;
+              }
+              setShowCreateGoal(true);
+            }} className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm flex items-center gap-1.5">
               <Target className="w-3.5 h-3.5" /> Objectif
             </button>
           </div>
@@ -136,7 +143,13 @@ const Savings = () => {
 
         {/* Comptes */}
         <div>
-          <SectionTitle icon={Wallet} title="Comptes bancaires" action="+ Nouveau" onAction={() => setShowCreateAccount(true)} />
+          <SectionTitle icon={Wallet} title="Comptes bancaires" action="+ Nouveau" onAction={() => {
+            if (!canAdd('accounts', accounts.length)) {
+              setShowPaywall(true);
+              return;
+            }
+            setShowCreateAccount(true);
+          }} />
 
           <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-2xl p-4 text-center mb-2 relative overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.08),transparent_70%)]" />
@@ -469,6 +482,7 @@ const Savings = () => {
           )}
         </AnimatePresence>
       </motion.div>
+      <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} feature="les enveloppes illimitées" description="Vous avez atteint la limite gratuite. Passez à Premium pour créer des comptes et objectifs illimités." />
     </Layout>
   );
 };
