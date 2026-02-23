@@ -7,6 +7,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { Progress } from '@/components/ui/progress';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { Lightbulb, TrendingUp, BarChart3, Zap, AlertTriangle } from 'lucide-react';
+import { PremiumGate } from '@/components/PremiumPaywall';
 
 const SectionTitle = ({ icon: Icon, title }: { icon: React.ElementType; title: string }) => (
   <div className="flex items-center gap-2 mb-2">
@@ -241,6 +242,7 @@ const Insights = () => {
 
   return (
     <Layout>
+      <PremiumGate feature="les insights" description="Analysez vos habitudes financières avec des graphiques et recommandations personnalisées.">
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-primary/5 via-transparent to-transparent h-64" />
       <div className="relative space-y-5">
         <div className="space-y-3">
@@ -372,6 +374,7 @@ const Insights = () => {
           </div>
         )}
       </div>
+      </PremiumGate>
     </Layout>
   );
 };

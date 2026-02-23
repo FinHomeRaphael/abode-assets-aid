@@ -6,6 +6,7 @@ import { getBudgetStatus } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
 import { EXPENSE_CATEGORIES, CATEGORY_EMOJIS } from '@/types/finance';
 import { toast } from 'sonner';
+import { PaywallModal } from '@/components/PremiumPaywall';
 import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import { useSubscription } from '@/hooks/useSubscription';
@@ -16,6 +17,7 @@ const Budgets = () => {
   const { canAdd } = useSubscription(householdId, currentUser?.id);
   const { formatAmount } = useCurrency();
   const [showCreate, setShowCreate] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const [newLimit, setNewLimit] = useState('');
   const [newPeriod, setNewPeriod] = useState<'monthly' | 'yearly'>('monthly');
@@ -75,9 +77,15 @@ const Budgets = () => {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative space-y-4">
         <div className="space-y-3">
           <h1 className="text-xl font-bold">Budgets</h1>
-          <button onClick={() => setShowCreate(true)} className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm flex items-center gap-1.5">
-            <Plus className="w-3.5 h-3.5" /> Créer
-          </button>
+           <button onClick={() => {
+             if (!canAdd('budgets', budgets.length)) {
+               setShowPaywall(true);
+               return;
+             }
+             setShowCreate(true);
+           }} className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm flex items-center gap-1.5">
+             <Plus className="w-3.5 h-3.5" /> Créer
+           </button>
         </div>
 
         <div className="flex flex-col items-center gap-3">
@@ -336,6 +344,7 @@ const Budgets = () => {
           )}
         </AnimatePresence>
       </motion.div>
+      <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} feature="les budgets illimités" description="Vous avez atteint la limite de 2 budgets. Passez à Premium pour en créer autant que vous voulez." />
     </Layout>
   );
 };

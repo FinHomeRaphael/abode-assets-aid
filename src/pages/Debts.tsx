@@ -10,6 +10,7 @@ import AddDebtModal from '@/components/AddDebtModal';
 import DebtDetailModal from '@/components/DebtDetailModal';
 import { toast } from 'sonner';
 import { useSubscription } from '@/hooks/useSubscription';
+import { PremiumGate } from '@/components/PremiumPaywall';
 import { CreditCard, TrendingDown, TrendingUp, Calendar, Plus, Wallet } from 'lucide-react';
 
 const SectionTitle = ({ icon: Icon, title }: { icon: React.ElementType; title: string }) => (
@@ -87,6 +88,7 @@ const Debts = () => {
 
   return (
     <Layout>
+      <PremiumGate feature="les dettes & crédits" description="Gérez tous vos crédits, prêts et dettes avec un suivi détaillé des remboursements.">
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-primary/5 via-transparent to-transparent h-64" />
       <motion.div variants={stagger} initial="hidden" animate="show" className="relative space-y-5">
         <motion.div variants={fadeUp} className="flex items-center justify-between">
@@ -184,6 +186,7 @@ const Debts = () => {
 
       <AddDebtModal open={showAdd} onClose={() => setShowAdd(false)} onAdded={handleDebtAdded} />
       <DebtDetailModal debt={selectedDebt} onClose={() => setSelectedDebt(null)} onUpdated={handleDebtUpdated} />
+      </PremiumGate>
     </Layout>
   );
 };

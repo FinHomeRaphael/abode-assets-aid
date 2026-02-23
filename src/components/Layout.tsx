@@ -9,8 +9,9 @@ import ScanTicketModal from '@/components/ScanTicketModal';
 import AddBudgetModal from '@/components/AddBudgetModal';
 import AddSavingsGoalModal from '@/components/AddSavingsGoalModal';
 import AddDebtModal from '@/components/AddDebtModal';
-import { Home, CreditCard, Target, PiggyBank, Landmark, Lightbulb, Plus, X } from 'lucide-react';
+import { Home, CreditCard, Target, PiggyBank, Landmark, Lightbulb, Plus, X, Lock } from 'lucide-react';
 import ScopeToggle from '@/components/ScopeToggle';
+import { useSubscription } from '@/hooks/useSubscription';
 
 interface LayoutProps {
   children: ReactNode;
@@ -49,6 +50,7 @@ const Layout = ({ children }: LayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { household, currentUser } = useApp();
+  const { isPremium } = useSubscription();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showScanModal, setShowScanModal] = useState(false);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
@@ -92,6 +94,7 @@ const Layout = ({ children }: LayoutProps) => {
                   >
                     <Icon className="w-3.5 h-3.5" />
                     {item.label}
+                    {!isPremium && (item.path === '/debts' || item.path === '/insights') && <Lock className="w-3 h-3 text-amber-500" />}
                   </button>
                 );
               })}
@@ -150,12 +153,13 @@ const Layout = ({ children }: LayoutProps) => {
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors ${
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors relative ${
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
                 <Icon className="w-5 h-5" />
                 <span className="text-[9px] font-medium leading-tight">{item.label}</span>
+                {!isPremium && (item.path === '/debts' || item.path === '/insights') && <Lock className="w-2.5 h-2.5 text-amber-500 absolute top-1 right-2" />}
               </button>
             );
           })}
@@ -179,12 +183,13 @@ const Layout = ({ children }: LayoutProps) => {
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors ${
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors relative ${
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
                 <Icon className="w-5 h-5" />
                 <span className="text-[9px] font-medium leading-tight">{item.label}</span>
+                {!isPremium && (item.path === '/debts' || item.path === '/insights') && <Lock className="w-2.5 h-2.5 text-amber-500 absolute top-1 right-2" />}
               </button>
             );
           })}
