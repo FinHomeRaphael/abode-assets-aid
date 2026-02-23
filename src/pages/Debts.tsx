@@ -71,7 +71,7 @@ const Debts = () => {
         const periodsYear = getPeriodsPerYear(d.paymentFrequency);
         const interest = d.remainingAmount * (d.interestRate / 100 / periodsYear);
         const capital = Math.max(d.paymentAmount - interest, 0);
-        payments.push({ date: nextDate, name: d.name, amount: d.paymentAmount, emoji: getDebtEmoji(d.type), detail: `Capital ${formatAmount(capital)} + Intérêts ${formatAmount(interest)}` });
+        payments.push({ date: nextDate, name: d.name, amount: d.paymentAmount, emoji: getDebtEmoji(d.type), detail: `Amortissement ${formatAmount(capital)} + Intérêts ${formatAmount(interest)}` });
       }
     }
     return payments.sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
