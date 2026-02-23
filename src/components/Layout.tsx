@@ -144,7 +144,7 @@ const Layout = ({ children }: LayoutProps) => {
       </AnimatePresence>
 
       {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-nav safe-area-bottom">
+      <nav className="lg:hidden fixed bottom-2 left-2 right-2 z-50 bg-card border border-border rounded-2xl shadow-nav safe-area-bottom">
         <div className="flex items-center h-14 px-1">
           {mobileNavItems.slice(0, 3).map(item => {
             const Icon = item.icon;
