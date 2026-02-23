@@ -21,7 +21,9 @@ import NotFound from "./pages/NotFound";
 import Insights from "./pages/Insights";
 import InvitationChoiceModal from "./components/InvitationChoiceModal";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 1 } },
+});
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoggedIn, loading } = useApp();
