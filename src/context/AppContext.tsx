@@ -64,7 +64,7 @@ interface AppContextType {
   deleteRecurring: (id: string) => void;
   getRecurringTransactions: () => Transaction[];
 
-  addBudget: (b: Omit<Budget, 'id' | 'startMonth' | 'endMonth'>) => void;
+  addBudget: (b: Omit<Budget, 'id' | 'startMonth' | 'endMonth'> & { startMonth?: string }) => void;
   updateBudget: (id: string, updates: Partial<Budget>) => void;
   deleteBudget: (id: string) => void;
   softDeleteBudget: (id: string) => void;
@@ -521,8 +521,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [transactions]);
 
   // ===== Budget Actions =====
-  const addBudget = (b: Omit<Budget, 'id' | 'startMonth' | 'endMonth'>) => {
-    const monthYear = getMonthYearStr(new Date());
+  const addBudget = (b: Omit<Budget, 'id' | 'startMonth' | 'endMonth'> & { startMonth?: string }) => {
+    const monthYear = b.startMonth || getMonthYearStr(new Date());
     const newId = crypto.randomUUID();
     const scope = b.scope || financeScope;
     const createdBy = session?.user?.id;
