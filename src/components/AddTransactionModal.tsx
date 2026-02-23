@@ -17,7 +17,7 @@ interface Props {
 }
 
 const AddTransactionModal = ({ open, onClose }: Props) => {
-  const { addTransaction, household, customCategories, addCustomCategory, getActiveAccounts } = useApp();
+  const { addTransaction, household, customCategories, addCustomCategory, getActiveAccounts, currentUser } = useApp();
   const navigate = useNavigate();
   const [type, setType] = useState<'income' | 'expense'>('expense');
   const [label, setLabel] = useState('');
@@ -25,7 +25,7 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
   const [currency, setCurrency] = useState(household.currency);
   const [category, setCategory] = useState('');
   const [date, setDate] = useState<Date>(new Date());
-  const [memberId, setMemberId] = useState(household.members[0]?.id || '');
+  const memberId = currentUser?.id || household.members[0]?.id || '';
   const [notes, setNotes] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
   const [accountId, setAccountId] = useState('');
@@ -192,16 +192,14 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
                 </Popover>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-1.5">Membre</label>
-                <div className="flex gap-2">
-                  {household.members.map(m => (
-                    <button key={m.id} onClick={() => setMemberId(m.id)} className={`px-3 py-2 rounded-md border text-sm transition-colors ${memberId === m.id ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-secondary'}`}>
-                      {m.name}
-                    </button>
-                  ))}
+              {currentUser && (
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Membre</label>
+                  <div className="px-4 py-2.5 rounded-md border border-input bg-muted text-sm text-muted-foreground">
+                    {currentUser.name}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Recurring toggle */}
               <div className="flex items-center justify-between py-2 px-3 rounded-md border border-border bg-secondary/30">
