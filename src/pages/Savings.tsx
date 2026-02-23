@@ -12,14 +12,18 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
 import { PiggyBank, Wallet, Target, Plus, X, Trash2 } from 'lucide-react';
 
-const SectionTitle = ({ icon: Icon, title, action, onAction }: { icon: React.ElementType; title: string; action?: string; onAction?: () => void }) => (
+const SectionTitle = ({ icon: Icon, title, actions }: { icon: React.ElementType; title: string; actions?: { label: string; onClick: () => void }[] }) => (
   <div className="flex items-center justify-between mb-2">
     <div className="flex items-center gap-2">
       <Icon className="w-4 h-4 text-muted-foreground" />
       <h2 className="font-semibold text-sm">{title}</h2>
     </div>
-    {action && onAction && (
-      <button onClick={onAction} className="text-[11px] px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted transition-colors font-medium">{action}</button>
+    {actions && actions.length > 0 && (
+      <div className="flex items-center gap-1.5">
+        {actions.map((a, i) => (
+          <button key={i} onClick={a.onClick} className="text-[11px] px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted transition-colors font-medium">{a.label}</button>
+        ))}
+      </div>
     )}
   </div>
 );
@@ -121,11 +125,6 @@ const Savings = () => {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative space-y-5">
         <div className="space-y-3">
           <h1 className="text-xl font-bold">Enveloppes</h1>
-          <div className="flex gap-2">
-            <button onClick={() => setShowAddDeposit(true)} className="h-9 px-3 rounded-xl border border-border/30 bg-secondary/30 text-sm font-medium hover:bg-secondary/50 transition-colors flex items-center gap-1.5">
-              <Plus className="w-3.5 h-3.5" /> Verser
-            </button>
-          </div>
         </div>
 
         <div className="flex justify-center">
@@ -134,13 +133,13 @@ const Savings = () => {
 
         {/* Comptes */}
         <div>
-          <SectionTitle icon={Wallet} title="Comptes bancaires" action="+ Nouveau" onAction={() => {
-            if (!canAdd('accounts', accounts.length)) {
-              setShowPaywall(true);
-              return;
+          <SectionTitle icon={Wallet} title="Comptes bancaires" actions={[{
+            label: '+ Nouveau',
+            onClick: () => {
+              if (!canAdd('accounts', accounts.length)) { setShowPaywall(true); return; }
+              setShowCreateAccount(true);
             }
-            setShowCreateAccount(true);
-          }} />
+          }]} />
 
           <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-2xl p-4 text-center mb-2 relative overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.08),transparent_70%)]" />
@@ -181,13 +180,13 @@ const Savings = () => {
 
         {/* Objectifs */}
         <div>
-          <SectionTitle icon={PiggyBank} title="Objectifs" action="+ Nouveau" onAction={() => {
-            if (!canAdd('savingsGoals', savingsGoals.length)) {
-              setShowPaywall(true);
-              return;
-            }
-            setShowCreateGoal(true);
-          }} />
+          <SectionTitle icon={PiggyBank} title="Objectifs" actions={[
+            { label: '+ Verser', onClick: () => setShowAddDeposit(true) },
+            { label: '+ Nouveau', onClick: () => {
+              if (!canAdd('savingsGoals', savingsGoals.length)) { setShowPaywall(true); return; }
+              setShowCreateGoal(true);
+            }}
+          ]} />
 
             <div className="grid grid-cols-3 gap-2 mb-3">
             <div className="bg-card border border-border rounded-xl p-3 text-center">
