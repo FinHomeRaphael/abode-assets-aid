@@ -112,14 +112,13 @@ export interface AppState {
 }
 
 export const EXPENSE_CATEGORIES = [
-  'Location', 'Commission', 'Restaurant + sorties', 'Assurance + RC Ménage',
-  'Internet-TV', 'Electricité', 'Cadeaux', 'Voyage',
-  'Frais annexe Maison', 'Amménagement', 'Banque', 'Epargne',
-  'Invitation', 'Noel', 'Mariage', 'Autre'
+  'Logement', 'Alimentation', 'Transport', 'Santé', 'Assurance',
+  'Abonnements', 'Loisirs', 'Restaurants', 'Shopping', 'Éducation',
+  'Voyages', 'Cadeaux', 'Épargne', 'Impôts', 'Autre'
 ] as const;
 
 export const INCOME_CATEGORIES = [
-  'Salaire', 'Freelance', 'Investissement', 'Allocation', 'Autre'
+  'Salaire', 'Freelance', 'Investissements', 'Aides & Allocations', 'Autre'
 ] as const;
 
 export const CURRENCIES = [
@@ -202,25 +201,24 @@ export const CURRENCY_NAMES: Record<string, string> = {
 
 export const CATEGORY_EMOJIS: Record<string, string> = {
   Transfert: '🔄',
-  Location: '🏠',
-  Commission: '💼',
-  'Restaurant + sorties': '🍽️',
-  'Assurance + RC Ménage': '🛡️',
-  'Internet-TV': '📡',
-  Electricité: '⚡',
+  Logement: '🏠',
+  Alimentation: '🛒',
+  Transport: '🚗',
+  Santé: '💊',
+  Assurance: '🛡️',
+  Abonnements: '📱',
+  Loisirs: '🎬',
+  Restaurants: '🍽️',
+  Shopping: '🛍️',
+  'Éducation': '📚',
+  Voyages: '✈️',
   Cadeaux: '🎁',
-  Voyage: '✈️',
-  'Frais annexe Maison': '🏡',
-  Amménagement: '🪑',
-  Banque: '🏦',
-  Epargne: '🐖',
-  Invitation: '🎉',
-  Noel: '🎄',
-  Mariage: '💍',
-  Salaire: '💰',
+  'Épargne': '💰',
+  'Impôts': '🏛️',
+  Salaire: '💵',
   Freelance: '💻',
-  Investissement: '📈',
-  Allocation: '🏛️',
+  Investissements: '📈',
+  'Aides & Allocations': '🤝',
   Autre: '📌',
 };
 
