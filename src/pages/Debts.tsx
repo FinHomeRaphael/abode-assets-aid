@@ -87,7 +87,8 @@ const Debts = () => {
 
   return (
     <Layout>
-      <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-5">
+      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-primary/5 via-transparent to-transparent h-64" />
+      <motion.div variants={stagger} initial="hidden" animate="show" className="relative space-y-5">
         <motion.div variants={fadeUp} className="flex items-center justify-between">
           <h1 className="text-lg font-semibold tracking-tight">Dettes</h1>
           <button onClick={() => setShowAdd(true)} className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5">

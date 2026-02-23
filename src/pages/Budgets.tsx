@@ -64,7 +64,8 @@ const Budgets = () => {
 
   return (
     <Layout>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-primary/5 via-transparent to-transparent h-64" />
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative space-y-4">
         <div className="space-y-3">
           <h1 className="text-xl font-bold">Budgets</h1>
           <button onClick={() => setShowCreate(true)} className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm flex items-center gap-1.5">
