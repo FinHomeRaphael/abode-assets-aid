@@ -9,10 +9,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { Lightbulb, TrendingUp, BarChart3, Zap, AlertTriangle } from 'lucide-react';
 
 const SectionTitle = ({ icon: Icon, title }: { icon: React.ElementType; title: string }) => (
-  <div className="flex items-center gap-2 mb-3">
-    <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
-      <Icon className="w-3.5 h-3.5 text-primary" />
-    </div>
+  <div className="flex items-center gap-2 mb-2">
+    <Icon className="w-4 h-4 text-muted-foreground" />
     <h2 className="font-semibold text-sm">{title}</h2>
   </div>
 );
@@ -255,7 +253,7 @@ const Insights = () => {
         {/* Key Facts */}
         <div>
           <SectionTitle icon={Lightbulb} title="Faits marquants" />
-          <div className="bg-secondary/20 border border-border/30 rounded-2xl p-4">
+          <div className="bg-card border border-border rounded-xl p-4">
             {keyFacts.length === 0 ? (
               <p className="text-xs text-muted-foreground">Pas assez de données ce mois.</p>
             ) : (
@@ -274,7 +272,7 @@ const Insights = () => {
         {/* Top Categories */}
         <div>
           <SectionTitle icon={TrendingUp} title="Top catégories" />
-          <div className="bg-secondary/20 border border-border/30 rounded-2xl p-4 space-y-3">
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
             {top3.length === 0 ? (
               <p className="text-xs text-muted-foreground">Aucune dépense ce mois.</p>
             ) : (
@@ -296,7 +294,7 @@ const Insights = () => {
               </div>
             )}
             {leaks.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-border/30 space-y-2">
+              <div className="mt-3 pt-3 border-t border-border space-y-2">
                 <div className="flex items-center gap-1.5">
                   <AlertTriangle className="w-3 h-3 text-warning" />
                   <h3 className="text-xs font-semibold">Fuites détectées</h3>
@@ -314,26 +312,24 @@ const Insights = () => {
 
         {/* Chart */}
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
-                <BarChart3 className="w-3.5 h-3.5 text-primary" />
-              </div>
+              <BarChart3 className="w-4 h-4 text-muted-foreground" />
               <h2 className="font-semibold text-sm">{chartRange === 12 ? 'Dépenses' : 'Évolution'}</h2>
               {chartRange === 12 && (
                 <div className="flex items-center gap-1">
-                  <button onClick={() => { const d = new Date(currentMonth); d.setFullYear(d.getFullYear() - 1); setCurrentMonth(d); }} className="w-6 h-6 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-xs">‹</button>
+                  <button onClick={() => { const d = new Date(currentMonth); d.setFullYear(d.getFullYear() - 1); setCurrentMonth(d); }} className="w-6 h-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-xs">‹</button>
                   <span className="text-xs font-semibold min-w-[3ch] text-center">{currentMonth.getFullYear()}</span>
-                  <button onClick={() => { const d = new Date(currentMonth); d.setFullYear(d.getFullYear() + 1); setCurrentMonth(d); }} className="w-6 h-6 rounded-lg bg-secondary/50 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-xs">›</button>
+                  <button onClick={() => { const d = new Date(currentMonth); d.setFullYear(d.getFullYear() + 1); setCurrentMonth(d); }} className="w-6 h-6 rounded-md bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-xs">›</button>
                 </div>
               )}
             </div>
-            <div className="flex items-center bg-secondary/30 border border-border/30 rounded-xl p-0.5">
-              <button onClick={() => setChartRange(6)} className={`px-2.5 py-1 text-[10px] font-medium rounded-lg transition-all ${chartRange === 6 ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>6 mois</button>
-              <button onClick={() => setChartRange(12)} className={`px-2.5 py-1 text-[10px] font-medium rounded-lg transition-all ${chartRange === 12 ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>1 an</button>
+            <div className="flex items-center bg-muted rounded-lg p-0.5">
+              <button onClick={() => setChartRange(6)} className={`px-2.5 py-1 text-[10px] font-medium rounded-md transition-all ${chartRange === 6 ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>6 mois</button>
+              <button onClick={() => setChartRange(12)} className={`px-2.5 py-1 text-[10px] font-medium rounded-md transition-all ${chartRange === 12 ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>1 an</button>
             </div>
           </div>
-          <div className="bg-secondary/20 border border-border/30 rounded-2xl p-4">
+          <div className="bg-card border border-border rounded-xl p-4">
             <div className={chartRange === 12 ? 'h-48 -mx-2' : 'h-40'}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} barSize={chartRange === 12 ? 14 : 28} margin={chartRange === 12 ? { left: 4, right: 4 } : undefined}>

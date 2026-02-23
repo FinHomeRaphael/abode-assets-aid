@@ -13,10 +13,8 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { CreditCard, TrendingDown, TrendingUp, Calendar, Plus, Wallet } from 'lucide-react';
 
 const SectionTitle = ({ icon: Icon, title }: { icon: React.ElementType; title: string }) => (
-  <div className="flex items-center gap-2 mb-3">
-    <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
-      <Icon className="w-3.5 h-3.5 text-primary" />
-    </div>
+  <div className="flex items-center gap-2 mb-2">
+    <Icon className="w-4 h-4 text-muted-foreground" />
     <h2 className="font-semibold text-sm">{title}</h2>
   </div>
 );
@@ -90,35 +88,32 @@ const Debts = () => {
   return (
     <Layout>
       <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-5">
-        <motion.div variants={fadeUp} className="space-y-3">
-          <h1 className="text-xl font-bold">Dettes</h1>
-          <button onClick={() => setShowAdd(true)} className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm flex items-center gap-1.5">
-            <Plus className="w-3.5 h-3.5" /> Ajouter
+        <motion.div variants={fadeUp} className="flex items-center justify-between">
+          <h1 className="text-lg font-semibold tracking-tight">Dettes</h1>
+          <button onClick={() => setShowAdd(true)} className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5">
+            <Plus className="w-4 h-4" /> Ajouter
           </button>
         </motion.div>
 
         {/* Summary */}
         <motion.div variants={fadeUp} className="grid grid-cols-3 gap-2">
-          <div className="bg-destructive/5 border border-destructive/15 rounded-xl p-3 text-center">
-            <TrendingDown className="w-3.5 h-3.5 text-destructive mx-auto mb-1" />
-            <p className="text-[10px] text-muted-foreground mb-0.5">Total dû</p>
-            <p className="font-mono-amount font-bold text-destructive text-sm">{formatAmount(totalRemaining)}</p>
+          <div className="bg-card border border-border rounded-xl p-3 text-center">
+            <p className="text-[11px] text-muted-foreground mb-1">Total dû</p>
+            <p className="font-mono-amount font-semibold text-destructive text-sm">{formatAmount(totalRemaining)}</p>
           </div>
-          <div className="bg-primary/5 border border-primary/15 rounded-xl p-3 text-center">
-            <Wallet className="w-3.5 h-3.5 text-primary mx-auto mb-1" />
-            <p className="text-[10px] text-muted-foreground mb-0.5">Mensualités</p>
-            <p className="font-mono-amount font-bold text-sm">{formatAmount(totalPayment)}</p>
+          <div className="bg-card border border-border rounded-xl p-3 text-center">
+            <p className="text-[11px] text-muted-foreground mb-1">Mensualités</p>
+            <p className="font-mono-amount font-semibold text-sm">{formatAmount(totalPayment)}</p>
           </div>
-          <div className="bg-success/5 border border-success/15 rounded-xl p-3 text-center">
-            <TrendingUp className="w-3.5 h-3.5 text-success mx-auto mb-1" />
-            <p className="text-[10px] text-muted-foreground mb-0.5">Remboursé</p>
-            <p className="font-mono-amount font-bold text-success text-sm">{formatAmount(totalRepaid)}</p>
+          <div className="bg-card border border-border rounded-xl p-3 text-center">
+            <p className="text-[11px] text-muted-foreground mb-1">Remboursé</p>
+            <p className="font-mono-amount font-semibold text-success text-sm">{formatAmount(totalRepaid)}</p>
           </div>
         </motion.div>
 
         {/* Debt list */}
         {debts.length === 0 ? (
-          <motion.div variants={fadeUp} className="bg-secondary/20 border border-border/30 rounded-2xl p-8 text-center text-muted-foreground text-sm">
+          <motion.div variants={fadeUp} className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground text-sm">
             Aucune dette enregistrée. Ajoutez votre premier crédit !
           </motion.div>
         ) : (
@@ -131,7 +126,7 @@ const Debts = () => {
                 <div
                   key={d.id}
                   onClick={() => setSelectedDebt(d)}
-                  className="bg-secondary/20 border border-border/30 rounded-2xl p-4 cursor-pointer hover:bg-secondary/30 transition-colors"
+                  className="bg-card border border-border rounded-xl p-4 cursor-pointer hover:bg-muted/50 transition-colors"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -146,7 +141,7 @@ const Debts = () => {
                       <p className="text-[10px] text-muted-foreground">{d.interestRate}%</p>
                     </div>
                   </div>
-                  <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-1.5">
+                  <div className="h-1 bg-muted rounded-full overflow-hidden mb-1.5">
                     <div className={`h-full rounded-full transition-all ${repaidPct >= 100 ? 'bg-success' : repaidPct >= 50 ? 'bg-primary' : 'bg-warning'}`} style={{ width: `${repaidPct}%` }} />
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground">
@@ -167,7 +162,7 @@ const Debts = () => {
         {upcomingPayments.length > 0 && (
           <motion.div variants={fadeUp}>
             <SectionTitle icon={Calendar} title="Échéances à venir" />
-            <div className="bg-secondary/20 border border-border/30 rounded-2xl divide-y divide-border/30 overflow-hidden">
+            <div className="bg-card border border-border rounded-xl divide-y divide-border overflow-hidden">
               {upcomingPayments.map((p, i) => (
                 <div key={i} className="flex items-center justify-between px-4 py-3">
                   <div className="flex items-center gap-3">

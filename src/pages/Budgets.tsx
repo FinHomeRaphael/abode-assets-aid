@@ -82,7 +82,7 @@ const Budgets = () => {
         </div>
 
         {filteredBudgets.length === 0 ? (
-          <div className="bg-secondary/20 border border-border/30 rounded-2xl p-8 text-center text-muted-foreground text-sm">
+          <div className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground text-sm">
             Aucun budget {viewPeriod === 'monthly' ? 'mensuel' : 'annuel'} pour ce mois
           </div>
         ) : (
@@ -93,7 +93,7 @@ const Budgets = () => {
               const pct = Math.min((spent / b.limit) * 100, 100);
               const isStopped = !!b.endMonth && b.endMonth <= currentMonthYear;
               return (
-                <div key={b.id} className="bg-secondary/20 border border-border/30 rounded-2xl p-4 cursor-pointer hover:bg-secondary/30 transition-colors active:scale-[0.98]" onClick={() => openEditModal(b)}>
+                <div key={b.id} className="bg-card border border-border rounded-xl p-4 cursor-pointer hover:bg-muted/50 transition-colors active:scale-[0.98]" onClick={() => openEditModal(b)}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-semibold text-sm">{b.emoji} {b.category}</span>
                     <div className="flex items-center gap-1.5">
