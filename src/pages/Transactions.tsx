@@ -149,7 +149,8 @@ const Transactions = () => {
 
   return (
     <Layout>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-primary/5 via-transparent to-transparent h-64" />
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative space-y-4">
         <div className="space-y-3">
           <h1 className="text-xl font-bold">Transactions</h1>
           <div className="flex gap-2 flex-wrap">
