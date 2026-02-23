@@ -70,8 +70,8 @@ const Debts = () => {
       if (nextDate) {
         const periodsYear = getPeriodsPerYear(d.paymentFrequency);
         const interest = d.remainingAmount * (d.interestRate / 100 / periodsYear);
-        const total = d.paymentAmount + interest;
-        payments.push({ date: nextDate, name: d.name, amount: total, emoji: getDebtEmoji(d.type), detail: `Capital ${formatAmount(d.paymentAmount)} + Intérêts ${formatAmount(interest)}` });
+        const capital = Math.max(d.paymentAmount - interest, 0);
+        payments.push({ date: nextDate, name: d.name, amount: d.paymentAmount, emoji: getDebtEmoji(d.type), detail: `Capital ${formatAmount(capital)} + Intérêts ${formatAmount(interest)}` });
       }
     }
     return payments.sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
