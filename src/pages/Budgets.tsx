@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import { useSubscription } from '@/hooks/useSubscription';
-import { Target, Plus, X } from 'lucide-react';
+import { Target, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const Budgets = () => {
   const { scopedBudgets: budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth, getTransactionsForMonth, getMemberById, householdId, currentUser } = useApp();
@@ -79,7 +79,17 @@ const Budgets = () => {
             <button onClick={() => setViewPeriod('yearly')} className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${viewPeriod === 'yearly' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}>Annuel</button>
           </div>
           {viewPeriod === 'monthly' && <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} />}
-          {viewPeriod === 'yearly' && <span className="text-sm text-muted-foreground">Année {currentMonth.getFullYear()}</span>}
+          {viewPeriod === 'yearly' && (
+            <div className="flex items-center gap-3">
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear() - 1, currentMonth.getMonth()))} className="w-8 h-8 rounded-xl bg-secondary/50 flex items-center justify-center hover:bg-secondary transition-colors">
+                <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+              </button>
+              <span className="text-sm font-medium min-w-[4rem] text-center">{currentMonth.getFullYear()}</span>
+              <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear() + 1, currentMonth.getMonth()))} className="w-8 h-8 rounded-xl bg-secondary/50 flex items-center justify-center hover:bg-secondary transition-colors">
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+          )}
         </div>
 
         {filteredBudgets.length === 0 ? (
