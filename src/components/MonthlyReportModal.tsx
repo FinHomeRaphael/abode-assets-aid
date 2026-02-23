@@ -78,7 +78,7 @@ const DiffBadge = ({ value, suffix = '' }: { value: number | null; suffix?: stri
 };
 
 const MonthlyReportModal = ({ open, onClose }: Props) => {
-  const { getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getMonthSavings, savingsGoals, getGoalSaved, getActiveAccounts, getAccountBalance, householdId, accounts, transactions: allTransactions } = useApp();
+  const { getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getMonthSavings, scopedSavingsGoals: savingsGoals, getGoalSaved, getActiveAccounts, getAccountBalance, householdId, scopedAccounts: accounts, scopedTransactions: allTransactions, financeScope, session } = useApp();
   const { formatAmount, currency } = useCurrency();
   const [month, setMonth] = useState(new Date());
 
@@ -99,9 +99,16 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   const [debts, setDebts] = useState<DebtRow[]>([]);
   const fetchDebts = useCallback(async () => {
     if (!householdId) return;
-    const { data } = await supabase.from('debts').select('*').eq('household_id', householdId);
+    const userId = session?.user?.id;
+    let query = supabase.from('debts').select('*');
+    if (financeScope === 'personal') {
+      query = query.eq('created_by', userId).eq('scope', 'personal');
+    } else {
+      query = query.eq('household_id', householdId).eq('scope', 'household');
+    }
+    const { data } = await query;
     if (data) setDebts(data as DebtRow[]);
-  }, [householdId]);
+  }, [householdId, financeScope, session?.user?.id]);
   useEffect(() => { if (open) fetchDebts(); }, [open, fetchDebts]);
 
   const transactions = useMemo(() => getTransactionsForMonth(month), [month, getTransactionsForMonth]);
