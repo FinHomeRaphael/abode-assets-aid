@@ -60,7 +60,7 @@ const Dashboard = () => {
   const [showScan, setShowScan] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
-  const { isPremium } = useSubscription();
+  const { isPremium, loading: subLoading } = useSubscription();
   const [debts, setDebts] = useState<Debt[]>([]);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
@@ -240,7 +240,7 @@ const Dashboard = () => {
             { icon: Calendar, label: 'Préparer', onClick: () => navigate('/start-of-month') },
             { icon: Sparkles, label: 'Chat IA', onClick: () => navigate('/chat') },
             { icon: Camera, label: 'Scanner', onClick: () => setShowScan(true) },
-            { icon: BarChart3, label: 'Rapport', onClick: () => isPremium ? setShowReport(true) : setShowPaywall(true), locked: !isPremium },
+            { icon: BarChart3, label: 'Rapport', onClick: () => isPremium ? setShowReport(true) : setShowPaywall(true), locked: !subLoading && !isPremium },
           ].map((item: any, i: number) => (
             <button key={i} onClick={item.onClick} className="bg-card border border-border rounded-xl p-3 flex flex-col items-center gap-2 hover:bg-muted/50 transition-colors active:scale-95 relative">
               {item.locked && <Lock className="w-3 h-3 text-amber-500 absolute top-1.5 right-1.5" />}
