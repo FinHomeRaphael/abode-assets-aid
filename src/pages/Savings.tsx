@@ -136,7 +136,7 @@ const Savings = () => {
 
         {/* Comptes */}
         <div>
-          <SectionTitle icon={Wallet} title="Comptes et soldes" action="+ Nouveau" onAction={() => setShowCreateAccount(true)} />
+          <SectionTitle icon={Wallet} title="Comptes bancaires" action="+ Nouveau" onAction={() => setShowCreateAccount(true)} />
 
           <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-2xl p-4 text-center mb-2 relative overflow-hidden">
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.08),transparent_70%)]" />
