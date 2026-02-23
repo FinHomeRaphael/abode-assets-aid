@@ -125,15 +125,6 @@ const Savings = () => {
             <button onClick={() => setShowAddDeposit(true)} className="h-9 px-3 rounded-xl border border-border/30 bg-secondary/30 text-sm font-medium hover:bg-secondary/50 transition-colors flex items-center gap-1.5">
               <Plus className="w-3.5 h-3.5" /> Verser
             </button>
-            <button onClick={() => {
-              if (!canAdd('savingsGoals', savingsGoals.length)) {
-                setShowPaywall(true);
-                return;
-              }
-              setShowCreateGoal(true);
-            }} className="h-9 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors shadow-sm flex items-center gap-1.5">
-              <Target className="w-3.5 h-3.5" /> Objectif
-            </button>
           </div>
         </div>
 
@@ -190,7 +181,13 @@ const Savings = () => {
 
         {/* Objectifs */}
         <div>
-          <SectionTitle icon={PiggyBank} title="Objectifs d'enveloppe" />
+          <SectionTitle icon={PiggyBank} title="Objectifs" action="+ Nouveau" onAction={() => {
+            if (!canAdd('savingsGoals', savingsGoals.length)) {
+              setShowPaywall(true);
+              return;
+            }
+            setShowCreateGoal(true);
+          }} />
 
             <div className="grid grid-cols-3 gap-2 mb-3">
             <div className="bg-card border border-border rounded-xl p-3 text-center">
