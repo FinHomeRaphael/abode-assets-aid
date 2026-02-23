@@ -27,7 +27,7 @@ const SectionTitle = ({ icon: Icon, title, action, onAction }: { icon: React.Ele
 
 const Savings = () => {
   const {
-    savingsGoals, savingsDeposits, getGoalSaved, getGoalDeposits, getMonthSavings, getTotalSavings,
+    scopedSavingsGoals: savingsGoals, savingsDeposits, getGoalSaved, getGoalDeposits, getMonthSavings, getTotalSavings,
     addSavingsGoal, updateSavingsGoal, deleteSavingsGoal,
     addSavingsDeposit, deleteSavingsDeposit, household, getMemberById,
     accounts, getActiveAccounts, getAccountBalance, addAccount, householdId, currentUser,

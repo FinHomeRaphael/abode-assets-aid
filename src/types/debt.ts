@@ -21,6 +21,8 @@ export interface Debt {
   lastPaymentDate?: string;
   createdAt: string;
   updatedAt: string;
+  scope?: 'household' | 'personal';
+  createdBy?: string;
 }
 
 export const DEBT_TYPES: { value: DebtType; label: string; emoji: string }[] = [

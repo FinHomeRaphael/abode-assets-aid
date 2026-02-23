@@ -22,7 +22,7 @@ const SectionTitle = ({ icon: Icon, title }: { icon: React.ElementType; title: s
 );
 
 const Debts = () => {
-  const { householdId, transactions, currentUser } = useApp();
+  const { householdId, scopedTransactions: transactions, currentUser, financeScope, session } = useApp();
   const { formatAmount } = useCurrency();
   const { canAdd } = useSubscription(householdId, currentUser?.id);
   const [debts, setDebts] = useState<Debt[]>([]);
@@ -32,7 +32,14 @@ const Debts = () => {
 
   const fetchDebts = useCallback(async () => {
     if (!householdId) return;
-    const { data, error } = await supabase.from('debts').select('*').eq('household_id', householdId).order('created_at', { ascending: false });
+    const userId = session?.user?.id;
+    let query = supabase.from('debts').select('*');
+    if (financeScope === 'personal') {
+      query = query.eq('scope', 'personal').eq('created_by', userId);
+    } else {
+      query = query.eq('household_id', householdId).eq('scope', 'household');
+    }
+    const { data, error } = await query.order('created_at', { ascending: false });
     if (data) {
       setDebts(data.map((d: any) => ({
         id: d.id, householdId: d.household_id, type: d.type, name: d.name, lender: d.lender || undefined,
@@ -42,11 +49,12 @@ const Debts = () => {
         paymentAmount: Number(d.payment_amount), categoryId: d.category_id || undefined,
         nextPaymentDate: d.next_payment_date || undefined, lastPaymentDate: d.last_payment_date || undefined,
         createdAt: d.created_at, updatedAt: d.updated_at,
+        scope: d.scope || 'household', createdBy: d.created_by || undefined,
       })));
     }
     if (error) console.error('Fetch debts error:', error);
     setLoading(false);
-  }, [householdId]);
+  }, [householdId, financeScope, session?.user?.id]);
 
   useEffect(() => { fetchDebts(); }, [fetchDebts]);
 

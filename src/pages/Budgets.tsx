@@ -12,7 +12,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { Target, Plus, X } from 'lucide-react';
 
 const Budgets = () => {
-  const { budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth, getTransactionsForMonth, getMemberById, householdId, currentUser } = useApp();
+  const { scopedBudgets: budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth, getTransactionsForMonth, getMemberById, householdId, currentUser } = useApp();
   const { canAdd } = useSubscription(householdId, currentUser?.id);
   const { formatAmount } = useCurrency();
   const [showCreate, setShowCreate] = useState(false);

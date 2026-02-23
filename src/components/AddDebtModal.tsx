@@ -18,7 +18,7 @@ interface Props {
 }
 
 const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
-  const { householdId, household, customCategories, getActiveAccounts } = useApp();
+  const { householdId, household, customCategories, getActiveAccounts, financeScope, session } = useApp();
   const [type, setType] = useState('mortgage');
   const [name, setName] = useState('');
   const [lender, setLender] = useState('');
@@ -86,6 +86,8 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
       category_id: categoryId || null,
       account_id: accountId || null,
       next_payment_date: formatLocalDate(nextPaymentDate),
+      scope: financeScope,
+      created_by: session?.user?.id,
     };
 
     const { error } = await supabase.from('debts').insert(debtData as any);

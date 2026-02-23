@@ -81,7 +81,7 @@ const SectionTitle = ({ icon: Icon, title, action, onAction }: { icon: React.Ele
 );
 
 const Dashboard = () => {
-  const { transactions, budgets, household, getMemberById, getBudgetSpent, getMonthSavings, getTotalSavings, savingsGoals, getGoalSaved, getTransactionsForMonth, currentUser, householdId, accounts } = useApp();
+  const { scopedTransactions: transactions, scopedBudgets: budgets, household, getMemberById, getBudgetSpent, getMonthSavings, getTotalSavings, scopedSavingsGoals: savingsGoals, getGoalSaved, getTransactionsForMonth, currentUser, householdId, accounts } = useApp();
   const { formatAmount, currency } = useCurrency();
   const navigate = useNavigate();
   const [showScan, setShowScan] = useState(false);
