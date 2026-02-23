@@ -131,7 +131,8 @@ const Dashboard = () => {
 
   return (
     <Layout>
-      <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-6">
+      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-primary/5 via-transparent to-transparent h-64" />
+      <motion.div variants={stagger} initial="hidden" animate="show" className="relative space-y-6">
         {/* Header */}
         <motion.div variants={fade} className="flex items-center justify-between">
           <div>
@@ -144,7 +145,7 @@ const Dashboard = () => {
         </motion.div>
 
         {/* Balance card */}
-        <motion.div variants={fade} className="bg-card border border-border rounded-2xl p-5">
+        <motion.div variants={fade} className="bg-gradient-to-br from-primary/10 via-card to-card border border-primary/15 rounded-2xl p-5">
           <p className="text-muted-foreground text-xs mb-1">Solde du mois</p>
           <p className={`text-3xl font-semibold font-mono-amount tracking-tight ${balance >= 0 ? 'text-foreground' : 'text-destructive'}`}>
             {balance >= 0 ? '+' : '-'}{formatAmount(Math.abs(balance))}
