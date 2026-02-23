@@ -25,6 +25,14 @@ const navItems = [
   { path: '/insights', label: 'Insights', icon: Lightbulb },
 ];
 
+// Mobile nav: only 4 items to avoid overflow
+const mobileNavItems = [
+  { path: '/', label: 'Accueil', icon: Home },
+  { path: '/transactions', label: 'Transac.', icon: CreditCard },
+  { path: '/budgets', label: 'Budgets', icon: Target },
+  { path: '/insights', label: 'Insights', icon: Lightbulb },
+];
+
 const fabActions = [
   { label: 'Transaction', emoji: '💳', action: 'transaction' },
   { label: 'Scanner un ticket', emoji: '📸', action: 'scan' },
@@ -132,15 +140,15 @@ const Layout = ({ children }: LayoutProps) => {
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-nav safe-area-bottom">
-        <div className="flex justify-around items-center h-16 px-2">
-          {navItems.slice(0, 3).map(item => {
+        <div className="flex justify-around items-center h-16 px-1">
+          {mobileNavItems.slice(0, 2).map(item => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             return (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center justify-center gap-0.5 w-14 h-full transition-colors ${
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors ${
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
@@ -151,10 +159,10 @@ const Layout = ({ children }: LayoutProps) => {
           })}
 
           {/* FAB center button */}
-          <div className="relative flex items-center justify-center">
+          <div className="relative flex items-center justify-center px-2">
             <button
               onClick={() => setFabOpen(prev => !prev)}
-              className="w-11 h-11 -mt-5 rounded-full bg-primary shadow-md flex items-center justify-center active:scale-90 transition-transform"
+              className="w-12 h-12 -mt-6 rounded-full bg-primary shadow-md flex items-center justify-center active:scale-90 transition-transform"
             >
               <motion.div animate={{ rotate: fabOpen ? 45 : 0 }} transition={{ duration: 0.15 }}>
                 <Plus className="w-5 h-5 text-primary-foreground" />
@@ -162,14 +170,14 @@ const Layout = ({ children }: LayoutProps) => {
             </button>
           </div>
 
-          {navItems.slice(3).map(item => {
+          {mobileNavItems.slice(2).map(item => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             return (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center justify-center gap-0.5 w-14 h-full transition-colors ${
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors ${
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
