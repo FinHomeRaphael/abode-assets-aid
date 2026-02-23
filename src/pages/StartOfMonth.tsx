@@ -29,8 +29,8 @@ function saveChecklist(monthYear: string, state: ChecklistState) {
 
 const StartOfMonth = () => {
   const {
-    transactions, household, currentUser,
-    savingsGoals, getGoalSaved, addSavingsDeposit,
+    scopedTransactions: transactions, household, currentUser,
+    scopedSavingsGoals: savingsGoals, getGoalSaved, addSavingsDeposit,
     softDeleteRecurringTransaction, getMemberById,
   } = useApp();
   const { formatAmount } = useCurrency();

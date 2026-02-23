@@ -667,16 +667,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return savingsDeposits.filter(d => d.goalId === goalId);
   }, [savingsDeposits]);
 
+  const scopedSavingsGoalIds = useMemo(() => {
+    const userId = session?.user?.id;
+    return new Set(savingsGoals.filter(g => {
+      if (financeScope === 'personal') return g.scope === 'personal' && g.createdBy === userId;
+      return g.scope === 'household' || !g.scope;
+    }).map(g => g.id));
+  }, [savingsGoals, financeScope, session?.user?.id]);
+
+  const scopedSavingsDeposits = useMemo(() => {
+    return savingsDeposits.filter(d => scopedSavingsGoalIds.has(d.goalId));
+  }, [savingsDeposits, scopedSavingsGoalIds]);
+
   const getMonthSavings = useCallback((refDate: Date = new Date()) => {
     const range = getMonthRange(refDate);
-    return savingsDeposits
+    return scopedSavingsDeposits
       .filter(d => d.date >= range.start && d.date <= range.end)
       .reduce((s, d) => s + d.amount, 0);
-  }, [savingsDeposits]);
+  }, [scopedSavingsDeposits]);
 
   const getTotalSavings = useCallback(() => {
-    return savingsDeposits.reduce((s, d) => s + d.amount, 0);
-  }, [savingsDeposits]);
+    return scopedSavingsDeposits.reduce((s, d) => s + d.amount, 0);
+  }, [scopedSavingsDeposits]);
 
   // ===== Category Actions =====
   const addCustomCategory = (c: CustomCategory) => {
