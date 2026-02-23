@@ -36,10 +36,10 @@ export const PremiumLock = ({ feature, description }: { feature: string; descrip
 };
 
 export const PremiumGate = ({ children, feature, description }: PaywallProps) => {
-  const { isPremium } = useSubscription();
+  const { isPremium, loading } = useSubscription();
   const [showPaywall, setShowPaywall] = useState(false);
 
-  if (isPremium) return <>{children}</>;
+  if (loading || isPremium) return <>{children}</>;
 
   return (
     <>
