@@ -11,7 +11,7 @@ import Layout from '@/components/Layout';
 const AccountDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { accounts, getAccountBalance, getAccountTransactions, updateAccount, archiveAccount, deleteAccount, getMemberById } = useApp();
+  const { scopedAccounts: accounts, getAccountBalance, getAccountTransactions, updateAccount, archiveAccount, deleteAccount, getMemberById } = useApp();
   const { formatAmount } = useCurrency();
 
   const account = accounts.find(a => a.id === id);

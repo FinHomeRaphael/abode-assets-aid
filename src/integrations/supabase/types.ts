@@ -17,11 +17,13 @@ export type Database = {
       accounts: {
         Row: {
           created_at: string | null
+          created_by: string | null
           currency: string
           household_id: string
           id: string
           is_archived: boolean | null
           name: string
+          scope: string
           starting_balance: number
           starting_date: string
           type: string
@@ -29,11 +31,13 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           currency?: string
           household_id: string
           id?: string
           is_archived?: boolean | null
           name: string
+          scope?: string
           starting_balance?: number
           starting_date?: string
           type: string
@@ -41,11 +45,13 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           currency?: string
           household_id?: string
           id?: string
           is_archived?: boolean | null
           name?: string
+          scope?: string
           starting_balance?: number
           starting_date?: string
           type?: string

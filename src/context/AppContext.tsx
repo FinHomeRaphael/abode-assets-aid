@@ -46,6 +46,7 @@ interface AppContextType {
   savingsDeposits: SavingsDeposit[];
   customCategories: CustomCategory[];
   accounts: Account[];
+  scopedAccounts: Account[];
 
   financeScope: FinanceScope;
   setFinanceScope: (scope: FinanceScope) => void;
@@ -298,11 +299,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })));
       }
 
-      // Fetch accounts
+      // Fetch accounts (both household and personal)
       const { data: accountsData } = await supabase
         .from('accounts')
         .select('*')
-        .eq('household_id', hId);
+        .or(`and(household_id.eq.${hId},scope.eq.household),and(created_by.eq.${userId},scope.eq.personal)`);
 
       if (accountsData) {
         setAccounts(accountsData.map((a: any) => ({
@@ -315,6 +316,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
           isArchived: a.is_archived || false,
           createdAt: a.created_at,
           updatedAt: a.updated_at,
+          scope: a.scope || 'household',
+          createdBy: a.created_by,
         })));
       }
 
@@ -799,9 +802,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ===== Account Actions =====
   const addAccount = (a: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'isArchived'>) => {
     const newId = crypto.randomUUID();
+    const scope = a.scope || financeScope;
+    const createdBy = session?.user?.id;
     const newA: Account = {
       ...a,
       id: newId,
+      scope,
+      createdBy,
       isArchived: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -816,6 +823,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currency: a.currency,
       starting_balance: a.startingBalance,
       starting_date: a.startingDate,
+      scope,
+      created_by: createdBy,
     }).then(({ error }) => { if (error) console.error('Insert account error:', error); });
   };
 
@@ -849,7 +858,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return account.startingBalance + income - expense;
   }, [accounts, transactions]);
 
-  const getActiveAccounts = useCallback(() => accounts.filter(a => !a.isArchived), [accounts]);
+  const getActiveAccounts = useCallback(() => {
+    const userId = session?.user?.id;
+    return accounts.filter(a => {
+      if (a.isArchived) return false;
+      if (financeScope === 'personal') return a.scope === 'personal' && a.createdBy === userId;
+      return a.scope === 'household' || !a.scope;
+    });
+  }, [accounts, financeScope, session?.user?.id]);
 
   const getAccountTransactions = useCallback((accountId: string) => {
     return transactions.filter(t => t.accountId === accountId).sort((a, b) => b.date.localeCompare(a.date));
@@ -872,6 +888,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [budgets, financeScope, session?.user?.id]);
 
+  const scopedAccounts = useMemo(() => {
+    const userId = session?.user?.id;
+    return accounts.filter(a => {
+      if (financeScope === 'personal') return a.scope === 'personal' && a.createdBy === userId;
+      return a.scope === 'household' || !a.scope;
+    });
+  }, [accounts, financeScope, session?.user?.id]);
+
   const scopedSavingsGoals = useMemo(() => {
     const userId = session?.user?.id;
     return savingsGoals.filter(g => {
@@ -885,7 +909,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isLoggedIn, loading, session, householdId, currentUser, household,
       transactions, budgets, savingsGoals, savingsDeposits, customCategories, accounts,
       financeScope, setFinanceScope: handleSetFinanceScope,
-      scopedTransactions, scopedBudgets, scopedSavingsGoals,
+      scopedTransactions, scopedBudgets, scopedSavingsGoals, scopedAccounts,
       logout,
       addTransaction, updateTransaction, deleteTransaction, softDeleteRecurringTransaction,
       toggleRecurring, deleteRecurring, getRecurringTransactions,

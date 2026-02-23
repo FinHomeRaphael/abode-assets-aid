@@ -88,6 +88,8 @@ export interface Account {
   isArchived: boolean;
   createdAt: string;
   updatedAt: string;
+  scope?: FinanceScope;
+  createdBy?: string;
 }
 
 export const ACCOUNT_TYPES: { value: AccountType; label: string; emoji: string }[] = [
