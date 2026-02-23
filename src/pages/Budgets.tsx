@@ -21,6 +21,11 @@ const Budgets = () => {
   const [newPeriod, setNewPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [newAlerts, setNewAlerts] = useState(true);
   const [newIsRecurring, setNewIsRecurring] = useState(true);
+  const [newStartMonth, setNewStartMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [newStartYear, setNewStartYear] = useState(() => new Date().getFullYear());
   const [viewPeriod, setViewPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
@@ -32,8 +37,10 @@ const Budgets = () => {
 
   const handleCreate = () => {
     if (!newCategory || !newLimit) { toast.error('Remplissez tous les champs'); return; }
-    const monthYear = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
-    addBudget({ category: newCategory, limit: parseFloat(newLimit), period: newPeriod, emoji: CATEGORY_EMOJIS[newCategory] || '📌', alertsEnabled: newAlerts, recurring: newIsRecurring, isRecurring: newIsRecurring, monthYear: newIsRecurring ? undefined : monthYear });
+    const monthYear = newPeriod === 'yearly'
+      ? `${newStartYear}-01`
+      : newStartMonth;
+    addBudget({ category: newCategory, limit: parseFloat(newLimit), period: newPeriod, emoji: CATEGORY_EMOJIS[newCategory] || '📌', alertsEnabled: newAlerts, recurring: newIsRecurring, isRecurring: newIsRecurring, monthYear: newIsRecurring ? undefined : monthYear, startMonth: monthYear });
     toast.success('Budget créé ✓');
     setShowCreate(false); setNewCategory(''); setNewLimit('');
   };
@@ -162,6 +169,25 @@ const Budgets = () => {
                       <button onClick={() => setNewPeriod('yearly')} className={`flex-1 py-2 rounded-xl border text-sm font-medium transition-all ${newPeriod === 'yearly' ? 'border-primary bg-primary/5 text-primary' : 'border-border/30 bg-secondary/20 hover:bg-secondary/40'}`}>📆 Annuel</button>
                     </div>
                   </div>
+                  {newPeriod === 'monthly' ? (
+                    <div>
+                      <label className="block text-xs font-medium mb-1">Mois de début</label>
+                      <input type="month" value={newStartMonth} onChange={e => setNewStartMonth(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-border/30 bg-secondary/20 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-medium mb-1">Année</label>
+                      <div className="flex items-center gap-3">
+                        <button type="button" onClick={() => setNewStartYear(y => y - 1)} className="w-8 h-8 rounded-xl bg-secondary/50 flex items-center justify-center hover:bg-secondary transition-colors">
+                          <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                        <span className="text-sm font-medium min-w-[4rem] text-center">{newStartYear}</span>
+                        <button type="button" onClick={() => setNewStartYear(y => y + 1)} className="w-8 h-8 rounded-xl bg-secondary/50 flex items-center justify-center hover:bg-secondary transition-colors">
+                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <label className="block text-xs font-medium mb-1">Type</label>
                     <div className="flex gap-2">
