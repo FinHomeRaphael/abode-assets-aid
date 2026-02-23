@@ -69,12 +69,12 @@ const Layout = ({ children }: LayoutProps) => {
     <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Desktop header */}
       <header className="hidden md:block sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-8">
+        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-4 min-w-0">
             <button onClick={() => navigate('/')} className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
               <img src={logoSquare} alt="FinHome" className="w-full h-full object-cover" />
             </button>
-            <nav className="flex items-center gap-1">
+            <nav className="flex items-center gap-0.5 overflow-x-auto scrollbar-none">
               {navItems.map(item => {
                 const Icon = item.icon;
                 const isActive = location.pathname === item.path;
@@ -82,23 +82,23 @@ const Layout = ({ children }: LayoutProps) => {
                   <button
                     key={item.path}
                     onClick={() => navigate(item.path)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-1 ${
                       isActive
                         ? 'bg-primary/10 text-primary'
                         : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className="w-3.5 h-3.5" />
                     {item.label}
                   </button>
                 );
               })}
             </nav>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <ScopeToggle />
-            <button onClick={() => setShowAddModal(true)} className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5">
-              <Plus className="w-4 h-4" /> Ajouter
+            <button onClick={() => setShowAddModal(true)} className="h-8 px-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors flex items-center gap-1">
+              <Plus className="w-3.5 h-3.5" /> Ajouter
             </button>
             <button onClick={() => navigate('/profile')} className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground hover:bg-muted/80 transition-colors">
               {currentUser ? getInitials(currentUser.name) : '?'}
