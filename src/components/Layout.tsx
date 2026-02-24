@@ -95,7 +95,7 @@ const Layout = ({ children }: LayoutProps) => {
                   >
                     <Icon className="w-3.5 h-3.5" />
                     {item.label}
-                    {showLock && (item.path === '/debts' || item.path === '/insights') && <Lock className="w-3 h-3 text-amber-500" />}
+                    {showLock && (item.path === '/debts' || item.path === '/insights' || item.path === '/chat') && <Lock className="w-3 h-3 text-amber-500" />}
                   </button>
                 );
               })}
@@ -160,7 +160,7 @@ const Layout = ({ children }: LayoutProps) => {
               >
                 <Icon className="w-5 h-5" />
                 <span className="text-[9px] font-medium leading-tight">{item.label}</span>
-                {showLock && (item.path === '/debts' || item.path === '/insights') && <Lock className="w-2.5 h-2.5 text-amber-500 absolute top-1 right-2" />}
+                {showLock && (item.path === '/debts' || item.path === '/insights' || item.path === '/chat') && <Lock className="w-2.5 h-2.5 text-amber-500 absolute top-1 right-2" />}
               </button>
             );
           })}
@@ -190,7 +190,7 @@ const Layout = ({ children }: LayoutProps) => {
               >
                 <Icon className="w-5 h-5" />
                 <span className="text-[9px] font-medium leading-tight">{item.label}</span>
-                {showLock && (item.path === '/debts' || item.path === '/insights') && <Lock className="w-2.5 h-2.5 text-amber-500 absolute top-1 right-2" />}
+                {showLock && (item.path === '/debts' || item.path === '/insights' || item.path === '/chat') && <Lock className="w-2.5 h-2.5 text-amber-500 absolute top-1 right-2" />}
               </button>
             );
           })}
