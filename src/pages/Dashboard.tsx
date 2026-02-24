@@ -59,7 +59,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [showScan, setShowScan] = useState(false);
   const [showReport, setShowReport] = useState(false);
-  const [showPaywall, setShowPaywall] = useState(false);
+  const [paywallFeature, setPaywallFeature] = useState<{ feature: string; description: string } | null>(null);
   const { isPremium, loading: subLoading } = useSubscription();
   const [debts, setDebts] = useState<Debt[]>([]);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -238,9 +238,9 @@ const Dashboard = () => {
         <motion.div variants={fade} className="grid grid-cols-4 gap-2">
           {[
             { icon: Calendar, label: 'Préparer', onClick: () => navigate('/start-of-month') },
-            { icon: Sparkles, label: 'Chat IA', onClick: () => isPremium ? navigate('/chat') : setShowPaywall(true), locked: !subLoading && !isPremium },
+            { icon: Sparkles, label: 'Chat IA', onClick: () => isPremium ? navigate('/chat') : setPaywallFeature({ feature: 'le Chat IA', description: 'Accédez à votre conseiller financier personnel propulsé par l\'IA pour des conseils adaptés à votre situation.' }), locked: !subLoading && !isPremium },
             { icon: Camera, label: 'Scanner', onClick: () => setShowScan(true) },
-            { icon: BarChart3, label: 'Rapport', onClick: () => isPremium ? setShowReport(true) : setShowPaywall(true), locked: !subLoading && !isPremium },
+            { icon: BarChart3, label: 'Rapport', onClick: () => isPremium ? setShowReport(true) : setPaywallFeature({ feature: 'le rapport mensuel', description: 'Obtenez un rapport détaillé de vos finances chaque mois avec des conseils personnalisés.' }), locked: !subLoading && !isPremium },
           ].map((item: any, i: number) => (
             <button key={i} onClick={item.onClick} className="bg-card border border-border rounded-xl p-3 flex flex-col items-center gap-2 hover:bg-muted/50 transition-colors active:scale-95 relative">
               {item.locked && <Lock className="w-3 h-3 text-amber-500 absolute top-1.5 right-1.5" />}
@@ -355,7 +355,7 @@ const Dashboard = () => {
       <ScanTicketModal open={showScan} onClose={() => setShowScan(false)} />
       <MonthlyReportModal open={showReport} onClose={() => setShowReport(false)} />
       <OnboardingModal open={showOnboarding} onComplete={handleOnboardingComplete} />
-      <PaywallModal open={showPaywall} onClose={() => setShowPaywall(false)} feature="le rapport mensuel" description="Obtenez un rapport détaillé de vos finances chaque mois avec des conseils personnalisés." />
+      <PaywallModal open={!!paywallFeature} onClose={() => setPaywallFeature(null)} feature={paywallFeature?.feature || ''} description={paywallFeature?.description} />
     </Layout>
   );
 };
