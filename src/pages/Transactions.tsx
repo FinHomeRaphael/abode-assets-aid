@@ -343,7 +343,14 @@ const Transactions = () => {
                 <div
                   key={t.id}
                   className={`flex items-center gap-3 px-3 sm:px-4 py-3 hover:bg-secondary/30 transition-colors cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`}
-                  onClick={() => selectMode ? toggleSelect(t.id) : openEditModal(t)}
+                  onClick={() => {
+                    const isDebtTx = !!(t as any).debtId || t.id.startsWith('debt-sched-');
+                    if (isDebtTx && !selectMode) {
+                      toast.info('Les échéances de dette se modifient dans l\'onglet Dettes');
+                      return;
+                    }
+                    selectMode ? toggleSelect(t.id) : openEditModal(t);
+                  }}
                 >
                   {selectMode && (
                     <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/30'}`}>
