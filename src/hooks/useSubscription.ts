@@ -1,20 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-export const PLANS = {
-  solo: {
-    monthly: { priceId: 'price_1T4Ev5Iw2TO0HaPO2KxViRI4', amount: 4.99, label: 'Solo' },
-    yearly: { priceId: 'price_1T4EvGIw2TO0HaPOvLHVlBIM', amount: 47.90, label: 'Solo Annuel' },
-  },
-  foyer: {
-    monthly: { priceId: 'price_1T4EvTIw2TO0HaPOPY1Ug8qP', amount: 7.99, label: 'Foyer' },
-    yearly: { priceId: 'price_1T4EvfIw2TO0HaPO3yltUZYe', amount: 79.90, label: 'Foyer Annuel' },
-  },
+export const PREMIUM_PRICES = {
+  monthly: { priceId: 'price_1T4F9nIw2TO0HaPOEQYTWkeY', amount: 5.99 },
+  yearly: { priceId: 'price_1T4FB0Iw2TO0HaPOynh4aLeb', amount: 59.90 },
+  lifetime: { priceId: 'price_1T4FBGIw2TO0HaPOMvqQhLx4', amount: 119.80 },
 } as const;
 
-// Keep backward compat exports
-export const PREMIUM_PRICE_MONTHLY = PLANS.solo.monthly.priceId;
-export const PREMIUM_PRICE_YEARLY = PLANS.solo.yearly.priceId;
+// Backward compat
+export const PREMIUM_PRICE_MONTHLY = PREMIUM_PRICES.monthly.priceId;
+export const PREMIUM_PRICE_YEARLY = PREMIUM_PRICES.yearly.priceId;
 
 export const FREEMIUM_LIMITS = {
   accounts: 1,

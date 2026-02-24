@@ -9,6 +9,9 @@ const corsHeaders = {
 
 const PRICE_ID_REGEX = /^price_[a-zA-Z0-9]{8,}$/;
 
+// Lifetime price ID for one-time payment mode
+const LIFETIME_PRICE_ID = "price_1T4FBGIw2TO0HaPOMvqQhLx4";
+
 function validateRequest(body: unknown): { priceId: string } {
   if (!body || typeof body !== "object") throw new Error("Invalid request body");
   const { priceId } = body as Record<string, unknown>;
@@ -63,6 +66,7 @@ serve(async (req) => {
     }
 
     const { priceId } = validateRequest(rawBody);
+    const isLifetime = priceId === LIFETIME_PRICE_ID;
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", { apiVersion: "2025-08-27.basil" });
     
@@ -78,10 +82,10 @@ serve(async (req) => {
       customer: customerId,
       customer_email: customerId ? undefined : user.email,
       line_items: [{ price: priceId, quantity: 1 }],
-      mode: "subscription",
+      mode: isLifetime ? "payment" : "subscription",
       success_url: `${origin}/profile?checkout=success`,
       cancel_url: `${origin}/profile?checkout=cancel`,
-      metadata: { user_id: user.id },
+      metadata: { user_id: user.id, plan_type: isLifetime ? 'lifetime' : 'subscription' },
     });
 
     return new Response(JSON.stringify({ url: session.url }), {

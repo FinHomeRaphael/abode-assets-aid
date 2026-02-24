@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Crown, Check, X, User, Users } from 'lucide-react';
-import { useSubscription, PLANS } from '@/hooks/useSubscription';
+import { Lock, Crown, Check, X, Infinity as InfinityIcon } from 'lucide-react';
+import { useSubscription, PREMIUM_PRICES } from '@/hooks/useSubscription';
 
 interface PaywallProps {
   children: React.ReactNode;
@@ -75,23 +75,18 @@ export const PremiumGate = ({ children, feature, description }: PaywallProps) =>
   );
 };
 
+type BillingPeriod = 'monthly' | 'yearly' | 'lifetime';
+
 export const PaywallModal = ({ open, onClose, feature, description }: { open: boolean; onClose: () => void; feature: string; description?: string }) => {
   const { startCheckout } = useSubscription();
-  const [planType, setPlanType] = useState<'solo' | 'foyer'>('solo');
-  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('yearly');
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('yearly');
   const [loading, setLoading] = useState(false);
 
-  const currentPlan = PLANS[planType][billingPeriod];
-  const monthlyEquiv = billingPeriod === 'yearly'
-    ? (currentPlan.amount / 12).toFixed(2).replace('.', ',')
-    : null;
-  const yearlySaving = planType === 'solo'
-    ? ((PLANS.solo.monthly.amount * 12) - PLANS.solo.yearly.amount).toFixed(0)
-    : ((PLANS.foyer.monthly.amount * 12) - PLANS.foyer.yearly.amount).toFixed(0);
+  const currentPrice = PREMIUM_PRICES[billingPeriod];
 
   const handleSubscribe = async () => {
     setLoading(true);
-    await startCheckout(currentPlan.priceId);
+    await startCheckout(currentPrice.priceId);
     setLoading(false);
   };
 
@@ -102,12 +97,24 @@ export const PaywallModal = ({ open, onClose, feature, description }: { open: bo
     'Comptes bancaires illimités',
     'Enveloppes d\'épargne illimitées',
     'Budgets illimités',
-  ];
-
-  const foyerExtras = [
-    'Jusqu\'à 5 membres dans le foyer',
     'Premium partagé avec tout le foyer',
   ];
+
+  const priceLabel = () => {
+    switch (billingPeriod) {
+      case 'monthly': return `${currentPrice.amount.toFixed(2).replace('.', ',')}€/mois`;
+      case 'yearly': return `${currentPrice.amount.toFixed(2).replace('.', ',')}€/an`;
+      case 'lifetime': return `${currentPrice.amount.toFixed(2).replace('.', ',')}€ une fois`;
+    }
+  };
+
+  const periodSuffix = () => {
+    switch (billingPeriod) {
+      case 'monthly': return '/mois';
+      case 'yearly': return '/an';
+      case 'lifetime': return ' une fois';
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -139,29 +146,11 @@ export const PaywallModal = ({ open, onClose, feature, description }: { open: bo
 
               <h2 className="text-xl font-bold mb-1">Passez à Premium</h2>
               <p className="text-sm text-muted-foreground mb-5">
-                {description || `Débloquez ${feature} et toutes les fonctionnalités avancées.`}
+                {description || `Débloquez ${feature} et toutes les fonctionnalités avancées pour tout votre foyer.`}
               </p>
 
-              {/* Plan type toggle */}
-              <div className="flex bg-secondary rounded-xl p-1 mb-3">
-                <button
-                  onClick={() => setPlanType('solo')}
-                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${planType === 'solo' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}
-                >
-                  <User className="w-3.5 h-3.5" />
-                  Solo
-                </button>
-                <button
-                  onClick={() => setPlanType('foyer')}
-                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${planType === 'foyer' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  Foyer
-                </button>
-              </div>
-
-              {/* Billing toggle */}
-              <div className="flex bg-secondary rounded-xl p-1 mb-5">
+              {/* Billing toggle - 3 options */}
+              <div className="flex bg-secondary rounded-xl p-1 mb-5 gap-0.5">
                 <button
                   onClick={() => setBillingPeriod('monthly')}
                   className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${billingPeriod === 'monthly' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}
@@ -173,7 +162,14 @@ export const PaywallModal = ({ open, onClose, feature, description }: { open: bo
                   className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors relative ${billingPeriod === 'yearly' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}
                 >
                   Annuel
-                  <span className="absolute -top-2 -right-1 px-1.5 py-0.5 rounded-full bg-emerald-500 text-white text-[9px] font-bold">-20%</span>
+                  <span className="absolute -top-2 -right-1 px-1.5 py-0.5 rounded-full bg-emerald-500 text-white text-[9px] font-bold">-17%</span>
+                </button>
+                <button
+                  onClick={() => setBillingPeriod('lifetime')}
+                  className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors relative ${billingPeriod === 'lifetime' ? 'bg-card shadow-sm' : 'text-muted-foreground'}`}
+                >
+                  À vie
+                  <span className="absolute -top-2 -right-1 px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[9px] font-bold">∞</span>
                 </button>
               </div>
 
@@ -181,20 +177,20 @@ export const PaywallModal = ({ open, onClose, feature, description }: { open: bo
               <div className="text-center mb-5">
                 <div className="flex items-baseline justify-center gap-1">
                   <span className="text-3xl font-bold">
-                    {currentPlan.amount.toFixed(2).replace('.', ',')}€
+                    {currentPrice.amount.toFixed(2).replace('.', ',')}€
                   </span>
                   <span className="text-muted-foreground text-sm">
-                    /{billingPeriod === 'monthly' ? 'mois' : 'an'}
+                    {periodSuffix()}
                   </span>
                 </div>
                 {billingPeriod === 'yearly' && (
                   <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
-                    soit {monthlyEquiv}€/mois — vous économisez {yearlySaving}€/an
+                    soit 4,99€/mois — vous économisez 12€/an
                   </p>
                 )}
-                {planType === 'foyer' && (
+                {billingPeriod === 'lifetime' && (
                   <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                    👨‍👩‍👧‍👦 Pour tout le foyer, jusqu'à 5 personnes
+                    = prix de 2 ans — Premium pour toujours 🎉
                   </p>
                 )}
               </div>
@@ -207,12 +203,6 @@ export const PaywallModal = ({ open, onClose, feature, description }: { open: bo
                     <span>{f}</span>
                   </div>
                 ))}
-                {planType === 'foyer' && foyerExtras.map((f, i) => (
-                  <div key={`foyer-${i}`} className="flex items-center gap-2.5 text-sm">
-                    <Check className="w-4 h-4 text-amber-500 flex-shrink-0" />
-                    <span className="font-medium">{f}</span>
-                  </div>
-                ))}
               </div>
 
               {/* CTA */}
@@ -221,11 +211,11 @@ export const PaywallModal = ({ open, onClose, feature, description }: { open: bo
                 disabled={loading}
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white font-semibold text-sm hover:opacity-90 transition-opacity shadow-md disabled:opacity-50"
               >
-                {loading ? 'Redirection...' : `S'abonner — ${currentPlan.amount.toFixed(2).replace('.', ',')}€/${billingPeriod === 'monthly' ? 'mois' : 'an'}`}
+                {loading ? 'Redirection...' : `S'abonner — ${priceLabel()}`}
               </button>
 
               <p className="text-[10px] text-muted-foreground text-center mt-3">
-                Annulable à tout moment. Paiement sécurisé par Stripe.
+                {billingPeriod === 'lifetime' ? 'Paiement unique. Accès à vie.' : 'Annulable à tout moment.'} Paiement sécurisé par Stripe.
               </p>
             </div>
           </motion.div>
