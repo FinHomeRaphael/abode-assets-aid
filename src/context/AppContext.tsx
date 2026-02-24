@@ -122,6 +122,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [debtPaymentOverrides, setDebtPaymentOverrides] = useState<{ debt_id: string; payment_date: string; custom_interest: number; custom_principal: number }[]>([]);
+  const [debtSchedules, setDebtSchedules] = useState<{ id: string; debt_id: string; due_date: string; period_number: number; capital_before: number; capital_after: number; interest_amount: number; principal_amount: number; total_amount: number; status: string; transaction_id: string | null }[]>([]);
   const [financeScope, setFinanceScope] = useState<FinanceScope>(() => {
     return (localStorage.getItem('finehome_scope') as FinanceScope) || 'household';
   });
@@ -361,6 +362,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })));
       }
 
+      // Fetch debt schedules (prevu only, for virtual transactions)
+      const { data: schedulesData } = await supabase
+        .from('debt_schedules')
+        .select('*')
+        .eq('household_id', hId)
+        .eq('status', 'prevu');
+
+      if (schedulesData) {
+        setDebtSchedules(schedulesData.map((s: any) => ({
+          id: s.id,
+          debt_id: s.debt_id,
+          due_date: s.due_date,
+          period_number: Number(s.period_number),
+          capital_before: Number(s.capital_before),
+          capital_after: Number(s.capital_after),
+          interest_amount: Number(s.interest_amount),
+          principal_amount: Number(s.principal_amount),
+          total_amount: Number(s.total_amount),
+          status: s.status,
+          transaction_id: s.transaction_id,
+        })));
+      }
+
       const { data: catData } = await supabase
         .from('categories')
         .select('*')
@@ -395,6 +419,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setCustomCategories([]);
       setAccounts([]);
       setDebts([]);
+      setDebtSchedules([]);
       setHouseholdData({ name: '', currency: 'EUR', createdAt: '', plan: 'free' });
       setHouseholdId('');
     };
@@ -805,8 +830,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
     }
 
+    // Inject virtual transactions from debt schedules (prevu, not yet linked to a real transaction)
+    const baseCurrency = household.currency;
+    const debtMap = new Map(debts.map(d => [d.id, d]));
+    for (const sched of debtSchedules) {
+      if (sched.due_date < range.start || sched.due_date > range.end) continue;
+      if (sched.transaction_id) continue; // already has a real transaction
+      // Check no real transaction already exists for this schedule
+      const alreadyHasRealTx = monthTransactions.some(t => t.debtId === sched.debt_id && t.date === sched.due_date);
+      if (alreadyHasRealTx) continue;
+
+      const debt = debtMap.get(sched.debt_id);
+      if (!debt) continue;
+
+      // Scope check
+      if (financeScope === 'personal' && debt.scope !== 'personal') continue;
+      if (financeScope === 'household' && debt.scope === 'personal') continue;
+
+      const rate = getExchangeRate(debt.currency, baseCurrency);
+
+      monthTransactions.push({
+        id: `debt-sched-${sched.id}`,
+        type: 'expense',
+        amount: sched.total_amount,
+        currency: debt.currency,
+        baseCurrency,
+        exchangeRate: rate,
+        convertedAmount: sched.total_amount * rate,
+        category: debt.categoryId || 'Crédit',
+        emoji: getDebtEmoji(debt.type),
+        label: `${debt.name} — Échéance #${sched.period_number}`,
+        date: sched.due_date,
+        memberId: debt.createdBy || session?.user?.id || '',
+        accountId: debt.accountId,
+        notes: `Amortissement ${sched.principal_amount.toFixed(2)} + Intérêts ${sched.interest_amount.toFixed(2)}`,
+        isRecurring: false,
+        scope: debt.scope as FinanceScope || 'household',
+        createdBy: debt.createdBy,
+        debtId: debt.id,
+      });
+    }
+
     return monthTransactions;
-  }, [transactions, debts, debtPaymentOverrides, household.currency, financeScope, session?.user?.id]);
+  }, [transactions, debts, debtPaymentOverrides, debtSchedules, household.currency, financeScope, session?.user?.id]);
 
   // ===== Household Actions =====
   const changeCurrency = (currency: string) => {
