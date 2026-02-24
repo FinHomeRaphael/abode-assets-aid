@@ -63,17 +63,45 @@ const Debts = () => {
 
   const upcomingPayments = useMemo(() => {
     const payments: { date: string; name: string; amount: number; emoji: string; detail?: string }[] = [];
+    const now = new Date();
+    const limitDate = new Date(now.getFullYear() + 2, now.getMonth(), now.getDate());
+
     for (const d of debts) {
       if (d.remainingAmount <= 0) continue;
-      const nextDate = d.nextPaymentDate || calculateNextPaymentDate(d);
-      if (nextDate) {
-        const periodsYear = getPeriodsPerYear(d.paymentFrequency);
-        const interest = d.remainingAmount * (d.interestRate / 100 / periodsYear);
-        const capital = Math.max(d.paymentAmount - interest, 0);
-        payments.push({ date: nextDate, name: d.name, amount: d.paymentAmount, emoji: getDebtEmoji(d.type), detail: `Amortissement ${formatAmount(capital)} + Intérêts ${formatAmount(interest)}` });
+      const periodsYear = getPeriodsPerYear(d.paymentFrequency);
+      const monthsIncrement = 12 / periodsYear;
+      const rate = d.interestRate / 100 / periodsYear;
+
+      // Find first payment date
+      let firstDate = d.nextPaymentDate || calculateNextPaymentDate(d);
+      if (!firstDate) continue;
+
+      let currentDate = new Date(firstDate + 'T00:00:00');
+      let remaining = d.remainingAmount;
+
+      while (currentDate <= limitDate && remaining > 0) {
+        const interest = remaining * rate;
+        const actualPayment = Math.min(d.paymentAmount, remaining + interest);
+        const capital = Math.max(actualPayment - interest, 0);
+
+        const y = currentDate.getFullYear();
+        const m = String(currentDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(currentDate.getDate()).padStart(2, '0');
+        const dateStr = `${y}-${m}-${dd}`;
+
+        payments.push({
+          date: dateStr,
+          name: d.name,
+          amount: actualPayment,
+          emoji: getDebtEmoji(d.type),
+          detail: `Amortissement ${formatAmount(capital)} + Intérêts ${formatAmount(interest)}`,
+        });
+
+        remaining -= capital;
+        currentDate.setMonth(currentDate.getMonth() + monthsIncrement);
       }
     }
-    return payments.sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
+    return payments.sort((a, b) => a.date.localeCompare(b.date));
   }, [debts]);
 
   const handleDebtAdded = () => { fetchDebts(); setShowAdd(false); toast.success('Dette ajoutée ✓'); };
