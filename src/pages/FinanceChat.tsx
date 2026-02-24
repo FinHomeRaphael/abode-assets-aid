@@ -63,7 +63,7 @@ const FinanceChat = () => {
     const budgetLines = monthBudgets.map(b => {
       const spent = getBudgetSpent(b, now);
       const pct = Math.round((spent / b.limit) * 100);
-      return `- ${b.emoji} ${b.category}: ${formatAmount(spent)} / ${formatAmount(b.limit)} (${pct}%)`;
+      return `- ${b.emoji} ${b.category}: -${formatAmount(spent)} / ${formatAmount(b.limit)} (${pct}%)`;
     }).join('\n');
 
     const goalLines = savingsGoals.map(g => {
@@ -78,7 +78,7 @@ const FinanceChat = () => {
       catMap[t.category] = (catMap[t.category] || 0) + t.convertedAmount;
     });
     const topCats = Object.entries(catMap).sort((a, b) => b[1] - a[1]).slice(0, 5)
-      .map(([cat, amount]) => `- ${cat}: ${formatAmount(amount)}`).join('\n');
+      .map(([cat, amount]) => `- ${cat}: -${formatAmount(amount)}`).join('\n');
 
     // Recent transactions
     const recentTx = monthTx.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8)
@@ -92,14 +92,14 @@ Foyer: ${household.name} (${household.members.length} membre(s))
 Devise: ${household.currency}
 
 --- CE MOIS-CI ---
-Revenus: ${formatAmount(totalIncome)}
-Dépenses: ${formatAmount(totalExpense)}
-Enveloppes du mois: ${formatAmount(monthSavings)}
-Solde disponible: ${formatAmount(balance)}
+Revenus: +${formatAmount(totalIncome)}
+Dépenses: -${formatAmount(totalExpense)}
+Enveloppes du mois: -${formatAmount(monthSavings)}
+Solde disponible: ${balance >= 0 ? '+' : '-'}${formatAmount(Math.abs(balance))}
 
 --- MOIS PRÉCÉDENT ---
-Revenus: ${formatAmount(prevIncome)}
-Dépenses: ${formatAmount(prevExpense)}
+Revenus: +${formatAmount(prevIncome)}
+Dépenses: -${formatAmount(prevExpense)}
 
 --- TOP CATÉGORIES DE DÉPENSES ---
 ${topCats || 'Aucune dépense'}
