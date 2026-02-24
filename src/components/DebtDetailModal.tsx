@@ -1,12 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Debt, DEBT_TYPES, getDebtEmoji, getPeriodsPerYear, estimateEndDate } from '@/types/debt';
+import { Debt, DEBT_TYPES, getDebtEmoji, getPeriodsPerYear, estimateEndDate, calculatePaymentBreakdown } from '@/types/debt';
 import { useCurrency } from '@/hooks/useCurrency';
 import { formatDateLong, formatLocalDate } from '@/utils/format';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { Pencil } from 'lucide-react';
 
 interface Props {
   debt: Debt | null;
@@ -19,6 +21,9 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
   const { transactions, householdId } = useApp();
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editingPayment, setEditingPayment] = useState(false);
+  const [customInterest, setCustomInterest] = useState<string>('');
+  const [customPrincipal, setCustomPrincipal] = useState<string>('');
 
   const debtTransactions = useMemo(() => {
     if (!debt) return [];
@@ -27,18 +32,32 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
       .slice(0, 10);
   }, [transactions, debt?.id]);
 
+  // Compute default values
+  const periodsPerYear = debt ? getPeriodsPerYear(debt.paymentFrequency) : 12;
+  const rate = debt ? debt.interestRate / 100 / periodsPerYear : 0;
+  const defaultBreakdown = useMemo(() => {
+    if (!debt) return { interest: 0, capital: 0, totalPayment: 0 };
+    return calculatePaymentBreakdown(debt.remainingAmount, debt.paymentAmount, rate, debt.amortizationType);
+  }, [debt?.remainingAmount, debt?.paymentAmount, rate, debt?.amortizationType]);
+
+  // Reset custom values when debt changes or editing starts
+  useEffect(() => {
+    if (debt) {
+      setCustomInterest(defaultBreakdown.interest.toFixed(2));
+      setCustomPrincipal(defaultBreakdown.capital.toFixed(2));
+      setEditingPayment(false);
+    }
+  }, [debt?.id, defaultBreakdown.interest, defaultBreakdown.capital]);
+
   if (!debt) return null;
 
   const repaidPct = debt.initialAmount > 0 ? Math.min(((debt.initialAmount - debt.remainingAmount) / debt.initialAmount) * 100, 100) : 0;
-  const periodsPerYear = getPeriodsPerYear(debt.paymentFrequency);
-  const rate = debt.interestRate / 100 / periodsPerYear;
-  const nextInterest = debt.remainingAmount * rate;
-  const nextPrincipal = debt.paymentAmount; // paymentAmount = amortissement (capital only)
-  const totalPayment = nextPrincipal + nextInterest;
   const endDate = estimateEndDate(debt);
   const typeInfo = DEBT_TYPES.find(t => t.value === debt.type);
 
-  // debtTransactions moved above early return
+  const interestVal = parseFloat(customInterest) || 0;
+  const principalVal = parseFloat(customPrincipal) || 0;
+  const totalPayment = interestVal + principalVal;
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -49,15 +68,12 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
     onUpdated();
   };
 
-  // Generate payment - manual trigger for auto-generating transactions
   const handleGeneratePayment = async () => {
     if (!debt.categoryId) {
       toast.error('Définissez une catégorie pour cette dette d\'abord');
       return;
     }
 
-    const interestAmount = debt.remainingAmount * rate;
-    const principalAmount = debt.paymentAmount; // paymentAmount = amortissement only
     const paymentDate = debt.nextPaymentDate || formatLocalDate(new Date());
     const currency = debt.currency;
 
@@ -66,11 +82,11 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
       household_id: householdId,
       type: 'expense',
       label: `Intérêts - ${debt.name}`,
-      amount: Math.round(interestAmount * 100) / 100,
+      amount: Math.round(interestVal * 100) / 100,
       currency,
       base_currency: currency,
       exchange_rate: 1,
-      converted_amount: Math.round(interestAmount * 100) / 100,
+      converted_amount: Math.round(interestVal * 100) / 100,
       category: debt.categoryId,
       emoji: '🏦',
       date: paymentDate,
@@ -84,11 +100,11 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
       household_id: householdId,
       type: 'expense',
       label: `Amortissement - ${debt.name}`,
-      amount: Math.round(principalAmount * 100) / 100,
+      amount: Math.round(principalVal * 100) / 100,
       currency,
       base_currency: currency,
       exchange_rate: 1,
-      converted_amount: Math.round(principalAmount * 100) / 100,
+      converted_amount: Math.round(principalVal * 100) / 100,
       category: debt.categoryId,
       emoji: '🏦',
       date: paymentDate,
@@ -100,13 +116,14 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
     if (e1 || e2) { console.error('Generate payment error:', e1, e2); toast.error('Erreur'); return; }
 
     // Update remaining amount
-    const newRemaining = Math.max(0, debt.remainingAmount - principalAmount);
+    const newRemaining = Math.max(0, debt.remainingAmount - principalVal);
     await supabase.from('debts').update({
       remaining_amount: Math.round(newRemaining * 100) / 100,
       last_payment_date: paymentDate,
     }).eq('id', debt.id);
 
     toast.success('Paiement enregistré ✓');
+    setEditingPayment(false);
     onUpdated();
   };
 
@@ -183,22 +200,66 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
                   )}
                 </div>
 
-                {/* Next payment breakdown */}
+                {/* Next payment breakdown - editable */}
                 <div className="card-elevated p-4">
-                  <p className="text-sm font-semibold mb-3">💶 Prochaine échéance</p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-semibold">💶 Prochaine échéance</p>
+                    {!editingPayment && (
+                      <button
+                        onClick={() => setEditingPayment(true)}
+                        className="text-xs text-primary hover:text-primary/80 flex items-center gap-1 transition-colors"
+                      >
+                        <Pencil className="w-3 h-3" /> Modifier
+                      </button>
+                    )}
+                  </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Intérêts</span>
-                      <span className="font-mono-amount">{formatAmount(nextInterest)}</span>
+                      {editingPayment ? (
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={customInterest}
+                          onChange={e => setCustomInterest(e.target.value)}
+                          className="w-28 h-8 text-right font-mono-amount text-sm"
+                        />
+                      ) : (
+                        <span className="font-mono-amount">{formatAmount(interestVal)}</span>
+                      )}
                     </div>
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Amortissement</span>
-                      <span className="font-mono-amount">{formatAmount(nextPrincipal)}</span>
+                      {editingPayment ? (
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={customPrincipal}
+                          onChange={e => setCustomPrincipal(e.target.value)}
+                          className="w-28 h-8 text-right font-mono-amount text-sm"
+                        />
+                      ) : (
+                        <span className="font-mono-amount">{formatAmount(principalVal)}</span>
+                      )}
                     </div>
                     <div className="border-t border-border pt-2 flex items-center justify-between text-sm font-semibold">
                       <span>Total</span>
                       <span className="font-mono-amount">{formatAmount(totalPayment)}</span>
                     </div>
+                    {editingPayment && (
+                      <button
+                        onClick={() => {
+                          setCustomInterest(defaultBreakdown.interest.toFixed(2));
+                          setCustomPrincipal(defaultBreakdown.capital.toFixed(2));
+                          setEditingPayment(false);
+                        }}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        ↩ Revenir aux valeurs calculées
+                      </button>
+                    )}
                   </div>
                 </div>
 
