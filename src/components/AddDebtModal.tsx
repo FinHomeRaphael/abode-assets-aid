@@ -32,6 +32,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [accountId, setAccountId] = useState('');
+  const [amortizationType, setAmortizationType] = useState<'fixed_annuity' | 'fixed_capital'>('fixed_annuity');
   const [nextPaymentDate, setNextPaymentDate] = useState<Date>(new Date());
   const [saving, setSaving] = useState(false);
 
@@ -56,13 +57,25 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
   }, [remainingAmount, interestRate, periodsPerYear]);
 
   const totalPayment = useMemo(() => {
+    if (amortizationType === 'fixed_annuity') {
+      // Annuité constante: payment_amount = échéance totale fixe
+      return parseFloat(paymentAmount) || 0;
+    }
+    // Capital constant: payment_amount = amortissement fixe, échéance = amortissement + intérêts
     return (parseFloat(paymentAmount) || 0) + calculatedInterest;
-  }, [paymentAmount, calculatedInterest]);
+  }, [paymentAmount, calculatedInterest, amortizationType]);
+
+  const displayedCapital = useMemo(() => {
+    if (amortizationType === 'fixed_annuity') {
+      return Math.max((parseFloat(paymentAmount) || 0) - calculatedInterest, 0);
+    }
+    return parseFloat(paymentAmount) || 0;
+  }, [paymentAmount, calculatedInterest, amortizationType]);
 
   const reset = () => {
     setType('mortgage'); setName(''); setLender(''); setInitialAmount(''); setRemainingAmount('');
     setInterestRate(''); setDurationYears(''); setStartDate(new Date()); setPaymentFrequency('monthly');
-    setPaymentDay('1'); setPaymentAmount(''); setCategoryId(''); setAccountId(''); setNextPaymentDate(new Date());
+    setPaymentDay('1'); setPaymentAmount(''); setCategoryId(''); setAccountId(''); setAmortizationType('fixed_annuity'); setNextPaymentDate(new Date());
   };
 
   const handleSubmit = async () => {
@@ -85,6 +98,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
       payment_amount: parseFloat(paymentAmount),
       category_id: categoryId || null,
       account_id: accountId || null,
+      amortization_type: amortizationType,
       next_payment_date: formatLocalDate(nextPaymentDate),
       scope: financeScope,
       created_by: session?.user?.id,
@@ -205,19 +219,45 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                   </div>
                 </div>
 
-                {/* Amortissement (principal) */}
+                {/* Amortization type */}
                 <div>
-                  <label className="block text-sm font-medium mb-1.5">Amortissement</label>
+                  <label className="block text-sm font-medium mb-1.5">Mode de remboursement</label>
+                  <div className="flex gap-2">
+                    <button onClick={() => setAmortizationType('fixed_annuity')}
+                      className={`flex-1 px-3 py-2 rounded-xl border text-sm transition-all ${amortizationType === 'fixed_annuity' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>
+                      Échéance fixe
+                    </button>
+                    <button onClick={() => setAmortizationType('fixed_capital')}
+                      className={`flex-1 px-3 py-2 rounded-xl border text-sm transition-all ${amortizationType === 'fixed_capital' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>
+                      Capital fixe
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {amortizationType === 'fixed_annuity'
+                      ? 'L\'échéance totale reste identique chaque mois. L\'amortissement augmente quand les intérêts baissent.'
+                      : 'Le capital remboursé reste identique chaque mois. L\'échéance totale diminue quand les intérêts baissent.'}
+                  </p>
+                </div>
+
+                {/* Payment amount */}
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">
+                    {amortizationType === 'fixed_annuity' ? 'Échéance totale (fixe)' : 'Amortissement (capital fixe)'}
+                  </label>
                   <input type="number" step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)}
-                    placeholder="Montant du remboursement du capital"
+                    placeholder={amortizationType === 'fixed_annuity' ? 'Montant total de l\'échéance' : 'Montant du remboursement du capital'}
                     className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
                 </div>
 
-                {/* Auto-calculated interest + total */}
+                {/* Auto-calculated summary */}
                 <div className="rounded-xl border border-border bg-muted/50 p-3 space-y-1.5">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Intérêts (auto)</span>
                     <span className="font-mono font-medium">{calculatedInterest.toFixed(2)} {household.currency}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Amortissement</span>
+                    <span className="font-mono font-medium">{displayedCapital.toFixed(2)} {household.currency}</span>
                   </div>
                   <div className="flex justify-between text-sm font-semibold border-t border-border pt-1.5">
                     <span>Échéance totale</span>

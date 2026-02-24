@@ -5,7 +5,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { formatDate, formatDateLong } from '@/utils/format';
 import { supabase } from '@/integrations/supabase/client';
 import { useApp } from '@/context/AppContext';
-import { Debt, DEBT_TYPES, getDebtEmoji, estimateEndDate, getPeriodsPerYear, calculateNextPaymentDate } from '@/types/debt';
+import { Debt, DEBT_TYPES, getDebtEmoji, estimateEndDate, getPeriodsPerYear, calculateNextPaymentDate, calculatePaymentBreakdown } from '@/types/debt';
 import AddDebtModal from '@/components/AddDebtModal';
 import DebtDetailModal from '@/components/DebtDetailModal';
 import { toast } from 'sonner';
@@ -89,9 +89,7 @@ const Debts = () => {
         }
 
         // Past or today — auto-generate if not existing
-        const interest = remaining * rate;
-        const actualPayment = Math.min(d.paymentAmount, remaining + interest);
-        const capital = Math.max(actualPayment - interest, 0);
+        const { interest, capital, totalPayment: actualPayment } = calculatePaymentBreakdown(remaining, d.paymentAmount, rate, d.amortizationType);
         const key = `${d.id}_${dateStr}`;
 
         if (!existingSet.has(key)) {
@@ -182,6 +180,7 @@ const Debts = () => {
         nextPaymentDate: d.next_payment_date || undefined, lastPaymentDate: d.last_payment_date || undefined,
         createdAt: d.created_at, updatedAt: d.updated_at,
         scope: d.scope || 'household', createdBy: d.created_by || undefined,
+        amortizationType: d.amortization_type || 'fixed_annuity',
         accountId: d.account_id || undefined,
       }));
       const updated = await generatePastDueTransactions(mapped);
@@ -226,9 +225,7 @@ const Debts = () => {
 
       let currentDate = getDateForPeriod(0);
       while (currentDate <= limitDate && remaining > 0) {
-        const interest = remaining * rate;
-        const actualPayment = Math.min(d.paymentAmount, remaining + interest);
-        const capital = Math.max(actualPayment - interest, 0);
+        const { interest, capital, totalPayment: actualPayment } = calculatePaymentBreakdown(remaining, d.paymentAmount, rate, d.amortizationType);
 
         const y = currentDate.getFullYear();
         const m = String(currentDate.getMonth() + 1).padStart(2, '0');

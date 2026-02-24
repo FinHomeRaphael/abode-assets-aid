@@ -50,6 +50,7 @@ const FinanceChat = () => {
           nextPaymentDate: d.next_payment_date || undefined, lastPaymentDate: d.last_payment_date || undefined,
           createdAt: d.created_at, updatedAt: d.updated_at,
           scope: d.scope || 'household', createdBy: d.created_by || undefined,
+          amortizationType: d.amortization_type || 'fixed_annuity',
         })));
       }
     };
