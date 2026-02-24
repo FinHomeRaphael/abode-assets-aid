@@ -10,6 +10,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { generateAmortizationSchedule } from '@/utils/debtSchedule';
 
 interface Props {
   open: boolean;
@@ -39,7 +40,6 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
   const activeAccounts = getActiveAccounts();
   const allExpenseCategories = [...EXPENSE_CATEGORIES, ...customCategories.filter(c => c.type === 'expense').map(c => c.name)];
 
-  // Auto-calculate interest based on remaining amount, rate and frequency
   const periodsPerYear = useMemo(() => {
     switch (paymentFrequency) {
       case 'monthly': return 12;
@@ -58,10 +58,8 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
 
   const totalPayment = useMemo(() => {
     if (amortizationType === 'fixed_annuity') {
-      // Annuité constante: payment_amount = échéance totale fixe
       return parseFloat(paymentAmount) || 0;
     }
-    // Capital constant: payment_amount = amortissement fixe, échéance = amortissement + intérêts
     return (parseFloat(paymentAmount) || 0) + calculatedInterest;
   }, [paymentAmount, calculatedInterest, amortizationType]);
 
@@ -82,6 +80,9 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
     if (!name.trim() || !initialAmount || !remainingAmount || !paymentAmount || !durationYears) return;
     setSaving(true);
 
+    const nextDateStr = formatLocalDate(nextPaymentDate);
+    const day = Math.max(1, Math.min(31, parseInt(paymentDay) || 1));
+
     const debtData = {
       household_id: householdId,
       type,
@@ -94,20 +95,58 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
       duration_years: parseFloat(durationYears),
       start_date: formatLocalDate(startDate),
       payment_frequency: paymentFrequency,
-      payment_day: Math.max(1, Math.min(28, parseInt(paymentDay) || 1)),
+      payment_day: day,
       payment_amount: parseFloat(paymentAmount),
       category_id: categoryId || null,
       account_id: accountId || null,
       amortization_type: amortizationType,
-      next_payment_date: formatLocalDate(nextPaymentDate),
+      next_payment_date: nextDateStr,
       scope: financeScope,
       created_by: session?.user?.id,
     };
 
-    const { error } = await supabase.from('debts').insert(debtData as any);
-    if (error) { console.error('Insert debt error:', error); toast.error('Erreur lors de l\'ajout'); setSaving(false); return; }
+    const { data: insertedDebt, error } = await supabase.from('debts').insert(debtData as any).select('id').single();
+    if (error || !insertedDebt) {
+      console.error('Insert debt error:', error);
+      toast.error('Erreur lors de l\'ajout');
+      setSaving(false);
+      return;
+    }
 
-    toast.success('Dette ajoutée');
+    // Generate amortization schedule
+    const scheduleRows = generateAmortizationSchedule({
+      remainingPrincipal: parseFloat(remainingAmount),
+      interestRateAnnual: parseFloat(interestRate) || 0,
+      frequency: paymentFrequency as any,
+      repaymentMode: amortizationType,
+      paymentAmount: parseFloat(paymentAmount),
+      startDate: nextDateStr,
+      paymentDay: day,
+    });
+
+    if (scheduleRows.length > 0) {
+      const dbRows = scheduleRows.map(r => ({
+        debt_id: insertedDebt.id,
+        household_id: householdId,
+        due_date: r.due_date,
+        period_number: r.period_number,
+        capital_before: r.capital_before,
+        capital_after: r.capital_after,
+        interest_amount: r.interest_amount,
+        principal_amount: r.principal_amount,
+        total_amount: r.total_amount,
+        status: 'prevu',
+      }));
+
+      // Insert in batches of 500
+      for (let i = 0; i < dbRows.length; i += 500) {
+        const batch = dbRows.slice(i, i + 500);
+        const { error: schedError } = await supabase.from('debt_schedules').insert(batch as any);
+        if (schedError) console.error('Insert schedule error:', schedError);
+      }
+    }
+
+    toast.success(`Dette ajoutée avec ${scheduleRows.length} échéances`);
     setSaving(false);
     reset();
     onAdded();
@@ -156,7 +195,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                 {/* Lender */}
                 <div>
                   <label className="block text-sm font-medium mb-1.5">Organisme prêteur <span className="text-muted-foreground">(optionnel)</span></label>
-                  <input value={lender} onChange={e => setLender(e.target.value)} placeholder="Ex: BNP Paribas"
+                  <input value={lender} onChange={e => setLender(e.target.value)} placeholder="Ex: UBS, Crédit Agricole"
                     className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 </div>
 
@@ -214,7 +253,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Jour de prélèvement</label>
-                    <input type="number" min="1" max="28" value={paymentDay} onChange={e => setPaymentDay(e.target.value)}
+                    <input type="number" min="1" max="31" value={paymentDay} onChange={e => setPaymentDay(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
                   </div>
                 </div>
@@ -225,17 +264,17 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                   <div className="flex gap-2">
                     <button onClick={() => setAmortizationType('fixed_annuity')}
                       className={`flex-1 px-3 py-2 rounded-xl border text-sm transition-all ${amortizationType === 'fixed_annuity' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>
-                      Échéance fixe
+                      Mensualité constante
                     </button>
                     <button onClick={() => setAmortizationType('fixed_capital')}
                       className={`flex-1 px-3 py-2 rounded-xl border text-sm transition-all ${amortizationType === 'fixed_capital' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>
-                      Capital fixe
+                      Amortissement constant
                     </button>
                   </div>
                   <p className="text-[10px] text-muted-foreground mt-1">
                     {amortizationType === 'fixed_annuity'
-                      ? 'L\'échéance totale reste identique chaque mois. L\'amortissement augmente quand les intérêts baissent.'
-                      : 'Le capital remboursé reste identique chaque mois. L\'échéance totale diminue quand les intérêts baissent.'}
+                      ? 'L\'échéance totale reste identique. L\'amortissement augmente quand les intérêts baissent.'
+                      : 'Le capital remboursé reste fixe. L\'échéance totale diminue au fil du temps.'}
                   </p>
                 </div>
 
@@ -252,7 +291,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                 {/* Auto-calculated summary */}
                 <div className="rounded-xl border border-border bg-muted/50 p-3 space-y-1.5">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Intérêts (auto)</span>
+                    <span className="text-muted-foreground">Intérêts (1ère échéance)</span>
                     <span className="font-mono font-medium">{calculatedInterest.toFixed(2)} {household.currency}</span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -267,7 +306,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
 
                 {/* Next payment date */}
                 <div>
-                  <label className="block text-sm font-medium mb-1.5">Prochaine échéance</label>
+                  <label className="block text-sm font-medium mb-1.5">Date de la 1ère échéance</label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <button className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm text-left">
@@ -282,7 +321,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
 
                 {/* Account */}
                 <div>
-                  <label className="block text-sm font-medium mb-1.5">Compte pour les dépenses</label>
+                  <label className="block text-sm font-medium mb-1.5">Compte de prélèvement</label>
                   <select value={accountId} onChange={e => setAccountId(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
                     <option value="">Aucun</option>
@@ -294,7 +333,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
 
                 {/* Category */}
                 <div>
-                  <label className="block text-sm font-medium mb-1.5">Catégorie pour les dépenses</label>
+                  <label className="block text-sm font-medium mb-1.5">Catégorie de dépense</label>
                   <select value={categoryId} onChange={e => setCategoryId(e.target.value)}
                     className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
                     <option value="">Aucune</option>
@@ -309,7 +348,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                 <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Annuler</button>
                 <button onClick={handleSubmit} disabled={saving || !name.trim() || !initialAmount || !remainingAmount || !paymentAmount}
                   className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50">
-                  {saving ? 'Ajout...' : 'Ajouter'}
+                  {saving ? 'Génération...' : 'Ajouter'}
                 </button>
               </div>
             </div>

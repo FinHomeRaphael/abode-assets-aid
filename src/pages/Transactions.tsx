@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { TrendingUp, TrendingDown, Wallet, Search, Plus, ArrowLeftRight, Download, CheckSquare, X, Trash2 } from 'lucide-react';
 
 const Transactions = () => {
-  const { scopedTransactions: transactions, getMemberById, household, householdId, getTransactionsForMonth, deleteTransaction, updateTransaction, softDeleteRecurringTransaction, scopedAccounts: accounts, financeScope, refreshOverrides } = useApp();
+  const { scopedTransactions: transactions, getMemberById, household, householdId, getTransactionsForMonth, deleteTransaction, updateTransaction, softDeleteRecurringTransaction, scopedAccounts: accounts, financeScope } = useApp();
   const { formatAmount, currency } = useCurrency();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
@@ -102,20 +102,6 @@ const Transactions = () => {
       const principal = parseFloat(editDebtPrincipal) || 0;
       finalAmount = interest + principal;
       finalNotes = `Amortissement ${principal.toFixed(2)} + Intérêts ${interest.toFixed(2)}`;
-
-      // Sync override to debt_payment_overrides table
-      if (debtId && householdId) {
-        await supabase.from('debt_payment_overrides').upsert({
-          debt_id: debtId,
-          household_id: householdId,
-          payment_date: formatLocalDate(editDate),
-          custom_interest: interest,
-          custom_principal: principal,
-        }, { onConflict: 'debt_id,payment_date' });
-
-        // Refresh overrides so virtual transactions update immediately
-        await refreshOverrides();
-      }
     }
 
     // Only update the real transaction if it's not a virtual one

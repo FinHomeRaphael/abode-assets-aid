@@ -218,6 +218,79 @@ export type Database = {
           },
         ]
       }
+      debt_schedules: {
+        Row: {
+          capital_after: number
+          capital_before: number
+          created_at: string | null
+          debt_id: string
+          due_date: string
+          household_id: string
+          id: string
+          interest_amount: number
+          period_number: number
+          principal_amount: number
+          status: string
+          total_amount: number
+          transaction_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          capital_after: number
+          capital_before: number
+          created_at?: string | null
+          debt_id: string
+          due_date: string
+          household_id: string
+          id?: string
+          interest_amount: number
+          period_number: number
+          principal_amount: number
+          status?: string
+          total_amount: number
+          transaction_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          capital_after?: number
+          capital_before?: number
+          created_at?: string | null
+          debt_id?: string
+          due_date?: string
+          household_id?: string
+          id?: string
+          interest_amount?: number
+          period_number?: number
+          principal_amount?: number
+          status?: string
+          total_amount?: number
+          transaction_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debt_schedules_debt_id_fkey"
+            columns: ["debt_id"]
+            isOneToOne: false
+            referencedRelation: "debts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debt_schedules_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debt_schedules_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       debts: {
         Row: {
           account_id: string | null
