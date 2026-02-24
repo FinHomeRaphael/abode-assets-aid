@@ -97,7 +97,7 @@ const Transactions = () => {
     // If debt transaction with interest/principal edited, update notes and amount
     let finalAmount = parseFloat(editAmount);
     let finalNotes = editNotes.trim() || undefined;
-    if (isDebtTx && editDebtInterest && editDebtPrincipal) {
+    if (isDebtTx) {
       const interest = parseFloat(editDebtInterest) || 0;
       const principal = parseFloat(editDebtPrincipal) || 0;
       finalAmount = interest + principal;
@@ -389,7 +389,7 @@ const Transactions = () => {
                   {/* Debt transaction: show interest/principal fields */}
                   {(() => {
                     const isDebtTx = !!(editTarget as any).debtId || !!(editTarget as any).debt_id;
-                    if (isDebtTx && editDebtInterest !== '' && editDebtPrincipal !== '') {
+                    if (isDebtTx) {
                       return (
                         <div className="grid grid-cols-2 gap-2">
                           <div>
@@ -412,8 +412,7 @@ const Transactions = () => {
                   {/* Standard amount (hidden for debt tx with breakdown) */}
                   {(() => {
                     const isDebtTx = !!(editTarget as any).debtId || !!(editTarget as any).debt_id;
-                    const hasBreakdown = isDebtTx && editDebtInterest !== '' && editDebtPrincipal !== '';
-                    if (hasBreakdown) return null;
+                    if (isDebtTx) return null;
                     return (
                       <div className="grid grid-cols-2 gap-2">
                         <div>
