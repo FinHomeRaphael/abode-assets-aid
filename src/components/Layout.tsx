@@ -21,7 +21,7 @@ const navItems = [
   { path: '/', label: 'Accueil', icon: Home },
   { path: '/transactions', label: 'Transactions', icon: CreditCard },
   { path: '/budgets', label: 'Budgets', icon: Target },
-  { path: '/savings', label: 'Enveloppes', icon: PiggyBank },
+  { path: '/savings', label: 'Comptes bancaires', icon: PiggyBank },
   { path: '/debts', label: 'Dettes', icon: Landmark },
   { path: '/insights', label: 'Insights', icon: Lightbulb },
 ];
