@@ -11,7 +11,23 @@ import DebtDetailModal from '@/components/DebtDetailModal';
 import { toast } from 'sonner';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PremiumGate } from '@/components/PremiumPaywall';
-import { CreditCard, Plus, ArrowLeft } from 'lucide-react';
+import { CreditCard, Plus, ArrowLeft, CalendarDays, ChevronDown, ChevronUp } from 'lucide-react';
+
+interface UpcomingPayment {
+  id: string;
+  debt_id: string;
+  due_date: string;
+  period_number: number;
+  capital_before: number;
+  capital_after: number;
+  interest_amount: number;
+  principal_amount: number;
+  total_amount: number;
+  status: string;
+  debtName: string;
+  debtEmoji: string;
+  debtType: string;
+}
 
 const Debts = () => {
   const { householdId, session, household, financeScope } = useApp();
@@ -21,6 +37,8 @@ const Debts = () => {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
+  const [upcomingPayments, setUpcomingPayments] = useState<UpcomingPayment[]>([]);
+  const [showAllUpcoming, setShowAllUpcoming] = useState(false);
 
   const fetchDebts = useCallback(async () => {
     if (!householdId) return;
@@ -51,6 +69,50 @@ const Debts = () => {
   }, [householdId, financeScope, session?.user?.id]);
 
   useEffect(() => { fetchDebts(); }, [fetchDebts]);
+
+  // Fetch upcoming schedules for all debts (next 2 years)
+  const fetchUpcomingPayments = useCallback(async () => {
+    if (!householdId || debts.length === 0) { setUpcomingPayments([]); return; }
+    const today = new Date().toISOString().split('T')[0];
+    const twoYearsLater = new Date();
+    twoYearsLater.setFullYear(twoYearsLater.getFullYear() + 2);
+    const maxDate = twoYearsLater.toISOString().split('T')[0];
+
+    const debtIds = debts.map(d => d.id);
+    const { data, error } = await supabase
+      .from('debt_schedules')
+      .select('*')
+      .in('debt_id', debtIds)
+      .eq('status', 'prevu')
+      .gte('due_date', today)
+      .lte('due_date', maxDate)
+      .order('due_date', { ascending: true });
+
+    if (data) {
+      const debtMap = new Map(debts.map(d => [d.id, d]));
+      setUpcomingPayments(data.map((r: any) => {
+        const debt = debtMap.get(r.debt_id);
+        return {
+          id: r.id,
+          debt_id: r.debt_id,
+          due_date: r.due_date,
+          period_number: r.period_number,
+          capital_before: Number(r.capital_before),
+          capital_after: Number(r.capital_after),
+          interest_amount: Number(r.interest_amount),
+          principal_amount: Number(r.principal_amount),
+          total_amount: Number(r.total_amount),
+          status: r.status,
+          debtName: debt?.name || '',
+          debtEmoji: debt ? getDebtEmoji(debt.type) : '💳',
+          debtType: debt?.type || '',
+        };
+      }));
+    }
+    if (error) console.error('Fetch upcoming error:', error);
+  }, [householdId, debts]);
+
+  useEffect(() => { fetchUpcomingPayments(); }, [fetchUpcomingPayments]);
 
   const totalRemaining = useMemo(() => debts.reduce((s, d) => s + d.remainingAmount, 0), [debts]);
   const totalInitial = useMemo(() => debts.reduce((s, d) => s + d.initialAmount, 0), [debts]);
@@ -160,6 +222,59 @@ const Debts = () => {
                 </div>
               );
             })}
+          </motion.div>
+        )}
+
+        {/* Upcoming payments - next 2 years */}
+        {upcomingPayments.length > 0 && (
+          <motion.div variants={fadeUp} className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="w-4 h-4 text-primary" />
+                <div>
+                  <h2 className="text-sm font-semibold">Prochaines échéances</h2>
+                  <p className="text-[10px] text-muted-foreground">{upcomingPayments.length} échéances sur 2 ans</p>
+                </div>
+              </div>
+              {upcomingPayments.length > 12 && (
+                <button
+                  onClick={() => setShowAllUpcoming(!showAllUpcoming)}
+                  className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1"
+                >
+                  {showAllUpcoming ? 'Réduire' : 'Tout voir'}
+                  {showAllUpcoming ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </button>
+              )}
+            </div>
+            <div className="divide-y divide-border">
+              {(showAllUpcoming ? upcomingPayments : upcomingPayments.slice(0, 12)).map((p) => (
+                <div
+                  key={p.id}
+                  className="flex items-center px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer"
+                  onClick={() => setSelectedDebtId(p.debt_id)}
+                >
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <span className="text-base shrink-0">{p.debtEmoji}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{formatDateLong(p.due_date)}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {p.debtName} · Int. {formatAmount(p.interest_amount)} · Cap. {formatAmount(p.principal_amount)}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="font-mono-amount text-sm font-semibold text-destructive shrink-0">
+                    -{formatAmount(p.total_amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+            {!showAllUpcoming && upcomingPayments.length > 12 && (
+              <div className="p-3 text-center border-t border-border">
+                <button onClick={() => setShowAllUpcoming(true)} className="text-xs text-primary hover:text-primary/80 font-medium">
+                  Voir les {upcomingPayments.length - 12} échéances restantes
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
       </motion.div>
