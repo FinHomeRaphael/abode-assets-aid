@@ -40,6 +40,8 @@ const Transactions = () => {
   const [editNotes, setEditNotes] = useState('');
   const [editIsRecurring, setEditIsRecurring] = useState(false);
   const [editAccountId, setEditAccountId] = useState('');
+  const [editDebtInterest, setEditDebtInterest] = useState('');
+  const [editDebtPrincipal, setEditDebtPrincipal] = useState('');
 
   const [deleteRecTarget, setDeleteRecTarget] = useState<typeof transactions[0] | null>(null);
 
@@ -67,18 +69,45 @@ const Transactions = () => {
     setEditNotes(t.notes || '');
     setEditIsRecurring(!!t.isRecurring);
     setEditAccountId(t.accountId || '');
+    // Parse debt payment info from notes
+    const isDebtTx = !!(t as any).debtId || !!(t as any).debt_id;
+    if (isDebtTx && t.notes) {
+      const match = t.notes.match(/Amortissement\s+([\d.]+)\s*\+\s*Intérêts\s+([\d.]+)/);
+      if (match) {
+        setEditDebtPrincipal(match[1]);
+        setEditDebtInterest(match[2]);
+      } else {
+        setEditDebtPrincipal('');
+        setEditDebtInterest('');
+      }
+    } else {
+      setEditDebtPrincipal('');
+      setEditDebtInterest('');
+    }
   };
 
   const handleSaveEdit = () => {
     if (!editTarget || !editLabel.trim() || !editAmount || !editCategory) return;
     const day = editDate.getDate();
+    const isDebtTx = !!(editTarget as any).debtId || !!(editTarget as any).debt_id;
+
+    // If debt transaction with interest/principal edited, update notes and amount
+    let finalAmount = parseFloat(editAmount);
+    let finalNotes = editNotes.trim() || undefined;
+    if (isDebtTx && editDebtInterest && editDebtPrincipal) {
+      const interest = parseFloat(editDebtInterest) || 0;
+      const principal = parseFloat(editDebtPrincipal) || 0;
+      finalAmount = interest + principal;
+      finalNotes = `Amortissement ${principal.toFixed(2)} + Intérêts ${interest.toFixed(2)}`;
+    }
+
     updateTransaction(editTarget.id, {
       label: editLabel.trim(),
-      amount: parseFloat(editAmount),
+      amount: finalAmount,
       category: editCategory,
       date: formatLocalDate(editDate),
       memberId: editMemberId,
-      notes: editNotes.trim() || undefined,
+      notes: finalNotes,
       emoji: CATEGORY_EMOJIS[editCategory] || editTarget.emoji,
       isRecurring: editIsRecurring,
       recurrenceDay: editIsRecurring ? day : undefined,
@@ -336,16 +365,47 @@ const Transactions = () => {
                     <input value={editLabel} onChange={e => setEditLabel(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-border/30 bg-secondary/20 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-medium mb-1">Montant</label>
-                      <input type="number" step="0.01" value={editAmount} onChange={e => setEditAmount(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-border/30 bg-secondary/20 text-sm font-mono-amount focus:outline-none focus:ring-2 focus:ring-ring" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium mb-1">Devise</label>
-                      <input value={editTarget.currency} disabled className="w-full px-3 py-2.5 rounded-xl border border-border/30 bg-muted text-sm text-muted-foreground" />
-                    </div>
-                  </div>
+                  {/* Debt transaction: show interest/principal fields */}
+                  {(() => {
+                    const isDebtTx = !!(editTarget as any).debtId || !!(editTarget as any).debt_id;
+                    if (isDebtTx && editDebtInterest !== '' && editDebtPrincipal !== '') {
+                      return (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-xs font-medium mb-1">Intérêts</label>
+                            <input type="number" step="0.01" value={editDebtInterest} onChange={e => setEditDebtInterest(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-border/30 bg-secondary/20 text-sm font-mono-amount focus:outline-none focus:ring-2 focus:ring-ring" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium mb-1">Amortissement</label>
+                            <input type="number" step="0.01" value={editDebtPrincipal} onChange={e => setEditDebtPrincipal(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-border/30 bg-secondary/20 text-sm font-mono-amount focus:outline-none focus:ring-2 focus:ring-ring" />
+                          </div>
+                          <div className="col-span-2">
+                            <p className="text-[10px] text-muted-foreground">Total : {((parseFloat(editDebtInterest) || 0) + (parseFloat(editDebtPrincipal) || 0)).toFixed(2)}</p>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {/* Standard amount (hidden for debt tx with breakdown) */}
+                  {(() => {
+                    const isDebtTx = !!(editTarget as any).debtId || !!(editTarget as any).debt_id;
+                    const hasBreakdown = isDebtTx && editDebtInterest !== '' && editDebtPrincipal !== '';
+                    if (hasBreakdown) return null;
+                    return (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs font-medium mb-1">Montant</label>
+                          <input type="number" step="0.01" value={editAmount} onChange={e => setEditAmount(e.target.value)} className="w-full px-3 py-2.5 rounded-xl border border-border/30 bg-secondary/20 text-sm font-mono-amount focus:outline-none focus:ring-2 focus:ring-ring" />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium mb-1">Devise</label>
+                          <input value={editTarget.currency} disabled className="w-full px-3 py-2.5 rounded-xl border border-border/30 bg-muted text-sm text-muted-foreground" />
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div>
                     <label className="block text-xs font-medium mb-1">Catégorie</label>

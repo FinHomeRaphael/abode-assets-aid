@@ -170,6 +170,54 @@ export type Database = {
           },
         ]
       }
+      debt_payment_overrides: {
+        Row: {
+          created_at: string | null
+          custom_interest: number
+          custom_principal: number
+          debt_id: string
+          household_id: string
+          id: string
+          payment_date: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          custom_interest: number
+          custom_principal: number
+          debt_id: string
+          household_id: string
+          id?: string
+          payment_date: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          custom_interest?: number
+          custom_principal?: number
+          debt_id?: string
+          household_id?: string
+          id?: string
+          payment_date?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debt_payment_overrides_debt_id_fkey"
+            columns: ["debt_id"]
+            isOneToOne: false
+            referencedRelation: "debts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debt_payment_overrides_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       debts: {
         Row: {
           account_id: string | null

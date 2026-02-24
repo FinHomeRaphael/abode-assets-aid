@@ -8,10 +8,18 @@ import { useApp } from '@/context/AppContext';
 import { Debt, DEBT_TYPES, getDebtEmoji, estimateEndDate, getPeriodsPerYear, calculateNextPaymentDate, calculatePaymentBreakdown } from '@/types/debt';
 import AddDebtModal from '@/components/AddDebtModal';
 import DebtDetailModal from '@/components/DebtDetailModal';
+import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PremiumGate } from '@/components/PremiumPaywall';
-import { CreditCard, TrendingDown, TrendingUp, Calendar, Plus, Wallet } from 'lucide-react';
+import { CreditCard, TrendingDown, TrendingUp, Calendar, Plus, Wallet, Pencil, Check, X } from 'lucide-react';
+
+interface PaymentOverride {
+  debt_id: string;
+  payment_date: string;
+  custom_interest: number;
+  custom_principal: number;
+}
 
 const SectionTitle = ({ icon: Icon, title }: { icon: React.ElementType; title: string }) => (
   <div className="flex items-center gap-2 mb-2">
@@ -28,6 +36,10 @@ const Debts = () => {
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [selectedDebt, setSelectedDebt] = useState<Debt | null>(null);
+  const [overrides, setOverrides] = useState<PaymentOverride[]>([]);
+  const [editingPayment, setEditingPayment] = useState<string | null>(null); // "debtId_date"
+  const [editInterest, setEditInterest] = useState('');
+  const [editPrincipal, setEditPrincipal] = useState('');
 
   const generatePastDueTransactions = useCallback(async (debtsList: Debt[]) => {
     if (!householdId || !session?.user?.id) return debtsList;
@@ -89,7 +101,19 @@ const Debts = () => {
         }
 
         // Past or today — auto-generate if not existing
-        const { interest, capital, totalPayment: actualPayment } = calculatePaymentBreakdown(remaining, d.paymentAmount, rate, d.amortizationType);
+        // Check for overrides
+        const overrideData = overrides.find(o => o.debt_id === d.id && o.payment_date === dateStr);
+        let interest: number, capital: number, actualPayment: number;
+        if (overrideData) {
+          interest = overrideData.custom_interest;
+          capital = overrideData.custom_principal;
+          actualPayment = interest + capital;
+        } else {
+          const breakdown = calculatePaymentBreakdown(remaining, d.paymentAmount, rate, d.amortizationType);
+          interest = breakdown.interest;
+          capital = breakdown.capital;
+          actualPayment = breakdown.totalPayment;
+        }
         const key = `${d.id}_${dateStr}`;
 
         if (!existingSet.has(key)) {
@@ -158,7 +182,7 @@ const Debts = () => {
       });
     }
     return debtsList;
-  }, [householdId, session?.user?.id, household.currency]);
+  }, [householdId, session?.user?.id, household.currency, overrides]);
 
   const fetchDebts = useCallback(async () => {
     if (!householdId) return;
@@ -190,14 +214,33 @@ const Debts = () => {
     setLoading(false);
   }, [householdId, financeScope, session?.user?.id, generatePastDueTransactions]);
 
-  useEffect(() => { fetchDebts(); }, [fetchDebts]);
+  const fetchOverrides = useCallback(async () => {
+    if (!householdId) return;
+    const { data } = await supabase
+      .from('debt_payment_overrides')
+      .select('debt_id, payment_date, custom_interest, custom_principal')
+      .eq('household_id', householdId);
+    if (data) {
+      setOverrides(data.map((o: any) => ({
+        debt_id: o.debt_id,
+        payment_date: o.payment_date,
+        custom_interest: Number(o.custom_interest),
+        custom_principal: Number(o.custom_principal),
+      })));
+    }
+  }, [householdId]);
+
+  useEffect(() => { fetchDebts(); fetchOverrides(); }, [fetchDebts, fetchOverrides]);
 
   const totalRemaining = useMemo(() => debts.reduce((s, d) => s + d.remainingAmount, 0), [debts]);
   const totalPayment = useMemo(() => debts.reduce((s, d) => s + d.paymentAmount, 0), [debts]);
   const totalRepaid = useMemo(() => debts.reduce((s, d) => s + (d.initialAmount - d.remainingAmount), 0), [debts]);
 
+  const getOverride = (debtId: string, date: string) =>
+    overrides.find(o => o.debt_id === debtId && o.payment_date === date);
+
   const upcomingPayments = useMemo(() => {
-    const payments: { date: string; name: string; amount: number; emoji: string; detail?: string }[] = [];
+    const payments: { date: string; debtId: string; name: string; amount: number; emoji: string; interest: number; capital: number; isOverridden: boolean }[] = [];
     const now = new Date();
     const limitDate = new Date(now.getFullYear() + 2, now.getMonth(), now.getDate());
 
@@ -207,12 +250,11 @@ const Debts = () => {
       const monthsIncrement = 12 / periodsYear;
       const rate = d.interestRate / 100 / periodsYear;
 
-      // Find first payment date
       let firstDate = d.nextPaymentDate || calculateNextPaymentDate(d);
       if (!firstDate) continue;
 
       const startDate = new Date(firstDate + 'T00:00:00');
-      const targetDay = startDate.getDate(); // original day (e.g. 31)
+      const targetDay = startDate.getDate();
       let periodIndex = 0;
       let remaining = d.remainingAmount;
 
@@ -225,28 +267,69 @@ const Debts = () => {
 
       let currentDate = getDateForPeriod(0);
       while (currentDate <= limitDate && remaining > 0) {
-        const { interest, capital, totalPayment: actualPayment } = calculatePaymentBreakdown(remaining, d.paymentAmount, rate, d.amortizationType);
-
         const y = currentDate.getFullYear();
         const m = String(currentDate.getMonth() + 1).padStart(2, '0');
         const dd = String(currentDate.getDate()).padStart(2, '0');
         const dateStr = `${y}-${m}-${dd}`;
 
+        const override = getOverride(d.id, dateStr);
+        let interest: number, capital: number, actualPayment: number;
+        const isOverridden = !!override;
+
+        if (override) {
+          interest = override.custom_interest;
+          capital = override.custom_principal;
+          actualPayment = interest + capital;
+        } else {
+          const breakdown = calculatePaymentBreakdown(remaining, d.paymentAmount, rate, d.amortizationType);
+          interest = breakdown.interest;
+          capital = breakdown.capital;
+          actualPayment = breakdown.totalPayment;
+        }
+
         payments.push({
           date: dateStr,
+          debtId: d.id,
           name: d.name,
           amount: actualPayment,
           emoji: getDebtEmoji(d.type),
-          detail: `Amortissement ${formatAmount(capital)} + Intérêts ${formatAmount(interest)}`,
+          interest,
+          capital,
+          isOverridden,
         });
 
         remaining -= capital;
+        if (remaining < 0) remaining = 0;
         periodIndex++;
         currentDate = getDateForPeriod(periodIndex);
       }
     }
     return payments.sort((a, b) => a.date.localeCompare(b.date));
-  }, [debts]);
+  }, [debts, overrides]);
+
+  const saveOverride = async (debtId: string, date: string, interest: number, principal: number) => {
+    const { error } = await supabase.from('debt_payment_overrides').upsert({
+      debt_id: debtId,
+      household_id: householdId,
+      payment_date: date,
+      custom_interest: interest,
+      custom_principal: principal,
+    }, { onConflict: 'debt_id,payment_date' });
+    if (error) { console.error('Save override error:', error); toast.error('Erreur'); return; }
+    toast.success('Échéance modifiée ✓');
+    setEditingPayment(null);
+    fetchOverrides();
+  };
+
+  const removeOverride = async (debtId: string, date: string) => {
+    await supabase.from('debt_payment_overrides')
+      .delete()
+      .eq('debt_id', debtId)
+      .eq('payment_date', date)
+      .eq('household_id', householdId);
+    toast.success('Valeurs calculées restaurées');
+    fetchOverrides();
+  };
 
   const handleDebtAdded = () => { fetchDebts(); setShowAdd(false); toast.success('Dette ajoutée ✓'); };
   const handleDebtUpdated = () => { fetchDebts(); setSelectedDebt(null); };
@@ -338,22 +421,108 @@ const Debts = () => {
           <motion.div variants={fadeUp}>
             <SectionTitle icon={Calendar} title="Échéances à venir" />
             <div className="bg-card border border-border rounded-xl divide-y divide-border overflow-hidden">
-              {upcomingPayments.map((p, i) => (
-                <div key={i} className="flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-base">{p.emoji}</span>
-                    <div>
-                      <p className="text-sm font-medium">{p.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{formatDateLong(p.date)}</p>
-                      {p.detail && <p className="text-[9px] text-muted-foreground/70">{p.detail}</p>}
+              {upcomingPayments.map((p, i) => {
+                const paymentKey = `${p.debtId}_${p.date}`;
+                const isEditing = editingPayment === paymentKey;
+
+                return (
+                  <div key={i} className="px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <span className="text-base shrink-0">{p.emoji}</span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{p.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{formatDateLong(p.date)}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <p className="font-mono-amount text-sm font-semibold text-destructive">-{formatAmount(p.amount)}</p>
+                        {!isEditing && (
+                          <button
+                            onClick={() => {
+                              setEditingPayment(paymentKey);
+                              setEditInterest(p.interest.toFixed(2));
+                              setEditPrincipal(p.capital.toFixed(2));
+                            }}
+                            className="p-1 rounded-lg hover:bg-muted transition-colors"
+                            title="Modifier cette échéance"
+                          >
+                            <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                          </button>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Detail line */}
+                    {!isEditing && (
+                      <p className="text-[9px] text-muted-foreground/70 ml-8 mt-0.5">
+                        Amortissement {formatAmount(p.capital)} + Intérêts {formatAmount(p.interest)}
+                        {p.isOverridden && (
+                          <button
+                            onClick={() => removeOverride(p.debtId, p.date)}
+                            className="ml-1 text-primary hover:underline"
+                          >
+                            (personnalisé — réinitialiser)
+                          </button>
+                        )}
+                      </p>
+                    )}
+
+                    {/* Inline edit */}
+                    {isEditing && (
+                      <div className="mt-2 ml-8 space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[10px] text-muted-foreground mb-0.5 block">Intérêts</label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={editInterest}
+                              onChange={e => setEditInterest(e.target.value)}
+                              className="h-8 text-sm font-mono-amount"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground mb-0.5 block">Amortissement</label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={editPrincipal}
+                              onChange={e => setEditPrincipal(e.target.value)}
+                              className="h-8 text-sm font-mono-amount"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-[10px] text-muted-foreground">
+                            Total : {formatAmount((parseFloat(editInterest) || 0) + (parseFloat(editPrincipal) || 0))}
+                          </p>
+                          <div className="flex gap-1.5">
+                            <button
+                              onClick={() => setEditingPayment(null)}
+                              className="p-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
+                            >
+                              <X className="w-3.5 h-3.5 text-muted-foreground" />
+                            </button>
+                            <button
+                              onClick={() => saveOverride(p.debtId, p.date, parseFloat(editInterest) || 0, parseFloat(editPrincipal) || 0)}
+                              className="p-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <p className="font-mono-amount text-sm font-semibold text-destructive">-{formatAmount(p.amount)}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </motion.div>
         )}
+
       </motion.div>
 
       <AddDebtModal open={showAdd} onClose={() => setShowAdd(false)} onAdded={handleDebtAdded} />
