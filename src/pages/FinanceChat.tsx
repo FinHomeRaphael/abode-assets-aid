@@ -377,9 +377,17 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
           <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
             <span className="text-xl">✨</span>
           </div>
-          <div>
+          <div className="flex-1">
             <h1 className="text-lg font-bold">Conseiller IA</h1>
             <p className="text-xs text-muted-foreground">Ton assistant financier personnel</p>
+          </div>
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
+            financeScope === 'personal'
+              ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+              : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+          }`}>
+            <span>{financeScope === 'personal' ? '👤' : '🏠'}</span>
+            <span>{financeScope === 'personal' ? 'Personnel' : 'Foyer'}</span>
           </div>
         </div>
 
