@@ -123,20 +123,16 @@ const Profile = () => {
         </div>
 
 
-        {/* Subscription */}
-        <div className="card-elevated p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold flex items-center gap-2">
-              <Crown className="w-4 h-4 text-amber-500" />
-              Abonnement
-            </h2>
-            {isPremium ? (
+        {/* Subscription — only for premium users */}
+        {isPremium && (
+          <div className="card-elevated p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold flex items-center gap-2">
+                <Crown className="w-4 h-4 text-amber-500" />
+                Abonnement
+              </h2>
               <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-semibold">Premium</span>
-            ) : (
-              <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs font-semibold">Gratuit</span>
-            )}
-          </div>
-          {isPremium ? (
+            </div>
             <div className="space-y-2">
               {subscriptionEnd && <p className="text-sm text-muted-foreground">Renouvellement : {formatDateLong(subscriptionEnd)}</p>}
               <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2">
@@ -148,15 +144,8 @@ const Profile = () => {
                 </button>
               )}
             </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Débloquez toutes les fonctionnalités à partir de 4,99€/mois</p>
-              <button onClick={() => setShowPaywall(true)} className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity">
-                Passer à Premium
-              </button>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Household */}
         <div className="card-elevated p-5">
