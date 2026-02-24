@@ -363,12 +363,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })));
       }
 
-      // Fetch debt schedules (prevu only, for virtual transactions)
+      // Fetch debt schedules (prevu + ajuste, for virtual transactions — paye already have real transactions)
       const { data: schedulesData } = await supabase
         .from('debt_schedules')
         .select('*')
         .eq('household_id', hId)
-        .eq('status', 'prevu');
+        .in('status', ['prevu', 'ajuste']);
 
       if (schedulesData) {
         setDebtSchedules(schedulesData.map((s: any) => ({
@@ -1033,7 +1033,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .from('debt_schedules')
       .select('*')
       .eq('household_id', householdId)
-      .eq('status', 'prevu');
+      .in('status', ['prevu', 'ajuste']);
     if (data) {
       setDebtSchedules(data.map((s: any) => ({
         id: s.id,
