@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { TrendingUp, TrendingDown, Wallet, Search, Plus, ArrowLeftRight, Download, CheckSquare, X, Trash2 } from 'lucide-react';
 
 const Transactions = () => {
-  const { scopedTransactions: transactions, getMemberById, household, householdId, getTransactionsForMonth, deleteTransaction, updateTransaction, softDeleteRecurringTransaction, scopedAccounts: accounts, financeScope } = useApp();
+  const { scopedTransactions: transactions, getMemberById, household, householdId, getTransactionsForMonth, deleteTransaction, updateTransaction, softDeleteRecurringTransaction, scopedAccounts: accounts, financeScope, refreshOverrides } = useApp();
   const { formatAmount, currency } = useCurrency();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
@@ -92,6 +92,7 @@ const Transactions = () => {
     const day = editDate.getDate();
     const isDebtTx = !!(editTarget as any).debtId || !!(editTarget as any).debt_id;
     const debtId = (editTarget as any).debtId || (editTarget as any).debt_id;
+    const isVirtual = editTarget.id.startsWith('debt-');
 
     // If debt transaction with interest/principal edited, update notes and amount
     let finalAmount = parseFloat(editAmount);
@@ -111,21 +112,28 @@ const Transactions = () => {
           custom_interest: interest,
           custom_principal: principal,
         }, { onConflict: 'debt_id,payment_date' });
+
+        // Refresh overrides so virtual transactions update immediately
+        await refreshOverrides();
       }
     }
 
-    updateTransaction(editTarget.id, {
-      label: editLabel.trim(),
-      amount: finalAmount,
-      category: editCategory,
-      date: formatLocalDate(editDate),
-      memberId: editMemberId,
-      notes: finalNotes,
-      emoji: CATEGORY_EMOJIS[editCategory] || editTarget.emoji,
-      isRecurring: editIsRecurring,
-      recurrenceDay: editIsRecurring ? day : undefined,
-      accountId: editAccountId || undefined,
-    });
+    // Only update the real transaction if it's not a virtual one
+    if (!isVirtual) {
+      updateTransaction(editTarget.id, {
+        label: editLabel.trim(),
+        amount: finalAmount,
+        category: editCategory,
+        date: formatLocalDate(editDate),
+        memberId: editMemberId,
+        notes: finalNotes,
+        emoji: CATEGORY_EMOJIS[editCategory] || editTarget.emoji,
+        isRecurring: editIsRecurring,
+        recurrenceDay: editIsRecurring ? day : undefined,
+        accountId: editAccountId || undefined,
+      });
+    }
+
     toast.success('Transaction modifiée ✓');
     setEditTarget(null);
   };

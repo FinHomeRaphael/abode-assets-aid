@@ -29,7 +29,7 @@ const SectionTitle = ({ icon: Icon, title }: { icon: React.ElementType; title: s
 );
 
 const Debts = () => {
-  const { householdId, scopedTransactions: transactions, currentUser, financeScope, session, household } = useApp();
+  const { householdId, scopedTransactions: transactions, currentUser, financeScope, session, household, refreshOverrides } = useApp();
   const { formatAmount } = useCurrency();
   const { canAdd } = useSubscription(householdId, currentUser?.id);
   const [debts, setDebts] = useState<Debt[]>([]);
@@ -342,6 +342,7 @@ const Debts = () => {
     toast.success('Échéance modifiée ✓');
     setEditingPayment(null);
     fetchOverrides();
+    refreshOverrides();
   };
 
   const removeOverride = async (debtId: string, date: string) => {
@@ -381,6 +382,7 @@ const Debts = () => {
 
     toast.success('Valeurs calculées restaurées');
     fetchOverrides();
+    refreshOverrides();
   };
 
   const handleDebtAdded = () => { fetchDebts(); setShowAdd(false); toast.success('Dette ajoutée ✓'); };

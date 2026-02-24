@@ -88,6 +88,7 @@ interface AppContextType {
   deleteCustomCategory: (name: string) => void;
   getTransactionsForMonth: (refDate: Date) => Transaction[];
   changeCurrency: (currency: string) => void;
+  refreshOverrides: () => Promise<void>;
 
   addMember: (name: string, email: string, role: 'admin' | 'member') => void;
   removeMember: (id: string) => void;
@@ -120,6 +121,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
+  const [debtPaymentOverrides, setDebtPaymentOverrides] = useState<{ debt_id: string; payment_date: string; custom_interest: number; custom_principal: number }[]>([]);
   const [financeScope, setFinanceScope] = useState<FinanceScope>(() => {
     return (localStorage.getItem('finehome_scope') as FinanceScope) || 'household';
   });
@@ -341,6 +343,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
           createdAt: d.created_at, updatedAt: d.updated_at,
           scope: d.scope || 'household', createdBy: d.created_by || undefined,
           amortizationType: d.amortization_type || 'fixed_annuity',
+        })));
+      }
+
+      // Fetch debt payment overrides
+      const { data: overridesData } = await supabase
+        .from('debt_payment_overrides')
+        .select('debt_id,payment_date,custom_interest,custom_principal')
+        .eq('household_id', hId);
+
+      if (overridesData) {
+        setDebtPaymentOverrides(overridesData.map((o: any) => ({
+          debt_id: o.debt_id,
+          payment_date: o.payment_date,
+          custom_interest: Number(o.custom_interest),
+          custom_principal: Number(o.custom_principal),
         })));
       }
 
@@ -824,9 +841,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const cy = currentDate.getFullYear();
         const cm = currentDate.getMonth();
         if (cy === year && cm === month) {
-          const { interest, capital, totalPayment: actualPayment } = calculatePaymentBreakdown(remaining, d.paymentAmount, rate, d.amortizationType);
           const dayStr = String(currentDate.getDate()).padStart(2, '0');
           const dateStr = `${cy}-${monthStr}-${dayStr}`;
+
+          // Check for override
+          const override = debtPaymentOverrides.find(o => o.debt_id === d.id && o.payment_date === dateStr);
+          let interest: number, capital: number, actualPayment: number;
+          if (override) {
+            interest = override.custom_interest;
+            capital = override.custom_principal;
+            actualPayment = interest + capital;
+          } else {
+            const breakdown = calculatePaymentBreakdown(remaining, d.paymentAmount, rate, d.amortizationType);
+            interest = breakdown.interest;
+            capital = breakdown.capital;
+            actualPayment = breakdown.totalPayment;
+          }
 
           // Don't add if a real transaction already exists for this debt + date
           const alreadyExists = monthTransactions.some(t => t.debtId === d.id && t.date === dateStr);
@@ -855,8 +885,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
             });
           }
         }
-        const periodBreakdown = calculatePaymentBreakdown(remaining, d.paymentAmount, rate, d.amortizationType);
-        remaining -= periodBreakdown.capital;
+        // For cascade: use override capital if exists for this period
+        const periodDateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+        const periodOverride = debtPaymentOverrides.find(o => o.debt_id === d.id && o.payment_date === periodDateStr);
+        if (periodOverride) {
+          remaining -= periodOverride.custom_principal;
+        } else {
+          const periodBreakdown = calculatePaymentBreakdown(remaining, d.paymentAmount, rate, d.amortizationType);
+          remaining -= periodBreakdown.capital;
+        }
         if (remaining < 0) remaining = 0;
         periodIndex++;
         currentDate = getDateForPeriod(periodIndex);
@@ -864,7 +901,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     return monthTransactions;
-  }, [transactions, debts, household.currency, financeScope, session?.user?.id]);
+  }, [transactions, debts, debtPaymentOverrides, household.currency, financeScope, session?.user?.id]);
 
   // ===== Household Actions =====
   const changeCurrency = (currency: string) => {
@@ -1002,6 +1039,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   }, [savingsGoals, financeScope, session?.user?.id]);
 
+  const refreshOverrides = useCallback(async () => {
+    if (!householdId) return;
+    const { data } = await supabase
+      .from('debt_payment_overrides')
+      .select('debt_id,payment_date,custom_interest,custom_principal')
+      .eq('household_id', householdId);
+    if (data) {
+      setDebtPaymentOverrides(data.map((o: any) => ({
+        debt_id: o.debt_id,
+        payment_date: o.payment_date,
+        custom_interest: Number(o.custom_interest),
+        custom_principal: Number(o.custom_principal),
+      })));
+    }
+  }, [householdId]);
+
   return (
     <AppContext.Provider value={{
       isLoggedIn, loading, session, householdId, currentUser, household,
@@ -1017,7 +1070,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addSavingsDeposit, deleteSavingsDeposit,
       getGoalSaved, getGoalDeposits, getMonthSavings, getTotalSavings,
       addCustomCategory, deleteCustomCategory,
-      getTransactionsForMonth, changeCurrency,
+      getTransactionsForMonth, changeCurrency, refreshOverrides,
       addMember, removeMember, updateMemberRole,
       resetDemo,
       addAccount, updateAccount, archiveAccount, deleteAccount,
