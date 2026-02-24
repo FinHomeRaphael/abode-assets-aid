@@ -57,6 +57,25 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
+    // Check user-level plan override (solo premium)
+    const { data: profileRow } = await adminClient
+      .from('profiles')
+      .select('plan')
+      .eq('id', user.id)
+      .single();
+
+    if (profileRow?.plan === 'premium') {
+      return new Response(JSON.stringify({
+        subscribed: true,
+        plan_type: 'solo',
+        subscription_end: null,
+        customer_id: null,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     const { data: memberRow } = await adminClient
       .from('household_members')
       .select('household_id')
@@ -70,10 +89,11 @@ serve(async (req) => {
         .eq('id', memberRow.household_id)
         .single();
 
-      // If plan is manually set to premium in DB, honor it
+      // If household plan is manually set to premium in DB, honor it
       if (household?.plan === 'premium' && household?.subscription_status === 'active') {
         return new Response(JSON.stringify({
           subscribed: true,
+          plan_type: 'foyer',
           subscription_end: household.subscription_end_date,
           customer_id: null,
         }), {
