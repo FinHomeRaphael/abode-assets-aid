@@ -1,8 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-export const PREMIUM_PRICE_MONTHLY = 'price_1T40xKIw2TO0HaPOrSwn1sJ0';
-export const PREMIUM_PRICE_YEARLY = 'price_1T40xZIw2TO0HaPOm0f8Qp8N';
+export const PLANS = {
+  solo: {
+    monthly: { priceId: 'price_1T4Ev5Iw2TO0HaPO2KxViRI4', amount: 4.99, label: 'Solo' },
+    yearly: { priceId: 'price_1T4EvGIw2TO0HaPOvLHVlBIM', amount: 47.90, label: 'Solo Annuel' },
+  },
+  foyer: {
+    monthly: { priceId: 'price_1T4EvTIw2TO0HaPOPY1Ug8qP', amount: 7.99, label: 'Foyer' },
+    yearly: { priceId: 'price_1T4EvfIw2TO0HaPO3yltUZYe', amount: 79.90, label: 'Foyer Annuel' },
+  },
+} as const;
+
+// Keep backward compat exports
+export const PREMIUM_PRICE_MONTHLY = PLANS.solo.monthly.priceId;
+export const PREMIUM_PRICE_YEARLY = PLANS.solo.yearly.priceId;
 
 export const FREEMIUM_LIMITS = {
   accounts: 1,
