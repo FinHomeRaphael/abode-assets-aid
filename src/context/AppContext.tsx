@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, ReactNode } from 'react';
 import { Transaction, Budget, Member, Household, SavingsGoal, SavingsDeposit, CustomCategory, Account, AccountType, DEFAULT_EXCHANGE_RATES, FinanceScope } from '@/types/finance';
+import { Debt, getPeriodsPerYear, calculateNextPaymentDate, getDebtEmoji } from '@/types/debt';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { formatLocalDate } from '@/utils/format';
@@ -118,6 +119,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [savingsDeposits, setSavingsDeposits] = useState<SavingsDeposit[]>([]);
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [debts, setDebts] = useState<Debt[]>([]);
   const [financeScope, setFinanceScope] = useState<FinanceScope>(() => {
     return (localStorage.getItem('finehome_scope') as FinanceScope) || 'household';
   });
@@ -321,7 +323,26 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })));
       }
 
-      // Fetch custom categories
+      // Fetch debts (both household and personal)
+      const { data: debtsData } = await supabase
+        .from('debts')
+        .select('*')
+        .or(`and(household_id.eq.${hId},scope.eq.household),and(created_by.eq.${userId},scope.eq.personal)`);
+
+      if (debtsData) {
+        setDebts(debtsData.map((d: any) => ({
+          id: d.id, householdId: d.household_id, type: d.type, name: d.name, lender: d.lender || undefined,
+          initialAmount: Number(d.initial_amount), remainingAmount: Number(d.remaining_amount),
+          currency: d.currency, interestRate: Number(d.interest_rate), durationYears: Number(d.duration_years),
+          startDate: d.start_date, paymentFrequency: d.payment_frequency, paymentDay: d.payment_day,
+          paymentAmount: Number(d.payment_amount), categoryId: d.category_id || undefined,
+          accountId: d.account_id || undefined,
+          nextPaymentDate: d.next_payment_date || undefined, lastPaymentDate: d.last_payment_date || undefined,
+          createdAt: d.created_at, updatedAt: d.updated_at,
+          scope: d.scope || 'household', createdBy: d.created_by || undefined,
+        })));
+      }
+
       const { data: catData } = await supabase
         .from('categories')
         .select('*')
@@ -355,6 +376,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSavingsDeposits([]);
       setCustomCategories([]);
       setAccounts([]);
+      setDebts([]);
       setHouseholdData({ name: '', currency: 'EUR', createdAt: '', plan: 'free' });
       setHouseholdId('');
     };
@@ -765,8 +787,84 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
     }
 
+    // ===== Virtual debt payment transactions =====
+    const scopedDebts = debts.filter(d => {
+      if (financeScope === 'personal') return d.scope === 'personal' && d.createdBy === userId;
+      return d.scope === 'household' || !d.scope;
+    });
+
+    for (const d of scopedDebts) {
+      if (d.remainingAmount <= 0) continue;
+      const periodsYear = getPeriodsPerYear(d.paymentFrequency);
+      const monthsIncrement = 12 / periodsYear;
+      const rate = d.interestRate / 100 / periodsYear;
+
+      const firstDate = d.nextPaymentDate || calculateNextPaymentDate(d);
+      if (!firstDate) continue;
+
+      const startDateObj = new Date(firstDate + 'T00:00:00');
+      const targetDay = startDateObj.getDate();
+      let periodIndex = 0;
+      let remaining = d.remainingAmount;
+
+      // Limit to 2 years ahead
+      const limitDate = new Date();
+      limitDate.setFullYear(limitDate.getFullYear() + 2);
+
+      const getDateForPeriod = (idx: number) => {
+        const base = new Date(startDateObj.getFullYear(), startDateObj.getMonth() + idx * monthsIncrement, 1);
+        const lastDayOfMonth = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+        base.setDate(Math.min(targetDay, lastDayOfMonth));
+        return base;
+      };
+
+      let currentDate = getDateForPeriod(0);
+      while (currentDate <= limitDate && remaining > 0) {
+        const cy = currentDate.getFullYear();
+        const cm = currentDate.getMonth();
+        if (cy === year && cm === month) {
+          const interest = remaining * rate;
+          const actualPayment = Math.min(d.paymentAmount, remaining + interest);
+          const capital = Math.max(actualPayment - interest, 0);
+          const dayStr = String(currentDate.getDate()).padStart(2, '0');
+          const dateStr = `${cy}-${monthStr}-${dayStr}`;
+
+          // Don't add if a real transaction already exists for this debt + date
+          const alreadyExists = monthTransactions.some(t => t.debtId === d.id && t.date === dateStr);
+          if (!alreadyExists) {
+            const baseCurrency = household.currency;
+            const exRate = getExchangeRate(d.currency, baseCurrency);
+            monthTransactions.push({
+              id: `debt-${d.id}-${dateStr}`,
+              type: 'expense',
+              amount: actualPayment,
+              currency: d.currency,
+              exchangeRate: exRate,
+              baseCurrency,
+              convertedAmount: actualPayment * exRate,
+              category: 'Crédit',
+              emoji: getDebtEmoji(d.type),
+              label: `${d.name} — Échéance`,
+              date: dateStr,
+              memberId: userId || '',
+              accountId: d.accountId,
+              notes: `Amortissement ${capital.toFixed(2)} + Intérêts ${interest.toFixed(2)}`,
+              isAutoGenerated: true,
+              debtId: d.id,
+              scope: (d.scope as FinanceScope) || 'household',
+              createdBy: d.createdBy,
+            });
+          }
+        }
+        remaining -= Math.max(d.paymentAmount - remaining * rate, 0);
+        if (remaining < 0) remaining = 0;
+        periodIndex++;
+        currentDate = getDateForPeriod(periodIndex);
+      }
+    }
+
     return monthTransactions;
-  }, [transactions, household.currency, financeScope, session?.user?.id]);
+  }, [transactions, debts, household.currency, financeScope, session?.user?.id]);
 
   // ===== Household Actions =====
   const changeCurrency = (currency: string) => {
