@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatDate, formatDateLong, formatLocalDate } from '@/utils/format';
@@ -17,6 +17,8 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { TrendingUp, TrendingDown, Wallet, Search, Plus, ArrowLeftRight, Download, CheckSquare, X, Trash2 } from 'lucide-react';
+import { recalculateScheduleFromRow } from '@/utils/recalculateSchedule';
+import { getPeriodsPerYear } from '@/types/debt';
 
 const Transactions = () => {
   const { scopedTransactions: transactions, getMemberById, household, householdId, getTransactionsForMonth, deleteTransaction, updateTransaction, softDeleteRecurringTransaction, scopedAccounts: accounts, financeScope } = useApp();
@@ -102,6 +104,66 @@ const Transactions = () => {
       const principal = parseFloat(editDebtPrincipal) || 0;
       finalAmount = interest + principal;
       finalNotes = `Amortissement ${principal.toFixed(2)} + Intérêts ${interest.toFixed(2)}`;
+
+      // Sync with debt_schedules: find the schedule row and recalculate
+      if (debtId) {
+        try {
+          // Fetch all schedule rows for this debt
+          const { data: schedData } = await supabase
+            .from('debt_schedules')
+            .select('*')
+            .eq('debt_id', debtId)
+            .order('period_number', { ascending: true });
+
+          // Fetch debt info
+          const { data: debtData } = await supabase
+            .from('debts')
+            .select('interest_rate, payment_frequency, amortization_type, payment_amount')
+            .eq('id', debtId)
+            .single();
+
+          if (schedData && debtData) {
+            const schedRows = schedData.map((r: any) => ({
+              id: r.id,
+              due_date: r.due_date,
+              period_number: Number(r.period_number),
+              capital_before: Number(r.capital_before),
+              capital_after: Number(r.capital_after),
+              interest_amount: Number(r.interest_amount),
+              principal_amount: Number(r.principal_amount),
+              total_amount: Number(r.total_amount),
+              status: r.status,
+              transaction_id: r.transaction_id,
+            }));
+
+            // Find the matching schedule row by date
+            const txDate = formatLocalDate(editDate);
+            let schedIdx = schedRows.findIndex(r => r.due_date === txDate);
+            // Fallback: match by transaction_id for paid rows
+            if (schedIdx === -1 && !isVirtual) {
+              schedIdx = schedRows.findIndex(r => r.transaction_id === editTarget.id);
+            }
+            // Fallback: match by schedule id for virtual rows
+            if (schedIdx === -1 && isVirtual) {
+              const schedId = editTarget.id.replace('debt-sched-', '');
+              schedIdx = schedRows.findIndex(r => r.id === schedId);
+            }
+
+            if (schedIdx !== -1) {
+              await recalculateScheduleFromRow(
+                schedRows, schedIdx, interest, principal,
+                debtId,
+                Number(debtData.interest_rate),
+                debtData.payment_frequency,
+                debtData.amortization_type,
+                Number(debtData.payment_amount),
+              );
+            }
+          }
+        } catch (err) {
+          console.error('Sync schedule from transaction error:', err);
+        }
+      }
     }
 
     // Only update the real transaction if it's not a virtual one
@@ -120,7 +182,7 @@ const Transactions = () => {
       });
     }
 
-    toast.success('Transaction modifiée ✓');
+    toast.success('Transaction modifiée — échéancier mis à jour ✓');
     setEditTarget(null);
   };
 

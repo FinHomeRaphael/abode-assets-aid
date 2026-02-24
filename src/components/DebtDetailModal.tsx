@@ -7,7 +7,8 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { formatDateLong } from '@/utils/format';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Trash2, Pencil, Save, X } from 'lucide-react';
+import { recalculateScheduleFromRow } from '@/utils/recalculateSchedule';
 
 interface ScheduleRow {
   id: string;
@@ -38,6 +39,12 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
   const [expandedPeriod, setExpandedPeriod] = useState<number | null>(null);
   const [showAll, setShowAll] = useState(false);
   const [markingPaid, setMarkingPaid] = useState<string | null>(null);
+
+  // Inline editing state
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [editInterest, setEditInterest] = useState('');
+  const [editPrincipal, setEditPrincipal] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const fetchSchedule = useCallback(async () => {
     setLoadingSchedule(true);
@@ -74,17 +81,14 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
   const totalPrincipal = useMemo(() => schedule.reduce((s, r) => s + r.principal_amount, 0), [schedule]);
   const totalCost = useMemo(() => schedule.reduce((s, r) => s + r.total_amount, 0), [schedule]);
 
-  // Find next upcoming payment
   const today = new Date().toISOString().split('T')[0];
   const nextPayment = schedule.find(r => r.status === 'prevu' && r.due_date >= today);
   const paidCount = schedule.filter(r => r.status === 'paye').length;
 
-  // Show limited rows unless expanded
   const visibleSchedule = showAll ? schedule : schedule.slice(0, 24);
 
   const handleDelete = async () => {
     setDeleting(true);
-    // Delete schedules first (cascade should handle it, but let's be safe)
     await supabase.from('debt_schedules').delete().eq('debt_id', debt.id);
     const { error } = await supabase.from('debts').delete().eq('id', debt.id);
     setDeleting(false);
@@ -100,7 +104,6 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
     const userId = session.user.id;
     const baseCurrency = household.currency;
 
-    // Create the transaction
     const txId = crypto.randomUUID();
     const { error: txError } = await supabase.from('transactions').insert({
       id: txId,
@@ -131,13 +134,11 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
       return;
     }
 
-    // Update the schedule row
     await supabase.from('debt_schedules').update({
       status: 'paye',
       transaction_id: txId,
     }).eq('id', row.id);
 
-    // Update the debt remaining amount
     await supabase.from('debts').update({
       remaining_amount: Math.max(row.capital_after, 0),
       last_payment_date: row.due_date,
@@ -147,6 +148,58 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
     setMarkingPaid(null);
     fetchSchedule();
     onUpdated();
+  };
+
+  // Start editing a row
+  const startEditing = (row: ScheduleRow) => {
+    setEditingRowId(row.id);
+    setEditInterest(String(row.interest_amount));
+    setEditPrincipal(String(row.principal_amount));
+  };
+
+  const cancelEditing = () => {
+    setEditingRowId(null);
+    setEditInterest('');
+    setEditPrincipal('');
+  };
+
+  // Save edited row & recalculate subsequent rows
+  const saveEditedRow = async () => {
+    if (!editingRowId) return;
+    const idx = schedule.findIndex(r => r.id === editingRowId);
+    if (idx === -1) return;
+
+    setSaving(true);
+    const newInterest = parseFloat(editInterest) || 0;
+    const newPrincipal = parseFloat(editPrincipal) || 0;
+
+    try {
+      const updatedSchedule = await recalculateScheduleFromRow(
+        schedule, idx, newInterest, newPrincipal,
+        debt.id, debt.interestRate, debt.paymentFrequency,
+        debt.amortizationType, debt.paymentAmount
+      );
+
+      // Also update linked transaction if the modified row has one
+      const modifiedRow = updatedSchedule[idx];
+      if (modifiedRow.transaction_id) {
+        await supabase.from('transactions').update({
+          amount: modifiedRow.total_amount,
+          converted_amount: modifiedRow.total_amount,
+          notes: `Amortissement ${modifiedRow.principal_amount.toFixed(2)} + Intérêts ${modifiedRow.interest_amount.toFixed(2)}`,
+        }).eq('id', modifiedRow.transaction_id);
+      }
+
+      setSchedule(updatedSchedule);
+      toast.success('Échéance modifiée — tableau recalculé ✓');
+      onUpdated();
+    } catch (err) {
+      console.error('Save schedule error:', err);
+      toast.error('Erreur lors de la mise à jour');
+    } finally {
+      setSaving(false);
+      setEditingRowId(null);
+    }
   };
 
   return (
@@ -226,7 +279,6 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
           )}
         </div>
 
-        {/* Cost summary */}
         {schedule.length > 0 && (
           <div className="mt-3 pt-3 border-t border-border grid grid-cols-3 gap-2">
             <div className="text-center">
@@ -250,7 +302,7 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
         <div className="p-4 border-b border-border">
           <h2 className="text-sm font-semibold">📊 Tableau d'amortissement</h2>
           <p className="text-[10px] text-muted-foreground mt-0.5">
-            {schedule.length} échéances · {paidCount} payée(s)
+            {schedule.length} échéances · {paidCount} payée(s) · Cliquer sur ✏️ pour modifier
           </p>
         </div>
 
@@ -265,20 +317,20 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
               const isPaid = row.status === 'paye';
               const isAdjusted = row.status === 'ajuste';
               const isExpanded = expandedPeriod === row.period_number;
+              const isEditing = editingRowId === row.id;
 
               return (
-                <div key={row.id} className={`${isPaid ? 'bg-success/5' : isPast && !isPaid ? 'bg-warning/5' : ''}`}>
+                <div key={row.id} className={`${isPaid ? 'bg-success/5' : isAdjusted ? 'bg-warning/5' : isPast && !isPaid ? 'bg-warning/5' : ''}`}>
                   {/* Main line */}
                   <div
                     className="flex items-center px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors"
                     onClick={() => setExpandedPeriod(isExpanded ? null : row.period_number)}
                   >
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      {/* Status badge */}
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs shrink-0 ${
                         isPaid ? 'bg-success/20 text-success' : isAdjusted ? 'bg-warning/20 text-warning' : 'bg-muted text-muted-foreground'
                       }`}>
-                        {isPaid ? '✓' : `${row.period_number}`}
+                        {isPaid ? '✓' : isAdjusted ? '✏' : `${row.period_number}`}
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium">{formatDateLong(row.due_date)}</p>
@@ -312,19 +364,73 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="bg-muted/30 rounded-lg p-2 text-center">
-                          <p className="text-[9px] text-muted-foreground">Intérêts</p>
-                          <p className="text-xs font-mono-amount font-medium text-destructive">{formatAmount(row.interest_amount)}</p>
+                      {/* Editing mode */}
+                      {isEditing ? (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-[9px] text-muted-foreground mb-0.5">Intérêts</label>
+                              <input
+                                type="number" step="0.01"
+                                value={editInterest}
+                                onChange={e => setEditInterest(e.target.value)}
+                                className="w-full px-2 py-1.5 rounded-lg border border-border bg-background text-xs font-mono-amount focus:outline-none focus:ring-2 focus:ring-ring"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[9px] text-muted-foreground mb-0.5">Amortissement</label>
+                              <input
+                                type="number" step="0.01"
+                                value={editPrincipal}
+                                onChange={e => setEditPrincipal(e.target.value)}
+                                className="w-full px-2 py-1.5 rounded-lg border border-border bg-background text-xs font-mono-amount focus:outline-none focus:ring-2 focus:ring-ring"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-[9px] text-muted-foreground">
+                            Total : {((parseFloat(editInterest) || 0) + (parseFloat(editPrincipal) || 0)).toFixed(2)} · Les échéances suivantes seront recalculées
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); cancelEditing(); }}
+                              className="flex-1 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted/50 transition-colors flex items-center justify-center gap-1"
+                            >
+                              <X className="w-3 h-3" /> Annuler
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); saveEditedRow(); }}
+                              disabled={saving}
+                              className="flex-1 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors flex items-center justify-center gap-1 disabled:opacity-50"
+                            >
+                              <Save className="w-3 h-3" /> {saving ? 'Sauvegarde...' : 'Sauvegarder'}
+                            </button>
+                          </div>
                         </div>
-                        <div className="bg-muted/30 rounded-lg p-2 text-center">
-                          <p className="text-[9px] text-muted-foreground">Amortissement</p>
-                          <p className="text-xs font-mono-amount font-medium">{formatAmount(row.principal_amount)}</p>
-                        </div>
-                      </div>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-muted/30 rounded-lg p-2 text-center">
+                              <p className="text-[9px] text-muted-foreground">Intérêts</p>
+                              <p className="text-xs font-mono-amount font-medium text-destructive">{formatAmount(row.interest_amount)}</p>
+                            </div>
+                            <div className="bg-muted/30 rounded-lg p-2 text-center">
+                              <p className="text-[9px] text-muted-foreground">Amortissement</p>
+                              <p className="text-xs font-mono-amount font-medium">{formatAmount(row.principal_amount)}</p>
+                            </div>
+                          </div>
+
+                          {/* Edit button */}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); startEditing(row); }}
+                            className="w-full py-1.5 rounded-xl bg-muted/50 text-muted-foreground text-xs font-medium hover:bg-muted transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <Pencil className="w-3 h-3" /> Modifier cette échéance
+                          </button>
+                        </>
+                      )}
 
                       {/* Mark as paid button */}
-                      {!isPaid && (
+                      {!isPaid && !isEditing && (
                         <button
                           onClick={(e) => { e.stopPropagation(); markAsPaid(row); }}
                           disabled={markingPaid === row.id}
@@ -346,7 +452,6 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
           </div>
         )}
 
-        {/* Show more */}
         {!showAll && schedule.length > 24 && (
           <div className="p-3 text-center border-t border-border">
             <button onClick={() => setShowAll(true)} className="text-xs text-primary hover:text-primary/80 font-medium">
