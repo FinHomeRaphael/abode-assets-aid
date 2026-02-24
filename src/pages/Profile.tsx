@@ -138,11 +138,9 @@ const Profile = () => {
               <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2">
                 👨‍👩‍👧‍👦 Le Premium est partagé avec tous les membres du foyer.
               </p>
-              {subscriptionEnd && (
-                <button onClick={openPortal} className="w-full py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">
-                  Gérer mon abonnement
-                </button>
-              )}
+              <button onClick={openPortal} className="w-full py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">
+                Gérer mon abonnement
+              </button>
             </div>
           </div>
         )}
