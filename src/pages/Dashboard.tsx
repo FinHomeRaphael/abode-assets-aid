@@ -109,6 +109,7 @@ const Dashboard = () => {
         nextPaymentDate: d.next_payment_date, lastPaymentDate: d.last_payment_date,
         createdAt: d.created_at, updatedAt: d.updated_at,
         scope: d.scope || 'household', createdBy: d.created_by || undefined,
+        amortizationType: d.amortization_type || 'fixed_annuity',
       })));
     }
   }, [householdId, financeScope, session?.user?.id]);

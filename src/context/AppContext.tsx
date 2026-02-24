@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, ReactNode } from 'react';
 import { Transaction, Budget, Member, Household, SavingsGoal, SavingsDeposit, CustomCategory, Account, AccountType, DEFAULT_EXCHANGE_RATES, FinanceScope } from '@/types/finance';
-import { Debt, getPeriodsPerYear, calculateNextPaymentDate, getDebtEmoji } from '@/types/debt';
+import { Debt, getPeriodsPerYear, calculateNextPaymentDate, getDebtEmoji, calculatePaymentBreakdown } from '@/types/debt';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { formatLocalDate } from '@/utils/format';
@@ -340,6 +340,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           nextPaymentDate: d.next_payment_date || undefined, lastPaymentDate: d.last_payment_date || undefined,
           createdAt: d.created_at, updatedAt: d.updated_at,
           scope: d.scope || 'household', createdBy: d.created_by || undefined,
+          amortizationType: d.amortization_type || 'fixed_annuity',
         })));
       }
 
@@ -823,9 +824,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const cy = currentDate.getFullYear();
         const cm = currentDate.getMonth();
         if (cy === year && cm === month) {
-          const interest = remaining * rate;
-          const actualPayment = Math.min(d.paymentAmount, remaining + interest);
-          const capital = Math.max(actualPayment - interest, 0);
+          const { interest, capital, totalPayment: actualPayment } = calculatePaymentBreakdown(remaining, d.paymentAmount, rate, d.amortizationType);
           const dayStr = String(currentDate.getDate()).padStart(2, '0');
           const dateStr = `${cy}-${monthStr}-${dayStr}`;
 
@@ -856,7 +855,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             });
           }
         }
-        remaining -= Math.max(d.paymentAmount - remaining * rate, 0);
+        const periodBreakdown = calculatePaymentBreakdown(remaining, d.paymentAmount, rate, d.amortizationType);
+        remaining -= periodBreakdown.capital;
         if (remaining < 0) remaining = 0;
         periodIndex++;
         currentDate = getDateForPeriod(periodIndex);

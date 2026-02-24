@@ -1,5 +1,6 @@
 export type DebtType = 'mortgage' | 'auto' | 'consumer' | 'student' | 'other';
 export type PaymentFrequency = 'monthly' | 'quarterly' | 'semi-annual' | 'annual';
+export type AmortizationType = 'fixed_annuity' | 'fixed_capital';
 
 export interface Debt {
   id: string;
@@ -16,6 +17,7 @@ export interface Debt {
   paymentFrequency: PaymentFrequency;
   paymentDay: number;
   paymentAmount: number;
+  amortizationType: AmortizationType;
   categoryId?: string;
   accountId?: string;
   nextPaymentDate?: string;
@@ -94,4 +96,27 @@ export function estimateEndDate(debt: Debt): string | undefined {
   end.setMonth(end.getMonth() + months);
   const ey2 = end.getFullYear(); const em2 = String(end.getMonth() + 1).padStart(2, '0'); const ed2 = String(end.getDate()).padStart(2, '0');
   return `${ey2}-${em2}-${ed2}`;
+}
+
+/**
+ * Calculate payment breakdown for a given period based on amortization type.
+ * - fixed_annuity: total payment is fixed (= paymentAmount), capital = total - interest
+ * - fixed_capital: capital is fixed (= paymentAmount), total = capital + interest
+ */
+export function calculatePaymentBreakdown(
+  remaining: number,
+  paymentAmount: number,
+  rate: number, // per-period rate (e.g. annual_rate / 100 / periods_per_year)
+  amortizationType: AmortizationType
+): { interest: number; capital: number; totalPayment: number } {
+  const interest = remaining * rate;
+  if (amortizationType === 'fixed_capital') {
+    // Capital is fixed, total varies
+    const capital = Math.min(paymentAmount, remaining);
+    return { interest, capital, totalPayment: capital + interest };
+  }
+  // fixed_annuity: total is fixed, capital varies
+  const totalPayment = Math.min(paymentAmount, remaining + interest);
+  const capital = Math.max(totalPayment - interest, 0);
+  return { interest, capital, totalPayment };
 }
