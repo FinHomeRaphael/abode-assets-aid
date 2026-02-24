@@ -17,6 +17,7 @@ export interface Debt {
   paymentDay: number;
   paymentAmount: number;
   categoryId?: string;
+  accountId?: string;
   nextPaymentDate?: string;
   lastPaymentDate?: string;
   createdAt: string;
