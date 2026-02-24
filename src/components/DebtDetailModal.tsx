@@ -31,7 +31,7 @@ interface Props {
 
 const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
   const { formatAmount } = useCurrency();
-  const { householdId, session, household } = useApp();
+  const { householdId, session, household, refreshDebtSchedules } = useApp();
   const [schedule, setSchedule] = useState<ScheduleRow[]>([]);
   const [loadingSchedule, setLoadingSchedule] = useState(true);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
@@ -147,6 +147,7 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
     toast.success('Échéance marquée comme payée ✓');
     setMarkingPaid(null);
     fetchSchedule();
+    await refreshDebtSchedules();
     onUpdated();
   };
 
@@ -192,6 +193,7 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
 
       setSchedule(updatedSchedule);
       toast.success('Échéance modifiée — tableau recalculé ✓');
+      await refreshDebtSchedules();
       onUpdated();
     } catch (err) {
       console.error('Save schedule error:', err);

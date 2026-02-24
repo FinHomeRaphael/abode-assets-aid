@@ -89,6 +89,7 @@ interface AppContextType {
   getTransactionsForMonth: (refDate: Date) => Transaction[];
   changeCurrency: (currency: string) => void;
   refreshOverrides: () => Promise<void>;
+  refreshDebtSchedules: () => Promise<void>;
 
   addMember: (name: string, email: string, role: 'admin' | 'member') => void;
   removeMember: (id: string) => void;
@@ -1026,6 +1027,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [householdId]);
 
+  const refreshDebtSchedules = useCallback(async () => {
+    if (!householdId) return;
+    const { data } = await supabase
+      .from('debt_schedules')
+      .select('*')
+      .eq('household_id', householdId)
+      .eq('status', 'prevu');
+    if (data) {
+      setDebtSchedules(data.map((s: any) => ({
+        id: s.id,
+        debt_id: s.debt_id,
+        due_date: s.due_date,
+        period_number: Number(s.period_number),
+        capital_before: Number(s.capital_before),
+        capital_after: Number(s.capital_after),
+        interest_amount: Number(s.interest_amount),
+        principal_amount: Number(s.principal_amount),
+        total_amount: Number(s.total_amount),
+        status: s.status,
+        transaction_id: s.transaction_id,
+      })));
+    }
+  }, [householdId]);
+
   return (
     <AppContext.Provider value={{
       isLoggedIn, loading, session, householdId, currentUser, household,
@@ -1041,7 +1066,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addSavingsDeposit, deleteSavingsDeposit,
       getGoalSaved, getGoalDeposits, getMonthSavings, getTotalSavings,
       addCustomCategory, deleteCustomCategory,
-      getTransactionsForMonth, changeCurrency, refreshOverrides,
+      getTransactionsForMonth, changeCurrency, refreshOverrides, refreshDebtSchedules,
       addMember, removeMember, updateMemberRole,
       resetDemo,
       addAccount, updateAccount, archiveAccount, deleteAccount,
