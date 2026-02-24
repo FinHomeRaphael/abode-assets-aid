@@ -12,7 +12,7 @@ import { Debt, DEBT_TYPES, getDebtEmoji, estimateEndDate, getPeriodsPerYear } fr
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
-const CHAT_STORAGE_KEY = 'finehome_chat_messages';
+const CHAT_STORAGE_KEY_PREFIX = 'finehome_chat_';
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/finance-chat`;
 
 const FinanceChat = () => {
@@ -55,16 +55,27 @@ const FinanceChat = () => {
     fetchDebts();
   }, [householdId, financeScope, session?.user?.id]);
 
-  const [messages, setMessages] = useState<Msg[]>(() => {
-    try {
-      const saved = localStorage.getItem(CHAT_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
+  // Separate chat history per scope
+  const chatStorageKey = useMemo(() => {
+    if (financeScope === 'personal') {
+      return `${CHAT_STORAGE_KEY_PREFIX}personal_${session?.user?.id || 'anon'}`;
+    }
+    return `${CHAT_STORAGE_KEY_PREFIX}household_${householdId || 'none'}`;
+  }, [financeScope, session?.user?.id, householdId]);
+
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Load messages when scope changes
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(chatStorageKey);
+      setMessages(saved ? JSON.parse(saved) : []);
+    } catch { setMessages([]); }
+  }, [chatStorageKey]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -72,8 +83,8 @@ const FinanceChat = () => {
 
   // Persist messages
   useEffect(() => {
-    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
-  }, [messages]);
+    localStorage.setItem(chatStorageKey, JSON.stringify(messages));
+  }, [messages, chatStorageKey]);
 
   // Build financial context string
   const financialContext = useMemo(() => {
@@ -451,7 +462,7 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
           </div>
           {messages.length > 0 && (
             <button
-              onClick={() => { setMessages([]); localStorage.removeItem(CHAT_STORAGE_KEY); }}
+              onClick={() => { setMessages([]); localStorage.removeItem(chatStorageKey); }}
               className="w-full mt-2 text-xs text-muted-foreground hover:text-destructive transition-colors"
             >
               Effacer la conversation
