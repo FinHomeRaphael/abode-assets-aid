@@ -260,6 +260,9 @@ const Debts = () => {
                       <p className="text-[10px] text-muted-foreground truncate">
                         {p.debtName} · Int. {formatAmount(p.interest_amount)} · Cap. {formatAmount(p.principal_amount)}
                       </p>
+                      <p className="text-[10px] text-muted-foreground/70 font-mono-amount">
+                        {formatAmount(p.capital_before)} → {formatAmount(p.capital_after)}
+                      </p>
                     </div>
                   </div>
                   <span className="font-mono-amount text-sm font-semibold text-destructive shrink-0">
