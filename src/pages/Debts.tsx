@@ -76,9 +76,19 @@ const Debts = () => {
       let firstDate = d.nextPaymentDate || calculateNextPaymentDate(d);
       if (!firstDate) continue;
 
-      let currentDate = new Date(firstDate + 'T00:00:00');
+      const startDate = new Date(firstDate + 'T00:00:00');
+      const targetDay = startDate.getDate(); // original day (e.g. 31)
+      let periodIndex = 0;
       let remaining = d.remainingAmount;
 
+      const getDateForPeriod = (idx: number) => {
+        const base = new Date(startDate.getFullYear(), startDate.getMonth() + idx * monthsIncrement, 1);
+        const lastDayOfMonth = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+        base.setDate(Math.min(targetDay, lastDayOfMonth));
+        return base;
+      };
+
+      let currentDate = getDateForPeriod(0);
       while (currentDate <= limitDate && remaining > 0) {
         const interest = remaining * rate;
         const actualPayment = Math.min(d.paymentAmount, remaining + interest);
@@ -98,7 +108,8 @@ const Debts = () => {
         });
 
         remaining -= capital;
-        currentDate.setMonth(currentDate.getMonth() + monthsIncrement);
+        periodIndex++;
+        currentDate = getDateForPeriod(periodIndex);
       }
     }
     return payments.sort((a, b) => a.date.localeCompare(b.date));
