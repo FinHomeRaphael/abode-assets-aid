@@ -308,6 +308,10 @@ const Debts = () => {
   }, [debts, overrides]);
 
   const saveOverride = async (debtId: string, date: string, interest: number, principal: number) => {
+    const totalAmount = interest + principal;
+    const notes = `Amortissement ${principal.toFixed(2)} + Intérêts ${interest.toFixed(2)}`;
+
+    // 1. Save override
     const { error } = await supabase.from('debt_payment_overrides').upsert({
       debt_id: debtId,
       household_id: householdId,
@@ -316,17 +320,65 @@ const Debts = () => {
       custom_principal: principal,
     }, { onConflict: 'debt_id,payment_date' });
     if (error) { console.error('Save override error:', error); toast.error('Erreur'); return; }
+
+    // 2. Also update existing transaction if it exists for this date
+    const { data: existingTx } = await supabase
+      .from('transactions')
+      .select('id')
+      .eq('debt_id', debtId)
+      .eq('date', date)
+      .eq('is_auto_generated', true)
+      .eq('household_id', householdId)
+      .limit(1);
+
+    if (existingTx && existingTx.length > 0) {
+      await supabase.from('transactions').update({
+        amount: totalAmount,
+        converted_amount: totalAmount,
+        notes,
+      }).eq('id', existingTx[0].id);
+    }
+
     toast.success('Échéance modifiée ✓');
     setEditingPayment(null);
     fetchOverrides();
   };
 
   const removeOverride = async (debtId: string, date: string) => {
+    // Get the calculated values to restore the transaction
+    const debt = debts.find(d => d.id === debtId);
+
     await supabase.from('debt_payment_overrides')
       .delete()
       .eq('debt_id', debtId)
       .eq('payment_date', date)
       .eq('household_id', householdId);
+
+    // Also restore the transaction if it exists
+    if (debt) {
+      const periodsYear = getPeriodsPerYear(debt.paymentFrequency);
+      const rate = debt.interestRate / 100 / periodsYear;
+      const breakdown = calculatePaymentBreakdown(debt.remainingAmount, debt.paymentAmount, rate, debt.amortizationType);
+      const notes = `Amortissement ${breakdown.capital.toFixed(2)} + Intérêts ${breakdown.interest.toFixed(2)}`;
+
+      const { data: existingTx } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('debt_id', debtId)
+        .eq('date', date)
+        .eq('is_auto_generated', true)
+        .eq('household_id', householdId)
+        .limit(1);
+
+      if (existingTx && existingTx.length > 0) {
+        await supabase.from('transactions').update({
+          amount: breakdown.totalPayment,
+          converted_amount: breakdown.totalPayment,
+          notes,
+        }).eq('id', existingTx[0].id);
+      }
+    }
+
     toast.success('Valeurs calculées restaurées');
     fetchOverrides();
   };

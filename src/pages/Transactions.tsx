@@ -10,6 +10,7 @@ import AddTransactionModal from '@/components/AddTransactionModal';
 import AddTransferModal from '@/components/AddTransferModal';
 import ImportCSVModal from '@/components/ImportCSVModal';
 import ConvertedAmount from '@/components/ConvertedAmount';
+import { supabase } from '@/integrations/supabase/client';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
@@ -18,7 +19,7 @@ import { toast } from 'sonner';
 import { TrendingUp, TrendingDown, Wallet, Search, Plus, ArrowLeftRight, Download, CheckSquare, X, Trash2 } from 'lucide-react';
 
 const Transactions = () => {
-  const { scopedTransactions: transactions, getMemberById, household, getTransactionsForMonth, deleteTransaction, updateTransaction, softDeleteRecurringTransaction, scopedAccounts: accounts, financeScope } = useApp();
+  const { scopedTransactions: transactions, getMemberById, household, householdId, getTransactionsForMonth, deleteTransaction, updateTransaction, softDeleteRecurringTransaction, scopedAccounts: accounts, financeScope } = useApp();
   const { formatAmount, currency } = useCurrency();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
@@ -86,10 +87,11 @@ const Transactions = () => {
     }
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!editTarget || !editLabel.trim() || !editAmount || !editCategory) return;
     const day = editDate.getDate();
     const isDebtTx = !!(editTarget as any).debtId || !!(editTarget as any).debt_id;
+    const debtId = (editTarget as any).debtId || (editTarget as any).debt_id;
 
     // If debt transaction with interest/principal edited, update notes and amount
     let finalAmount = parseFloat(editAmount);
@@ -99,6 +101,17 @@ const Transactions = () => {
       const principal = parseFloat(editDebtPrincipal) || 0;
       finalAmount = interest + principal;
       finalNotes = `Amortissement ${principal.toFixed(2)} + Intérêts ${interest.toFixed(2)}`;
+
+      // Sync override to debt_payment_overrides table
+      if (debtId && householdId) {
+        await supabase.from('debt_payment_overrides').upsert({
+          debt_id: debtId,
+          household_id: householdId,
+          payment_date: formatLocalDate(editDate),
+          custom_interest: interest,
+          custom_principal: principal,
+        }, { onConflict: 'debt_id,payment_date' });
+      }
     }
 
     updateTransaction(editTarget.id, {
