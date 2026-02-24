@@ -238,7 +238,7 @@ const Dashboard = () => {
         <motion.div variants={fade} className="grid grid-cols-4 gap-2">
           {[
             { icon: Calendar, label: 'Préparer', onClick: () => navigate('/start-of-month') },
-            { icon: Sparkles, label: 'Chat IA', onClick: () => navigate('/chat') },
+            { icon: Sparkles, label: 'Chat IA', onClick: () => isPremium ? navigate('/chat') : setShowPaywall(true), locked: !subLoading && !isPremium },
             { icon: Camera, label: 'Scanner', onClick: () => setShowScan(true) },
             { icon: BarChart3, label: 'Rapport', onClick: () => isPremium ? setShowReport(true) : setShowPaywall(true), locked: !subLoading && !isPremium },
           ].map((item: any, i: number) => (
