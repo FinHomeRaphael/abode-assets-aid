@@ -16,9 +16,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { TrendingUp, TrendingDown, Wallet, Search, Plus, ArrowLeftRight, Download, CheckSquare, X, Trash2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Search, Plus, ArrowLeftRight, Download, CheckSquare, X, Trash2, Eye } from 'lucide-react';
 import { recalculateScheduleFromRow } from '@/utils/recalculateSchedule';
 import { getPeriodsPerYear } from '@/types/debt';
+import { useNavigate } from 'react-router-dom';
 
 const Transactions = () => {
   const { scopedTransactions: transactions, getMemberById, household, householdId, getTransactionsForMonth, deleteTransaction, updateTransaction, softDeleteRecurringTransaction, scopedAccounts: accounts, financeScope } = useApp();
@@ -47,6 +48,7 @@ const Transactions = () => {
   const [editDebtPrincipal, setEditDebtPrincipal] = useState('');
 
   const [deleteRecTarget, setDeleteRecTarget] = useState<typeof transactions[0] | null>(null);
+  const [viewDebtTarget, setViewDebtTarget] = useState<typeof transactions[0] | null>(null);
 
   const monthTx = useMemo(() => getTransactionsForMonth(currentMonth), [currentMonth, getTransactionsForMonth]);
   const categories = [...new Set(monthTx.map(t => t.category))].sort();
@@ -346,7 +348,7 @@ const Transactions = () => {
                   onClick={() => {
                     const isDebtTx = !!(t as any).debtId || t.id.startsWith('debt-sched-');
                     if (isDebtTx && !selectMode) {
-                      toast.info('Les échéances de dette se modifient dans l\'onglet Dettes');
+                      setViewDebtTarget(t);
                       return;
                     }
                     selectMode ? toggleSelect(t.id) : openEditModal(t);
@@ -599,6 +601,108 @@ const Transactions = () => {
             </motion.div>
           </motion.div>
         )}
+      </AnimatePresence>
+
+      {/* Read-only Debt Schedule Detail Modal */}
+      <AnimatePresence>
+        {viewDebtTarget && (() => {
+          const t = viewDebtTarget;
+          const member = getMemberById(t.memberId);
+          const interestMatch = t.notes?.match(/Amortissement\s+([\d.]+)\s*\+\s*Intérêts\s+([\d.]+)/);
+          const principal = interestMatch ? parseFloat(interestMatch[1]) : 0;
+          const interest = interestMatch ? parseFloat(interestMatch[2]) : 0;
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-md flex items-end sm:items-center justify-center p-0 sm:p-4"
+              onClick={() => setViewDebtTarget(null)}
+            >
+              <motion.div
+                initial={{ y: 50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 50, opacity: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                onClick={e => e.stopPropagation()}
+                className="bg-card w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl border border-border/30 shadow-2xl max-h-[90vh] overflow-y-auto"
+              >
+                <div className="p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-base">{t.emoji}</div>
+                      <div>
+                        <h2 className="text-base font-bold">Détail échéance</h2>
+                        <p className="text-[10px] text-muted-foreground">Consultation uniquement</p>
+                      </div>
+                    </div>
+                    <button onClick={() => setViewDebtTarget(null)} className="w-8 h-8 rounded-xl bg-secondary/50 flex items-center justify-center">
+                      <X className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="bg-muted/50 rounded-xl p-3">
+                      <p className="text-[10px] text-muted-foreground mb-0.5">Libellé</p>
+                      <p className="text-sm font-medium">{t.label}</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-muted/50 rounded-xl p-3">
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Montant total</p>
+                        <p className="text-sm font-mono-amount font-semibold text-destructive">-{formatAmount(t.amount)}</p>
+                      </div>
+                      <div className="bg-muted/50 rounded-xl p-3">
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Date</p>
+                        <p className="text-sm font-medium">{formatDateLong(t.date)}</p>
+                      </div>
+                    </div>
+
+                    {(interest > 0 || principal > 0) && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-muted/50 rounded-xl p-3">
+                          <p className="text-[10px] text-muted-foreground mb-0.5">Intérêts</p>
+                          <p className="text-sm font-mono-amount font-medium">{formatAmount(interest)}</p>
+                        </div>
+                        <div className="bg-muted/50 rounded-xl p-3">
+                          <p className="text-[10px] text-muted-foreground mb-0.5">Amortissement</p>
+                          <p className="text-sm font-mono-amount font-medium">{formatAmount(principal)}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-muted/50 rounded-xl p-3">
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Catégorie</p>
+                        <p className="text-sm font-medium">{t.category}</p>
+                      </div>
+                      <div className="bg-muted/50 rounded-xl p-3">
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Membre</p>
+                        <p className="text-sm font-medium">{member?.name || '—'}</p>
+                      </div>
+                    </div>
+
+                    {t.notes && (
+                      <div className="bg-muted/50 rounded-xl p-3">
+                        <p className="text-[10px] text-muted-foreground mb-0.5">Notes</p>
+                        <p className="text-sm">{t.notes}</p>
+                      </div>
+                    )}
+
+                    <div className="bg-warning/10 border border-warning/20 rounded-xl p-3 flex items-start gap-2">
+                      <Eye className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                      <p className="text-xs text-warning">Pour modifier cette échéance, rendez-vous dans l'onglet <strong>Dettes</strong>.</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5">
+                    <button onClick={() => setViewDebtTarget(null)} className="w-full py-2.5 rounded-xl border border-border/30 text-sm font-medium hover:bg-secondary/30 transition-colors">Fermer</button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
     </Layout>
   );
