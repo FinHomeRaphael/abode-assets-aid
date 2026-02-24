@@ -10,7 +10,7 @@ import Layout from '@/components/Layout';
 import ConvertedAmount from '@/components/ConvertedAmount';
 import InviteMemberModal from '@/components/InviteMemberModal';
 import { supabase } from '@/integrations/supabase/client';
-import { useSubscription, PREMIUM_PRICE_MONTHLY, PREMIUM_PRICE_YEARLY } from '@/hooks/useSubscription';
+import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
 import { Crown } from 'lucide-react';
 
@@ -148,7 +148,7 @@ const Profile = () => {
             </div>
           ) : (
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Débloquez toutes les fonctionnalités pour 4,99€/mois</p>
+              <p className="text-sm text-muted-foreground">Débloquez toutes les fonctionnalités à partir de 4,99€/mois</p>
               <button onClick={() => setShowPaywall(true)} className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity">
                 Passer à Premium
               </button>
