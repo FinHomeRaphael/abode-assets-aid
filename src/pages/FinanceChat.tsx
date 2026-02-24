@@ -7,6 +7,7 @@ import ReactMarkdown from 'react-markdown';
 import Layout from '@/components/Layout';
 import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
+import { PremiumGate } from '@/components/PremiumPaywall';
 import { formatLocalDate } from '@/utils/format';
 import { Debt, DEBT_TYPES, getDebtEmoji, estimateEndDate, getPeriodsPerYear } from '@/types/debt';
 
@@ -371,6 +372,7 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
   return (
     <>
     <Layout>
+      <PremiumGate feature="le conseiller IA" description="Obtiens des conseils financiers personnalisés grâce à l'intelligence artificielle.">
       <div className="max-w-2xl mx-auto flex flex-col h-[calc(100dvh-8rem)] md:h-[calc(100dvh-8rem)] -mb-32 md:mb-0">
         {/* Header */}
         <div className="flex items-center gap-3 mb-4">
@@ -478,6 +480,7 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
           )}
         </div>
       </div>
+      </PremiumGate>
     </Layout>
     </>
   );
