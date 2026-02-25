@@ -30,6 +30,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [paymentFrequency, setPaymentFrequency] = useState('monthly');
   const [paymentDay, setPaymentDay] = useState('1');
+  const [endOfMonth, setEndOfMonth] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [accountId, setAccountId] = useState('');
@@ -73,7 +74,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
   const reset = () => {
     setType('mortgage'); setName(''); setLender(''); setInitialAmount(''); setRemainingAmount('');
     setInterestRate(''); setDurationYears(''); setStartDate(new Date()); setPaymentFrequency('monthly');
-    setPaymentDay('1'); setPaymentAmount(''); setCategoryId(''); setAccountId(''); setAmortizationType('fixed_annuity'); setNextPaymentDate(new Date());
+    setPaymentDay('1'); setEndOfMonth(false); setPaymentAmount(''); setCategoryId(''); setAccountId(''); setAmortizationType('fixed_annuity'); setNextPaymentDate(new Date());
   };
 
   const handleSubmit = async () => {
@@ -253,8 +254,23 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Jour de prélèvement</label>
-                    <input type="number" min="1" max="31" value={paymentDay} onChange={e => setPaymentDay(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
+                    <input type="number" min="1" max="31" value={endOfMonth ? '' : paymentDay}
+                      disabled={endOfMonth}
+                      onChange={e => setPaymentDay(e.target.value)}
+                      placeholder={endOfMonth ? 'Fin du mois' : ''}
+                      className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50" />
+                    <label className="flex items-center gap-2 mt-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={endOfMonth}
+                        onChange={e => {
+                          setEndOfMonth(e.target.checked);
+                          if (e.target.checked) setPaymentDay('31');
+                        }}
+                        className="rounded border-border"
+                      />
+                      <span className="text-xs text-muted-foreground">Fin du mois</span>
+                    </label>
                   </div>
                 </div>
 
