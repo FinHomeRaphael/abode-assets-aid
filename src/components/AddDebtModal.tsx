@@ -112,18 +112,8 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
 
   const swissTotalPeriodic = swissPeriodicInterest + swissPeriodicAmortization + swissPeriodicMaintenance;
 
-  // Europe calculations — adapted to frequency
-  const europePeriodicPayment = useMemo(() => {
-    const principal = parseFloat(initialAmount) || 0;
-    const rate = parseFloat(interestRate) || 0;
-    const months = parseInt(durationMonths) || 0;
-    if (principal <= 0 || months <= 0) return 0;
-    const totalPeriods = Math.round(months / (12 / periodsPerYear));
-    if (totalPeriods <= 0) return 0;
-    if (rate === 0) return principal / totalPeriods;
-    const periodicRate = rate / 100 / periodsPerYear;
-    return principal * (periodicRate * Math.pow(1 + periodicRate, totalPeriods)) / (Math.pow(1 + periodicRate, totalPeriods) - 1);
-  }, [initialAmount, interestRate, durationMonths, periodsPerYear]);
+  // Europe calculations — user enters payment manually, interest auto-calculated
+  const europePeriodicPayment = useMemo(() => parseFloat(paymentAmount) || 0, [paymentAmount]);
 
   const europeCurrentInterest = useMemo(() => {
     const rem = parseFloat(remainingAmount) || 0;
@@ -189,22 +179,19 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
       return swissAmortizationType !== 'none' ? swissPeriodicAmortization : 0;
     }
     if (isEurope) {
-      return europePeriodicPayment;
+      return parseFloat(paymentAmount) || 0;
     }
     return parseFloat(paymentAmount) || 0;
   };
 
   const getEffectiveDurationYears = () => {
-    if (isEurope && durationMonths) {
-      return (parseInt(durationMonths) || 0) / 12;
-    }
     return parseFloat(durationYears) || 0;
   };
 
   const handleSubmit = async () => {
     if (!name.trim() || !initialAmount || !remainingAmount) return;
     if (!isMortgage && (!paymentAmount || !durationYears)) return;
-    if (isEurope && !durationMonths) return;
+    if (isEurope && (!paymentAmount || !durationYears)) return;
     
     setSaving(true);
 
@@ -255,7 +242,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
     const schedulePayment = isSwiss
       ? swissPeriodicAmortization
       : isEurope
-        ? Math.round(europePeriodicPayment * 100) / 100
+        ? Math.round((parseFloat(paymentAmount) || 0) * 100) / 100
         : parseFloat(paymentAmount);
 
     const scheduleRows = generateAmortizationSchedule({
@@ -472,12 +459,18 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                     </div>
                   )}
 
-                  {/* Europe: Duration in months */}
+                  {/* Europe: Duration in years + payment amount */}
                   {isEurope && (
-                    <div>
-                      <label className="block text-sm font-medium mb-1.5">Durée totale (en mois)</label>
-                      <input type="number" step="1" value={durationMonths} onChange={e => setDurationMonths(e.target.value)} placeholder="Ex: 240" className={monoInputClass} />
-                    </div>
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium mb-1.5">Durée (années)</label>
+                        <input type="number" step="1" value={durationYears} onChange={e => setDurationYears(e.target.value)} placeholder="Ex: 20" className={monoInputClass} />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1.5">Échéance {frequencyLabelFem} fixe</label>
+                        <MoneyInput value={paymentAmount} onChange={setPaymentAmount} placeholder="Montant de l'échéance" className={monoInputClass} />
+                      </div>
+                    </>
                   )}
 
                   {/* Swiss: Amortization type */}
@@ -669,9 +662,9 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                           <span>Échéance {frequencyLabelFem} fixe</span>
                           <span className="font-mono">{formatAmount(europePeriodicPayment, debtCurrency)}</span>
                         </div>
-                        {durationMonths && (
+                        {durationYears && (
                           <div className="text-[10px] text-muted-foreground mt-1">
-                            📅 {Math.floor(parseInt(durationMonths) / 12)} ans et {parseInt(durationMonths) % 12} mois
+                            📅 {durationYears} ans — {Math.round(parseFloat(durationYears) * periodsPerYear)} échéances
                           </div>
                         )}
                       </>
@@ -734,7 +727,8 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
               {step === 'form' && (
                 <div className="mt-6 flex gap-3">
                   <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Annuler</button>
-                  <button onClick={handleSubmit} disabled={saving || !name.trim() || !initialAmount || !remainingAmount || (!isMortgage && !paymentAmount)}
+                  <button onClick={handleSubmit}
+                    disabled={saving || !name.trim() || !initialAmount || !remainingAmount || (!isMortgage && !paymentAmount) || (isEurope && (!paymentAmount || !durationYears))}
                     className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50">
                     {saving ? 'Génération...' : 'Ajouter'}
                   </button>
