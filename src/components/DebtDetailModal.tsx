@@ -101,11 +101,14 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
 
   const handleDelete = async () => {
     setDeleting(true);
+    // Delete transactions linked to this debt first
+    await supabase.from('transactions').delete().eq('debt_id', debt.id);
     await supabase.from('debt_schedules').delete().eq('debt_id', debt.id);
     const { error } = await supabase.from('debts').delete().eq('id', debt.id);
     setDeleting(false);
     if (error) { console.error('Delete debt error:', error); toast.error('Erreur'); return; }
     toast.success('Dette supprimée');
+    await refreshDebtSchedules();
     onUpdated();
   };
 
