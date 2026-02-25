@@ -833,25 +833,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return savingsDeposits.filter(d => scopedSavingsGoalIds.has(d.goalId));
   }, [savingsDeposits, scopedSavingsGoalIds]);
 
-  const getMonthSavings = useCallback((refDate: Date = new Date()) => {
-    const range = getMonthRange(refDate);
-    const epargneAccountIds = new Set(accounts.filter(a => a.type === 'epargne' && !a.isArchived).map(a => a.id));
-    // Sum of income transactions on épargne accounts for the month minus expenses
-    const savingsTx = transactions.filter(t => t.accountId && epargneAccountIds.has(t.accountId) && t.date >= range.start && t.date <= range.end);
-    const income = savingsTx.filter(t => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
-    const expense = savingsTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
-    return income - expense;
-  }, [accounts, transactions]);
-
-  const getTotalSavings = useCallback(() => {
-    const epargneAccounts = accounts.filter(a => a.type === 'epargne' && !a.isArchived);
-    return epargneAccounts.reduce((sum, acc) => {
-      const txs = transactions.filter(t => t.accountId === acc.id);
-      const income = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-      const expense = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-      return sum + acc.startingBalance + income - expense;
-    }, 0);
-  }, [accounts, transactions]);
+  // getMonthSavings and getTotalSavings moved after scoped data definitions
 
   // ===== Category Actions =====
   const addCustomCategory = (c: CustomCategory) => {
@@ -1104,6 +1086,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return g.scope === 'household' || !g.scope;
     });
   }, [savingsGoals, financeScope, session?.user?.id]);
+
+  const getMonthSavings = useCallback((refDate: Date = new Date()) => {
+    const range = getMonthRange(refDate);
+    const epargneAccountIds = new Set(scopedAccounts.filter(a => a.type === 'epargne' && !a.isArchived).map(a => a.id));
+    const savingsTx = scopedTransactions.filter(t => t.accountId && epargneAccountIds.has(t.accountId) && t.date >= range.start && t.date <= range.end);
+    const income = savingsTx.filter(t => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
+    const expense = savingsTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
+    return income - expense;
+  }, [scopedAccounts, scopedTransactions]);
+
+  const getTotalSavings = useCallback(() => {
+    const epargneAccounts = scopedAccounts.filter(a => a.type === 'epargne' && !a.isArchived);
+    return epargneAccounts.reduce((sum, acc) => {
+      const txs = scopedTransactions.filter(t => t.accountId === acc.id);
+      const income = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+      const expense = txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+      return sum + acc.startingBalance + income - expense;
+    }, 0);
+  }, [scopedAccounts, scopedTransactions]);
 
   const refreshOverrides = useCallback(async () => {
     if (!householdId) return;
