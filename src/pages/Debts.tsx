@@ -7,7 +7,14 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useApp } from '@/context/AppContext';
-import { Debt, DEBT_TYPES, getDebtEmoji, getPeriodsPerYear, calculateNextPaymentDate } from '@/types/debt';
+import { Debt, DEBT_TYPES, getDebtEmoji, getPeriodsPerYear, calculateNextPaymentDate, PaymentFrequency } from '@/types/debt';
+
+const getFrequencySuffix = (freq: string) => {
+  switch (freq) { case 'quarterly': return '/trim.'; case 'semi-annual': return '/sem.'; case 'annual': return '/an'; default: return '/mois'; }
+};
+const getFrequencyLabel = (freq: string) => {
+  switch (freq) { case 'quarterly': return 'ce trimestre'; case 'semi-annual': return 'ce semestre'; case 'annual': return 'cette année'; default: return 'ce mois'; }
+};
 import AddDebtModal from '@/components/AddDebtModal';
 import DebtDetailModal from '@/components/DebtDetailModal';
 import { toast } from 'sonner';
@@ -236,19 +243,21 @@ const Debts = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      {d.mortgageSystem === 'swiss' ? (
+                      {d.mortgageSystem === 'swiss' ? (() => {
+                        const ppy = getPeriodsPerYear(d.paymentFrequency as PaymentFrequency);
+                        const periodicTotal =
+                          (remaining * d.interestRate / 100 / ppy) +
+                          (d.swissAmortizationType !== 'none' && d.annualAmortization ? d.annualAmortization / ppy : 0) +
+                          (d.includeMaintenance && d.propertyValue ? d.propertyValue * 0.01 / ppy : 0);
+                        return (
+                          <>
+                            <p className="font-mono-amount text-sm font-semibold">{formatAmountWithCurrency(periodicTotal, d.currency)}{getFrequencySuffix(d.paymentFrequency)}</p>
+                            <p className="text-[10px] text-muted-foreground">Charge {d.paymentFrequency === 'monthly' ? 'mensuelle' : d.paymentFrequency === 'quarterly' ? 'trimestrielle' : d.paymentFrequency === 'semi-annual' ? 'semestrielle' : 'annuelle'}</p>
+                          </>
+                        );
+                      })() : (
                         <>
-                          <p className="font-mono-amount text-sm font-semibold">{formatAmountWithCurrency(
-                            (remaining * d.interestRate / 100 / 12) + 
-                            (d.swissAmortizationType !== 'none' && d.annualAmortization ? d.annualAmortization / 12 : 0) +
-                            (d.includeMaintenance && d.propertyValue ? d.propertyValue * 0.01 / 12 : 0),
-                            d.currency
-                          )}/mois</p>
-                          <p className="text-[10px] text-muted-foreground">Charge mensuelle</p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="font-mono-amount text-sm font-semibold">{formatAmountWithCurrency(d.paymentAmount, d.currency)}/mois</p>
+                          <p className="font-mono-amount text-sm font-semibold">{formatAmountWithCurrency(d.paymentAmount, d.currency)}{getFrequencySuffix(d.paymentFrequency)}</p>
                           <p className="text-[10px] text-muted-foreground">{d.interestRate}% · {d.currency}</p>
                         </>
                       )}
@@ -256,40 +265,47 @@ const Debts = () => {
                   </div>
                   
                   {/* Swiss: breakdown */}
-                  {d.mortgageSystem === 'swiss' && (
-                    <div className="text-[10px] text-muted-foreground mb-2 space-y-0.5">
-                      <div className="flex justify-between">
-                        <span>├ Intérêts</span>
-                        <span className="font-mono-amount">{formatAmountWithCurrency(remaining * d.interestRate / 100 / 12, d.currency)}</span>
+                  {d.mortgageSystem === 'swiss' && (() => {
+                    const ppy = getPeriodsPerYear(d.paymentFrequency as PaymentFrequency);
+                    return (
+                      <div className="text-[10px] text-muted-foreground mb-2 space-y-0.5">
+                        <div className="flex justify-between">
+                          <span>├ Intérêts</span>
+                          <span className="font-mono-amount">{formatAmountWithCurrency(remaining * d.interestRate / 100 / ppy, d.currency)}</span>
+                        </div>
+                        {d.swissAmortizationType !== 'none' && d.annualAmortization && (
+                          <div className="flex justify-between">
+                            <span>├ Amortissement</span>
+                            <span className="font-mono-amount">{formatAmountWithCurrency(d.annualAmortization / ppy, d.currency)}</span>
+                          </div>
+                        )}
+                        {d.includeMaintenance && d.propertyValue && (
+                          <div className="flex justify-between">
+                            <span>└ Frais entretien</span>
+                            <span className="font-mono-amount">{formatAmountWithCurrency(d.propertyValue * 0.01 / ppy, d.currency)}</span>
+                          </div>
+                        )}
                       </div>
-                      {d.swissAmortizationType !== 'none' && d.annualAmortization && (
-                        <div className="flex justify-between">
-                          <span>├ Amortissement</span>
-                          <span className="font-mono-amount">{formatAmountWithCurrency(d.annualAmortization / 12, d.currency)}</span>
-                        </div>
-                      )}
-                      {d.includeMaintenance && d.propertyValue && (
-                        <div className="flex justify-between">
-                          <span>└ Frais entretien</span>
-                          <span className="font-mono-amount">{formatAmountWithCurrency(d.propertyValue * 0.01 / 12, d.currency)}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Europe: current breakdown */}
-                  {d.mortgageSystem === 'europe' && (
-                    <div className="text-[10px] text-muted-foreground mb-2 space-y-0.5">
-                      <div className="flex justify-between">
-                        <span>├ Intérêts ce mois</span>
-                        <span className="font-mono-amount">{formatAmountWithCurrency(remaining * d.interestRate / 100 / 12, d.currency)}</span>
+                  {d.mortgageSystem === 'europe' && (() => {
+                    const ppy = getPeriodsPerYear(d.paymentFrequency as PaymentFrequency);
+                    const periodicInterest = remaining * d.interestRate / 100 / ppy;
+                    return (
+                      <div className="text-[10px] text-muted-foreground mb-2 space-y-0.5">
+                        <div className="flex justify-between">
+                          <span>├ Intérêts {getFrequencyLabel(d.paymentFrequency)}</span>
+                          <span className="font-mono-amount">{formatAmountWithCurrency(periodicInterest, d.currency)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>└ Capital {getFrequencyLabel(d.paymentFrequency)}</span>
+                          <span className="font-mono-amount">{formatAmountWithCurrency(Math.max(d.paymentAmount - periodicInterest, 0), d.currency)}</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span>└ Capital ce mois</span>
-                        <span className="font-mono-amount">{formatAmountWithCurrency(Math.max(d.paymentAmount - remaining * d.interestRate / 100 / 12, 0), d.currency)}</span>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   <div className="h-1 bg-muted rounded-full overflow-hidden mb-1.5">
                     {d.mortgageSystem === 'swiss' && d.propertyValue ? (
