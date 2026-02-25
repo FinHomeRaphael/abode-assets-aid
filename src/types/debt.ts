@@ -1,4 +1,5 @@
 export type DebtType = 'mortgage' | 'auto' | 'consumer' | 'student' | 'other';
+export type VehicleType = 'credit' | 'leasing' | 'lld';
 export type PaymentFrequency = 'monthly' | 'quarterly' | 'semi-annual' | 'annual';
 export type AmortizationType = 'fixed_annuity' | 'fixed_capital';
 
@@ -38,6 +39,17 @@ export interface Debt {
   annualAmortization?: number;
   swissAmortizationType?: SwissAmortizationType;
   includeMaintenance?: boolean;
+  // Vehicle-specific
+  vehicleType?: VehicleType;
+  vehicleName?: string;
+  vehiclePrice?: number;
+  downPayment?: number;
+  annualKm?: number;
+  residualValue?: number;
+  excessKmCost?: number;
+  servicesIncluded?: string[];
+  contractEndDate?: string;
+  currentKm?: number;
 }
 
 export const DEBT_TYPES: { value: DebtType; label: string; emoji: string }[] = [
