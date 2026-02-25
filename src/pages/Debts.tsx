@@ -8,6 +8,7 @@ import { fr } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useApp } from '@/context/AppContext';
 import { Debt, DEBT_TYPES, getDebtEmoji, getPeriodsPerYear, calculateNextPaymentDate, PaymentFrequency } from '@/types/debt';
+import { useExchangeRates } from '@/hooks/useExchangeRates';
 
 const getFrequencySuffix = (freq: string) => {
   switch (freq) { case 'quarterly': return '/trim.'; case 'semi-annual': return '/sem.'; case 'annual': return '/an'; default: return '/mois'; }
@@ -42,7 +43,8 @@ interface UpcomingPayment {
 
 const Debts = () => {
   const { householdId, session, household, financeScope, refreshDebtSchedules } = useApp();
-  const { formatAmount } = useCurrency();
+  const { formatAmount, currency: mainCurrency } = useCurrency();
+  const { convert } = useExchangeRates(mainCurrency);
   const { canAdd } = useSubscription(householdId, session?.user?.id);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -155,22 +157,22 @@ const Debts = () => {
 
   const getRealRemaining = (d: Debt) => debtRemainingMap.get(d.id) ?? d.remainingAmount;
 
-  const totalRemaining = useMemo(() => debts.reduce((s, d) => s + getRealRemaining(d), 0), [debts, debtRemainingMap]);
-  const totalInitial = useMemo(() => debts.reduce((s, d) => s + d.initialAmount, 0), [debts]);
+  const totalRemaining = useMemo(() => debts.reduce((s, d) => s + convert(getRealRemaining(d), d.currency), 0), [debts, debtRemainingMap, convert]);
+  const totalInitial = useMemo(() => debts.reduce((s, d) => s + convert(d.initialAmount, d.currency), 0), [debts, convert]);
   const totalPayment = useMemo(() => debts.reduce((s, d) => {
     const nextRow = debtNextPaymentMap.get(d.id);
-    if (nextRow) return s + nextRow.total_amount;
+    if (nextRow) return s + convert(nextRow.total_amount, d.currency);
     const ppy = getPeriodsPerYear(d.paymentFrequency as PaymentFrequency);
     if (d.mortgageSystem === 'swiss') {
       const remaining = getRealRemaining(d);
       const interest = remaining * d.interestRate / 100 / ppy;
       const amort = d.swissAmortizationType !== 'none' && d.annualAmortization ? d.annualAmortization / ppy : 0;
       const maint = d.includeMaintenance && d.propertyValue ? d.propertyValue * 0.01 / ppy : 0;
-      return s + interest + amort + maint;
+      return s + convert(interest + amort + maint, d.currency);
     }
-    return s + d.paymentAmount;
-  }, 0), [debts, debtNextPaymentMap, debtRemainingMap]);
-  const totalRepaid = useMemo(() => debts.reduce((s, d) => s + (d.initialAmount - getRealRemaining(d)), 0), [debts, debtRemainingMap]);
+    return s + convert(d.paymentAmount, d.currency);
+  }, 0), [debts, debtNextPaymentMap, debtRemainingMap, convert]);
+  const totalRepaid = useMemo(() => debts.reduce((s, d) => s + convert(d.initialAmount - getRealRemaining(d), d.currency), 0), [debts, debtRemainingMap, convert]);
 
   const selectedDebt = useMemo(() => debts.find(d => d.id === selectedDebtId) || null, [debts, selectedDebtId]);
 
