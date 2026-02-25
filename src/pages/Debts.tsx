@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Layout from '@/components/Layout';
 import { useCurrency } from '@/hooks/useCurrency';
-import { formatDateLong } from '@/utils/format';
+import { formatDateLong, formatAmount as formatAmountWithCurrency } from '@/utils/format';
 import { supabase } from '@/integrations/supabase/client';
 import { useApp } from '@/context/AppContext';
 import { Debt, DEBT_TYPES, getDebtEmoji, getPeriodsPerYear, calculateNextPaymentDate } from '@/types/debt';
@@ -27,6 +27,7 @@ interface UpcomingPayment {
   debtName: string;
   debtEmoji: string;
   debtType: string;
+  debtCurrency: string;
 }
 
 const Debts = () => {
@@ -106,6 +107,7 @@ const Debts = () => {
           debtName: debt?.name || '',
           debtEmoji: debt ? getDebtEmoji(debt.type) : '💳',
           debtType: debt?.type || '',
+          debtCurrency: debt?.currency || 'EUR',
         };
       }));
     }
@@ -217,15 +219,15 @@ const Debts = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-mono-amount text-sm font-semibold">{formatAmount(d.paymentAmount)}/mois</p>
-                      <p className="text-[10px] text-muted-foreground">{d.interestRate}%</p>
+                      <p className="font-mono-amount text-sm font-semibold">{formatAmountWithCurrency(d.paymentAmount, d.currency)}/mois</p>
+                      <p className="text-[10px] text-muted-foreground">{d.interestRate}% · {d.currency}</p>
                     </div>
                   </div>
                   <div className="h-1 bg-muted rounded-full overflow-hidden mb-1.5">
                     <div className={`h-full rounded-full transition-all ${repaidPct >= 100 ? 'bg-success' : repaidPct >= 50 ? 'bg-primary' : 'bg-warning'}`} style={{ width: `${repaidPct}%` }} />
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                    <span className="font-mono-amount">{formatAmount(remaining)} restant / {formatAmount(d.initialAmount)}</span>
+                    <span className="font-mono-amount">{formatAmountWithCurrency(remaining, d.currency)} restant / {formatAmountWithCurrency(d.initialAmount, d.currency)}</span>
                     <span className="font-mono-amount">{Math.round(repaidPct)}%</span>
                   </div>
                   {nextDate && (
@@ -272,15 +274,15 @@ const Debts = () => {
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{formatDateLong(p.due_date)}</p>
                       <p className="text-[10px] text-muted-foreground truncate">
-                        {p.debtName} · Int. {formatAmount(p.interest_amount)} · Cap. {formatAmount(p.principal_amount)}
+                        {p.debtName} · Int. {formatAmountWithCurrency(p.interest_amount, p.debtCurrency)} · Cap. {formatAmountWithCurrency(p.principal_amount, p.debtCurrency)}
                       </p>
                       <p className="text-[10px] text-muted-foreground/70 font-mono-amount">
-                        {formatAmount(p.capital_before)} → {formatAmount(p.capital_after)}
+                        {formatAmountWithCurrency(p.capital_before, p.debtCurrency)} → {formatAmountWithCurrency(p.capital_after, p.debtCurrency)}
                       </p>
                     </div>
                   </div>
                   <span className="font-mono-amount text-sm font-semibold text-destructive shrink-0">
-                    -{formatAmount(p.total_amount)}
+                    -{formatAmountWithCurrency(p.total_amount, p.debtCurrency)}
                   </span>
                 </div>
               ))}
