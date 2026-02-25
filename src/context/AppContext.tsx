@@ -32,6 +32,12 @@ function getMonthYearStr(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
 
+function getTransferLinkId(notes?: string | null): string | null {
+  if (!notes) return null;
+  // Supports both "Transfert #abc123" and "[Transfert #abc123]"
+  const match = notes.match(/\[?Transfert\s+#([^\]\s]+)\]?/i);
+  return match?.[1] || null;
+}
 // ===== Context Type =====
 
 interface AppContextType {
@@ -518,14 +524,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     
     // Find the transaction being updated
     const currentTx = transactions.find(t => t.id === id);
-    
+
     // Check if this is a transfer and find the paired transaction
     let pairedTxId: string | null = null;
-    if (currentTx?.category === 'Transfert' && currentTx.notes) {
-      const match = currentTx.notes.match(/\[Transfert #([^\]]+)\]/);
-      if (match) {
-        const transferTag = `[Transfert #${match[1]}]`;
-        const paired = transactions.find(t => t.id !== id && t.notes?.includes(transferTag));
+    if (currentTx?.category === 'Transfert') {
+      const transferLinkId = getTransferLinkId(currentTx.notes);
+      if (transferLinkId) {
+        const paired = transactions.find(
+          t => t.id !== id && t.category === 'Transfert' && getTransferLinkId(t.notes) === transferLinkId
+        );
         if (paired) pairedTxId = paired.id;
       }
     }
@@ -566,6 +573,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (updates.emoji !== undefined) dbUpdates.emoji = updates.emoji;
     if ('accountId' in updates) dbUpdates.account_id = updates.accountId || null;
 
+    if (currentTx && (updates.amount !== undefined || updates.currency !== undefined)) {
+      const mergedCurrency = updates.currency ?? currentTx.currency;
+      const mergedAmount = updates.amount ?? currentTx.amount;
+      const rate = getExchangeRate(mergedCurrency, baseCurrency);
+      dbUpdates.exchange_rate = rate;
+      dbUpdates.base_currency = baseCurrency;
+      dbUpdates.converted_amount = mergedAmount * rate;
+    }
+
     if (Object.keys(dbUpdates).length > 0) {
       supabase.from('transactions').update(dbUpdates).eq('id', id).then(({ error }) => {
         if (error) console.error('Update tx error:', error);
@@ -597,11 +613,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // Find paired transfer transaction before deleting
     const currentTx = transactions.find(t => t.id === id);
     let pairedTxId: string | null = null;
-    if (currentTx?.category === 'Transfert' && currentTx.notes) {
-      const match = currentTx.notes.match(/\[Transfert #([^\]]+)\]/);
-      if (match) {
-        const transferTag = `[Transfert #${match[1]}]`;
-        const paired = transactions.find(t => t.id !== id && t.notes?.includes(transferTag));
+    if (currentTx?.category === 'Transfert') {
+      const transferLinkId = getTransferLinkId(currentTx.notes);
+      if (transferLinkId) {
+        const paired = transactions.find(
+          t => t.id !== id && t.category === 'Transfert' && getTransferLinkId(t.notes) === transferLinkId
+        );
         if (paired) pairedTxId = paired.id;
       }
     }
