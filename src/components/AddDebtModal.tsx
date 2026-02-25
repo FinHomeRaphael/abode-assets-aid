@@ -75,44 +75,64 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
     }
   }, [paymentFrequency]);
 
-  // Swiss calculations
-  const swissMonthlyInterest = useMemo(() => {
+  const frequencyLabel = useMemo(() => {
+    switch (paymentFrequency) {
+      case 'quarterly': return 'trimestriel';
+      case 'semi-annual': return 'semestriel';
+      case 'annual': return 'annuel';
+      default: return 'mensuel';
+    }
+  }, [paymentFrequency]);
+
+  const frequencyLabelFem = useMemo(() => {
+    switch (paymentFrequency) {
+      case 'quarterly': return 'trimestrielle';
+      case 'semi-annual': return 'semestrielle';
+      case 'annual': return 'annuelle';
+      default: return 'mensuelle';
+    }
+  }, [paymentFrequency]);
+
+  // Swiss calculations — adapted to frequency
+  const swissPeriodicInterest = useMemo(() => {
     const rem = parseFloat(remainingAmount) || 0;
     const rate = parseFloat(interestRate) || 0;
-    return (rem * rate / 100) / 12;
-  }, [remainingAmount, interestRate]);
+    return (rem * rate / 100) / periodsPerYear;
+  }, [remainingAmount, interestRate, periodsPerYear]);
 
-  const swissMonthlyAmortization = useMemo(() => {
+  const swissPeriodicAmortization = useMemo(() => {
     if (swissAmortizationType === 'none') return 0;
-    return (parseFloat(annualAmortization) || 0) / 12;
-  }, [annualAmortization, swissAmortizationType]);
+    return (parseFloat(annualAmortization) || 0) / periodsPerYear;
+  }, [annualAmortization, swissAmortizationType, periodsPerYear]);
 
-  const swissMonthlyMaintenance = useMemo(() => {
+  const swissPeriodicMaintenance = useMemo(() => {
     if (!includeMaintenance) return 0;
-    return ((parseFloat(propertyValue) || 0) * 0.01) / 12;
-  }, [propertyValue, includeMaintenance]);
+    return ((parseFloat(propertyValue) || 0) * 0.01) / periodsPerYear;
+  }, [propertyValue, includeMaintenance, periodsPerYear]);
 
-  const swissTotalMonthly = swissMonthlyInterest + swissMonthlyAmortization + swissMonthlyMaintenance;
+  const swissTotalPeriodic = swissPeriodicInterest + swissPeriodicAmortization + swissPeriodicMaintenance;
 
-  // Europe calculations
-  const europeMonthlyPayment = useMemo(() => {
+  // Europe calculations — adapted to frequency
+  const europePeriodicPayment = useMemo(() => {
     const principal = parseFloat(initialAmount) || 0;
     const rate = parseFloat(interestRate) || 0;
     const months = parseInt(durationMonths) || 0;
     if (principal <= 0 || months <= 0) return 0;
-    if (rate === 0) return principal / months;
-    const monthlyRate = rate / 100 / 12;
-    return principal * (monthlyRate * Math.pow(1 + monthlyRate, months)) / (Math.pow(1 + monthlyRate, months) - 1);
-  }, [initialAmount, interestRate, durationMonths]);
+    const totalPeriods = Math.round(months / (12 / periodsPerYear));
+    if (totalPeriods <= 0) return 0;
+    if (rate === 0) return principal / totalPeriods;
+    const periodicRate = rate / 100 / periodsPerYear;
+    return principal * (periodicRate * Math.pow(1 + periodicRate, totalPeriods)) / (Math.pow(1 + periodicRate, totalPeriods) - 1);
+  }, [initialAmount, interestRate, durationMonths, periodsPerYear]);
 
   const europeCurrentInterest = useMemo(() => {
     const rem = parseFloat(remainingAmount) || 0;
     const rate = parseFloat(interestRate) || 0;
     if (rate === 0) return 0;
-    return rem * (rate / 100 / 12);
-  }, [remainingAmount, interestRate]);
+    return rem * (rate / 100 / periodsPerYear);
+  }, [remainingAmount, interestRate, periodsPerYear]);
 
-  const europeCurrentCapital = europeMonthlyPayment > 0 ? Math.max(europeMonthlyPayment - europeCurrentInterest, 0) : 0;
+  const europeCurrentCapital = europePeriodicPayment > 0 ? Math.max(europePeriodicPayment - europeCurrentInterest, 0) : 0;
 
   // Standard (non-mortgage) calculations
   const calculatedInterest = useMemo(() => {
@@ -166,10 +186,10 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
   const getEffectivePaymentAmount = () => {
     if (isSwiss) {
       // For Swiss, payment_amount = annual_amortization / 12 (capital portion)
-      return swissAmortizationType !== 'none' ? swissMonthlyAmortization : 0;
+      return swissAmortizationType !== 'none' ? swissPeriodicAmortization : 0;
     }
     if (isEurope) {
-      return europeMonthlyPayment;
+      return europePeriodicPayment;
     }
     return parseFloat(paymentAmount) || 0;
   };
@@ -233,9 +253,9 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
 
     // Generate amortization schedule
     const schedulePayment = isSwiss
-      ? swissMonthlyAmortization // For Swiss: fixed capital = amortization only
+      ? swissPeriodicAmortization
       : isEurope
-        ? Math.round(europeMonthlyPayment * 100) / 100
+        ? Math.round(europePeriodicPayment * 100) / 100
         : parseFloat(paymentAmount);
 
     const scheduleRows = generateAmortizationSchedule({
@@ -610,24 +630,24 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                     {isSwiss ? (
                       <>
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">📉 Intérêts mensuels</span>
-                          <span className="font-mono font-medium">{formatAmount(swissMonthlyInterest, debtCurrency)}</span>
+                          <span className="text-muted-foreground">📉 Intérêts ({frequencyLabel}s)</span>
+                          <span className="font-mono font-medium">{formatAmount(swissPeriodicInterest, debtCurrency)}</span>
                         </div>
                         {swissAmortizationType !== 'none' && (
                           <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">💰 Amortissement mensuel</span>
-                            <span className="font-mono font-medium">{formatAmount(swissMonthlyAmortization, debtCurrency)}</span>
+                            <span className="text-muted-foreground">💰 Amortissement {frequencyLabel}</span>
+                            <span className="font-mono font-medium">{formatAmount(swissPeriodicAmortization, debtCurrency)}</span>
                           </div>
                         )}
                         {includeMaintenance && (
                           <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">🔧 Frais d'entretien</span>
-                            <span className="font-mono font-medium">{formatAmount(swissMonthlyMaintenance, debtCurrency)}</span>
+                            <span className="font-mono font-medium">{formatAmount(swissPeriodicMaintenance, debtCurrency)}</span>
                           </div>
                         )}
                         <div className="flex justify-between text-sm font-semibold border-t border-red-200 dark:border-red-900/30 pt-1.5">
-                          <span>Charge mensuelle totale</span>
-                          <span className="font-mono">{formatAmount(swissTotalMonthly, debtCurrency)}</span>
+                          <span>Charge {frequencyLabelFem} totale</span>
+                          <span className="font-mono">{formatAmount(swissTotalPeriodic, debtCurrency)}</span>
                         </div>
                         {propertyValue && parseFloat(remainingAmount) > 0 && (
                           <div className="text-[10px] text-muted-foreground mt-1">
@@ -638,16 +658,16 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                     ) : isEurope ? (
                       <>
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">📉 Intérêts ce mois</span>
+                          <span className="text-muted-foreground">📉 Intérêts (période)</span>
                           <span className="font-mono font-medium">{formatAmount(europeCurrentInterest, debtCurrency)}</span>
                         </div>
                         <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">💰 Capital ce mois</span>
+                          <span className="text-muted-foreground">💰 Capital (période)</span>
                           <span className="font-mono font-medium">{formatAmount(europeCurrentCapital, debtCurrency)}</span>
                         </div>
                         <div className="flex justify-between text-sm font-semibold border-t border-blue-200 dark:border-blue-900/30 pt-1.5">
-                          <span>Mensualité fixe</span>
-                          <span className="font-mono">{formatAmount(europeMonthlyPayment, debtCurrency)}</span>
+                          <span>Échéance {frequencyLabelFem} fixe</span>
+                          <span className="font-mono">{formatAmount(europePeriodicPayment, debtCurrency)}</span>
                         </div>
                         {durationMonths && (
                           <div className="text-[10px] text-muted-foreground mt-1">
