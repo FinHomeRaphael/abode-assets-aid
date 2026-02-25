@@ -564,9 +564,16 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                     </>
                   )}
 
-                  {/* Mortgage: Day of payment */}
+                  {/* Mortgage: Frequency + Day of payment */}
                   {isMortgage && (
+                    <>
                     <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium mb-1.5">Fréquence</label>
+                        <select value={paymentFrequency} onChange={e => setPaymentFrequency(e.target.value)} className={inputClass}>
+                          {PAYMENT_FREQUENCIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                        </select>
+                      </div>
                       <div>
                         <label className="block text-sm font-medium mb-1.5">Jour de prélèvement</label>
                         <input type="number" min="1" max="31" value={endOfMonth ? '' : paymentDay} disabled={endOfMonth}
@@ -591,6 +598,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                         </Popover>
                       </div>
                     </div>
+                    </>
                   )}
 
                   {/* Summary box */}
