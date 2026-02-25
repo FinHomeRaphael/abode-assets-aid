@@ -545,9 +545,9 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
           if (schedError) console.error('Insert schedule error:', schedError);
         }
 
-        toast.success(`Dette ajoutée avec ${scheduleRows.length} échéances`);
+        // silent
       } else {
-        toast.success('Dette ajoutée');
+        // silent
       }
     } else {
       // For leasing/LLD, generate simple schedule (loyer entries without amortization)
@@ -576,9 +576,9 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
           const { error: schedError } = await supabase.from('debt_schedules').insert(batch as any);
           if (schedError) console.error('Insert schedule error:', schedError);
         }
-        toast.success(`${vehicleType === 'leasing' ? 'Leasing' : 'LLD'} ajouté avec ${n} échéances`);
+        // silent
       } else {
-        toast.success('Financement ajouté');
+        // silent
       }
     }
 
