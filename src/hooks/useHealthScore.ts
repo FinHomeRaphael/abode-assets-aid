@@ -52,11 +52,11 @@ function scoreDebtToIncome(totalDebts: number, annualIncome: number): number {
 function scoreEmergencyFund(totalSavings: number, monthlyExpenses: number): number {
   if (monthlyExpenses <= 0) return 20;
   const months = totalSavings / monthlyExpenses;
-  if (months >= 6) return 20;
-  if (months >= 4) return 16;
-  if (months >= 3) return 12;
-  if (months >= 2) return 8;
-  if (months >= 1) return 4;
+  if (months >= 6) return 20;       // 100%
+  if (months >= 3) return 10;       // 50%
+  if (months >= 2) return 6;
+  if (months >= 1) return 3;
+  return 0;
   return 0;
 }
 
