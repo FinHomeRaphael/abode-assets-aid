@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { EMOJI_LIST, CURRENCIES, CURRENCY_SYMBOLS } from '@/types/finance';
+import MoneyInput from '@/components/ui/money-input';
 import { toast } from 'sonner';
 
 interface Props {
@@ -64,7 +65,7 @@ const AddSavingsGoalModal = ({ open, onClose }: Props) => {
 
             <div>
               <label className="block text-sm font-medium mb-1.5">Montant cible</label>
-              <input type="number" value={target} onChange={e => setTarget(e.target.value)} placeholder="5000" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+              <MoneyInput value={target} onChange={setTarget} placeholder="5000" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
             </div>
 
             <div>

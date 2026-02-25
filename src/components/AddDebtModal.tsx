@@ -4,13 +4,14 @@ import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DEBT_TYPES, PAYMENT_FREQUENCIES } from '@/types/debt';
-import { formatLocalDate } from '@/utils/format';
+import { formatLocalDate, formatAmount } from '@/utils/format';
 import { EXPENSE_CATEGORIES, CATEGORY_EMOJIS } from '@/types/finance';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { generateAmortizationSchedule } from '@/utils/debtSchedule';
+import MoneyInput from '@/components/ui/money-input';
 
 interface Props {
   open: boolean;
@@ -204,12 +205,12 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Montant emprunté</label>
-                    <input type="number" step="0.01" value={initialAmount} onChange={e => setInitialAmount(e.target.value)}
+                    <MoneyInput value={initialAmount} onChange={setInitialAmount}
                       className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Capital restant dû</label>
-                    <input type="number" step="0.01" value={remainingAmount} onChange={e => setRemainingAmount(e.target.value)}
+                    <MoneyInput value={remainingAmount} onChange={setRemainingAmount}
                       className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
                   </div>
                 </div>
@@ -299,7 +300,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                   <label className="block text-sm font-medium mb-1.5">
                     {amortizationType === 'fixed_annuity' ? 'Échéance totale (fixe)' : 'Amortissement (capital fixe)'}
                   </label>
-                  <input type="number" step="0.01" value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)}
+                  <MoneyInput value={paymentAmount} onChange={setPaymentAmount}
                     placeholder={amortizationType === 'fixed_annuity' ? 'Montant total de l\'échéance' : 'Montant du remboursement du capital'}
                     className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
                 </div>
@@ -308,15 +309,15 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                 <div className="rounded-xl border border-border bg-muted/50 p-3 space-y-1.5">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Intérêts (1ère échéance)</span>
-                    <span className="font-mono font-medium">{calculatedInterest.toFixed(2)} {household.currency}</span>
+                    <span className="font-mono font-medium">{formatAmount(calculatedInterest, household.currency)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Amortissement</span>
-                    <span className="font-mono font-medium">{displayedCapital.toFixed(2)} {household.currency}</span>
+                    <span className="font-mono font-medium">{formatAmount(displayedCapital, household.currency)}</span>
                   </div>
                   <div className="flex justify-between text-sm font-semibold border-t border-border pt-1.5">
                     <span>Échéance totale</span>
-                    <span className="font-mono">{totalPayment.toFixed(2)} {household.currency}</span>
+                    <span className="font-mono">{formatAmount(totalPayment, household.currency)}</span>
                   </div>
                 </div>
 
