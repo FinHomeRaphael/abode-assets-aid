@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { DEBT_TYPES, PAYMENT_FREQUENCIES } from '@/types/debt';
 import { formatLocalDate, formatAmount } from '@/utils/format';
-import { EXPENSE_CATEGORIES, CATEGORY_EMOJIS } from '@/types/finance';
+import { EXPENSE_CATEGORIES, CATEGORY_EMOJIS, CURRENCIES, CURRENCY_SYMBOLS } from '@/types/finance';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
@@ -37,6 +37,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
   const [accountId, setAccountId] = useState('');
   const [amortizationType, setAmortizationType] = useState<'fixed_annuity' | 'fixed_capital'>('fixed_annuity');
   const [nextPaymentDate, setNextPaymentDate] = useState<Date>(new Date());
+  const [debtCurrency, setDebtCurrency] = useState(household.currency);
   const [saving, setSaving] = useState(false);
 
   const activeAccounts = getActiveAccounts();
@@ -75,7 +76,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
   const reset = () => {
     setType('mortgage'); setName(''); setLender(''); setInitialAmount(''); setRemainingAmount('');
     setInterestRate(''); setDurationYears(''); setStartDate(new Date()); setPaymentFrequency('monthly');
-    setPaymentDay('1'); setEndOfMonth(false); setPaymentAmount(''); setCategoryId(''); setAccountId(''); setAmortizationType('fixed_annuity'); setNextPaymentDate(new Date());
+    setPaymentDay('1'); setEndOfMonth(false); setPaymentAmount(''); setCategoryId(''); setAccountId(''); setAmortizationType('fixed_annuity'); setNextPaymentDate(new Date()); setDebtCurrency(household.currency);
   };
 
   const handleSubmit = async () => {
@@ -92,7 +93,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
       lender: lender.trim() || null,
       initial_amount: parseFloat(initialAmount),
       remaining_amount: parseFloat(remainingAmount),
-      currency: household.currency,
+      currency: debtCurrency,
       interest_rate: parseFloat(interestRate) || 0,
       duration_years: parseFloat(durationYears),
       start_date: formatLocalDate(startDate),
@@ -199,6 +200,17 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                   <label className="block text-sm font-medium mb-1.5">Organisme prêteur <span className="text-muted-foreground">(optionnel)</span></label>
                   <input value={lender} onChange={e => setLender(e.target.value)} placeholder="Ex: UBS, Crédit Agricole"
                     className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+
+                {/* Currency */}
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Devise</label>
+                  <select value={debtCurrency} onChange={e => setDebtCurrency(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
+                    {CURRENCIES.map(c => (
+                      <option key={c} value={c}>{CURRENCY_SYMBOLS[c] || c} — {c}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Amounts */}
@@ -309,15 +321,15 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                 <div className="rounded-xl border border-border bg-muted/50 p-3 space-y-1.5">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Intérêts (1ère échéance)</span>
-                    <span className="font-mono font-medium">{formatAmount(calculatedInterest, household.currency)}</span>
+                    <span className="font-mono font-medium">{formatAmount(calculatedInterest, debtCurrency)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Amortissement</span>
-                    <span className="font-mono font-medium">{formatAmount(displayedCapital, household.currency)}</span>
+                    <span className="font-mono font-medium">{formatAmount(displayedCapital, debtCurrency)}</span>
                   </div>
                   <div className="flex justify-between text-sm font-semibold border-t border-border pt-1.5">
                     <span>Échéance totale</span>
-                    <span className="font-mono">{formatAmount(totalPayment, household.currency)}</span>
+                    <span className="font-mono">{formatAmount(totalPayment, debtCurrency)}</span>
                   </div>
                 </div>
 

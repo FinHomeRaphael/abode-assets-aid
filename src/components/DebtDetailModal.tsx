@@ -4,7 +4,8 @@ import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Debt, DEBT_TYPES, getDebtEmoji, PAYMENT_FREQUENCIES } from '@/types/debt';
 import { useCurrency } from '@/hooks/useCurrency';
-import { formatDateLong } from '@/utils/format';
+import { formatDateLong, formatAmount as formatAmountRaw } from '@/utils/format';
+import { DEFAULT_EXCHANGE_RATES } from '@/types/finance';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { ArrowLeft, Check, ChevronDown, ChevronUp, Trash2, Pencil, Save, X } from 'lucide-react';
@@ -30,7 +31,8 @@ interface Props {
 }
 
 const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
-  const { formatAmount } = useCurrency();
+  const { formatAmount: formatHouseholdAmount } = useCurrency();
+  const formatAmount = useCallback((amount: number) => formatAmountRaw(amount, debt.currency), [debt.currency]);
   const { householdId, session, household, refreshDebtSchedules } = useApp();
   const [schedule, setSchedule] = useState<ScheduleRow[]>([]);
   const [loadingSchedule, setLoadingSchedule] = useState(true);
@@ -120,15 +122,25 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
     const baseCurrency = household.currency;
 
     const txId = crypto.randomUUID();
+    const debtCurrency = debt.currency || baseCurrency;
+    let exchangeRate = 1;
+    let convertedAmount = row.total_amount;
+    if (debtCurrency !== baseCurrency) {
+      const fromToEur = DEFAULT_EXCHANGE_RATES[debtCurrency] || 1;
+      const toToEur = DEFAULT_EXCHANGE_RATES[baseCurrency] || 1;
+      exchangeRate = fromToEur / toToEur;
+      convertedAmount = row.total_amount * exchangeRate;
+    }
+
     const { error: txError } = await supabase.from('transactions').insert({
       id: txId,
       household_id: householdId,
       type: 'expense',
       amount: row.total_amount,
-      currency: debt.currency,
+      currency: debtCurrency,
       base_currency: baseCurrency,
-      exchange_rate: debt.currency === baseCurrency ? 1 : 1,
-      converted_amount: row.total_amount,
+      exchange_rate: exchangeRate,
+      converted_amount: convertedAmount,
       category: debt.categoryId || 'Crédit',
       emoji: getDebtEmoji(debt.type),
       label: `${debt.name} — Échéance #${row.period_number}`,
