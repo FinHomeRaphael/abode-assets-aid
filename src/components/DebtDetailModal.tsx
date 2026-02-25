@@ -73,7 +73,19 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
 
   useEffect(() => { fetchSchedule(); }, [fetchSchedule]);
 
-  const repaidPct = debt.initialAmount > 0 ? Math.min(((debt.initialAmount - debt.remainingAmount) / debt.initialAmount) * 100, 100) : 0;
+  // Compute real remaining from schedule: capital_after of last paid/adjusted row, or capital_before of first unpaid
+  const realRemaining = useMemo(() => {
+    if (schedule.length === 0) return debt.remainingAmount;
+    const paidRows = schedule.filter(r => r.status === 'paye');
+    if (paidRows.length > 0) {
+      const lastPaid = paidRows[paidRows.length - 1];
+      return lastPaid.capital_after;
+    }
+    // No rows paid yet → full initial amount
+    return schedule[0].capital_before;
+  }, [schedule, debt.remainingAmount]);
+
+  const repaidPct = debt.initialAmount > 0 ? Math.min(((debt.initialAmount - realRemaining) / debt.initialAmount) * 100, 100) : 0;
   const typeInfo = DEBT_TYPES.find(t => t.value === debt.type);
   const freqInfo = PAYMENT_FREQUENCIES.find(f => f.value === debt.paymentFrequency);
 
@@ -228,8 +240,8 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
         </div>
         <Progress value={repaidPct} className="h-3" />
         <div className="flex items-center justify-between text-xs text-muted-foreground mt-1.5">
-          <span>{formatAmount(debt.initialAmount - debt.remainingAmount)} payé</span>
-          <span>{formatAmount(debt.remainingAmount)} restant</span>
+          <span>{formatAmount(debt.initialAmount - realRemaining)} payé</span>
+          <span>{formatAmount(realRemaining)} restant</span>
         </div>
       </div>
 
@@ -247,7 +259,7 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
           </div>
           <div className="bg-muted/50 rounded-xl p-3">
             <p className="text-xs text-muted-foreground">Capital restant dû</p>
-            <p className="text-sm font-mono-amount font-medium text-destructive">{formatAmount(debt.remainingAmount)}</p>
+            <p className="text-sm font-mono-amount font-medium text-destructive">{formatAmount(realRemaining)}</p>
           </div>
           <div className="bg-muted/50 rounded-xl p-3">
             <p className="text-xs text-muted-foreground">Taux annuel</p>
