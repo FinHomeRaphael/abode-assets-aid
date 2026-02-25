@@ -157,7 +157,19 @@ const Debts = () => {
 
   const totalRemaining = useMemo(() => debts.reduce((s, d) => s + getRealRemaining(d), 0), [debts, debtRemainingMap]);
   const totalInitial = useMemo(() => debts.reduce((s, d) => s + d.initialAmount, 0), [debts]);
-  const totalPayment = useMemo(() => debts.reduce((s, d) => s + d.paymentAmount, 0), [debts]);
+  const totalPayment = useMemo(() => debts.reduce((s, d) => {
+    const nextRow = debtNextPaymentMap.get(d.id);
+    if (nextRow) return s + nextRow.total_amount;
+    const ppy = getPeriodsPerYear(d.paymentFrequency as PaymentFrequency);
+    if (d.mortgageSystem === 'swiss') {
+      const remaining = getRealRemaining(d);
+      const interest = remaining * d.interestRate / 100 / ppy;
+      const amort = d.swissAmortizationType !== 'none' && d.annualAmortization ? d.annualAmortization / ppy : 0;
+      const maint = d.includeMaintenance && d.propertyValue ? d.propertyValue * 0.01 / ppy : 0;
+      return s + interest + amort + maint;
+    }
+    return s + d.paymentAmount;
+  }, 0), [debts, debtNextPaymentMap, debtRemainingMap]);
   const totalRepaid = useMemo(() => debts.reduce((s, d) => s + (d.initialAmount - getRealRemaining(d)), 0), [debts, debtRemainingMap]);
 
   const selectedDebt = useMemo(() => debts.find(d => d.id === selectedDebtId) || null, [debts, selectedDebtId]);
@@ -210,8 +222,8 @@ const Debts = () => {
             <p className="font-mono-amount font-semibold text-destructive text-sm">{formatAmount(totalRemaining)}</p>
           </div>
           <div className="bg-card border border-border rounded-xl p-3 text-center">
-            <p className="text-[11px] text-muted-foreground mb-1">Échéance moy.</p>
-            <p className="font-mono-amount font-semibold text-sm">{formatAmount(debts.length > 0 ? totalPayment / debts.length : 0)}</p>
+            <p className="text-[11px] text-muted-foreground mb-1">Échéance totale</p>
+            <p className="font-mono-amount font-semibold text-sm">{formatAmount(totalPayment)}</p>
           </div>
           <div className="bg-card border border-border rounded-xl p-3 text-center">
             <p className="text-[11px] text-muted-foreground mb-1">Total remboursé</p>
