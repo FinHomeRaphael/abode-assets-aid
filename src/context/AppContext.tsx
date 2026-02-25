@@ -833,7 +833,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return savingsDeposits.filter(d => scopedSavingsGoalIds.has(d.goalId));
   }, [savingsDeposits, scopedSavingsGoalIds]);
 
-  // getMonthSavings and getTotalSavings moved after scoped data definitions
+  // Savings functions are defined after scoped data (see below)
 
   // ===== Category Actions =====
   const addCustomCategory = (c: CustomCategory) => {
