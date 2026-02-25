@@ -308,12 +308,14 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
     if (isVehicle) return parseFloat(paymentAmount) || 0;
     if (isConsumer && consumerType !== 'revolving') return Math.round(consumerMonthlyPayment * 100) / 100;
     if (isConsumer && consumerType === 'revolving') return parseFloat(minimumPayment) || 0;
+    if (isStudent) return Math.round(consumerMonthlyPayment * 100) / 100;
+    if (isOther && !hasSchedule) return 0;
     return parseFloat(paymentAmount) || 0;
   };
 
   const getEffectiveDurationYears = () => {
     if (isVehicle) return (parseInt(vehicleDurationMonths) || 0) / 12;
-    if (isConsumer && consumerType !== 'revolving') return (parseInt(durationMonthsConsumer) || 0) / 12;
+    if ((isConsumer && consumerType !== 'revolving') || isStudent) return (parseInt(durationMonthsConsumer) || 0) / 12;
     if (isOther && !hasSchedule) return 0;
     return parseFloat(durationYears) || 0;
   };
@@ -490,7 +492,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
           ? Math.round((parseFloat(paymentAmount) || 0) * 100) / 100
           : isVehicle
             ? Math.round(vehicleMonthlyPayment * 100) / 100
-            : isConsumer
+            : (isConsumer || isStudent)
               ? Math.round(consumerMonthlyPayment * 100) / 100
               : parseFloat(paymentAmount);
 
@@ -498,13 +500,18 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
         isConsumer && consumerType === 'purchase' ? consumerLoanAmount :
         parseFloat(remainingAmount);
 
+      // For student loans with deferral, schedule starts after deferral end date
+      const scheduleStartDate = (isStudent && hasDeferral && deferralEndDate) 
+        ? formatLocalDate(deferralEndDate) 
+        : nextDateStr;
+
       const scheduleRows = generateAmortizationSchedule({
         remainingPrincipal: scheduleRemaining,
         interestRateAnnual: parseFloat(interestRate) || 0,
         frequency: (isVehicle ? 'monthly' : paymentFrequency) as any,
         repaymentMode: isSwiss ? 'fixed_capital' : isEurope ? 'fixed_annuity' : amortizationType,
         paymentAmount: schedulePayment,
-        startDate: nextDateStr,
+        startDate: scheduleStartDate,
         paymentDay: day,
       });
 

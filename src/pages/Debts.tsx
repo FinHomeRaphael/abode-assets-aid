@@ -185,6 +185,10 @@ const Debts = () => {
   const totalRemaining = useMemo(() => debts.reduce((s, d) => s + convert(getRealRemaining(d), d.currency), 0), [debts, debtRemainingMap, convert]);
   const totalInitial = useMemo(() => debts.reduce((s, d) => s + convert(d.initialAmount, d.currency), 0), [debts, convert]);
   const totalPayment = useMemo(() => debts.reduce((s, d) => {
+    // Revolving: use minimum payment
+    if (d.consumerType === 'revolving') return s + convert(d.minimumPayment || 0, d.currency);
+    // Other without schedule: skip
+    if (d.type === 'other' && d.hasSchedule === false) return s;
     const nextRow = debtNextPaymentMap.get(d.id);
     if (nextRow) return s + convert(nextRow.total_amount, d.currency);
     const ppy = getPeriodsPerYear(d.paymentFrequency as PaymentFrequency);
