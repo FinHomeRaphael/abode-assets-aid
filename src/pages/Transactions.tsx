@@ -61,8 +61,8 @@ const Transactions = () => {
     return true;
   });
 
-  const monthIncome = filtered.filter(t => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
-  const monthExpense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
+  const monthIncome = filtered.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const monthExpense = filtered.filter(t => t.type === 'expense' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
 
   const openEditModal = (t: typeof transactions[0]) => {
     setEditTarget(t);

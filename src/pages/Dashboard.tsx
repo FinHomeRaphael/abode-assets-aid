@@ -191,7 +191,7 @@ const Dashboard = () => {
             <div>
               <div className="flex items-center gap-1.5 mb-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                <span className="text-[11px] text-muted-foreground">Enveloppes</span>
+                <span className="text-[11px] text-muted-foreground">Épargne</span>
               </div>
               <p className="font-mono-amount text-sm font-medium">{formatAmount(monthSavings)}</p>
             </div>
