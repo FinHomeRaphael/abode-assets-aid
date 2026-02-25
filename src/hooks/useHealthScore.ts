@@ -61,6 +61,20 @@ function scoreEmergencyFund(totalSavings: number, monthlyExpenses: number): numb
 }
 
 
+// EU median patrimony ~205,000€ (INSEE 2024)
+const EU_MEDIAN_PATRIMONY = 205000;
+
+function scorePatrimony(totalAssets: number, medianRef: number): number {
+  if (medianRef <= 0) return 10;
+  const pct = (totalAssets / medianRef) * 100;
+  if (pct >= 200) return 20;
+  if (pct >= 120) return 16;
+  if (pct >= 80) return 12;
+  if (pct >= 50) return 8;
+  if (pct >= 20) return 4;
+  return 0;
+}
+
 
 function scoreDebtService(monthlyPayments: number, monthlyIncome: number): number {
   if (monthlyIncome <= 0) return 0;
@@ -101,6 +115,7 @@ export function useHealthScore(): HealthScoreResult {
     getTransactionsForMonth,
     getMonthSavings,
     getTotalSavings,
+    getAccountBalance,
     household,
     householdId,
     session,
@@ -109,20 +124,20 @@ export function useHealthScore(): HealthScoreResult {
 
   const now = new Date();
 
-  // Fetch debts from DB
-  const [debtsData, setDebtsData] = useState<{ remaining_amount: number; payment_amount: number }[]>([]);
+  // Fetch debts from DB (including property_value for patrimony)
+  const [debtsData, setDebtsData] = useState<{ remaining_amount: number; payment_amount: number; property_value: number | null; currency: string }[]>([]);
 
   useEffect(() => {
     if (!householdId) return;
     const userId = session?.user?.id;
-    let query = supabase.from('debts').select('remaining_amount, payment_amount');
+    let query = supabase.from('debts').select('remaining_amount, payment_amount, property_value, currency');
     if (financeScope === 'personal') {
       query = query.eq('scope', 'personal').eq('created_by', userId);
     } else {
       query = query.eq('household_id', householdId).eq('scope', 'household');
     }
     query.then(({ data }) => {
-      if (data) setDebtsData(data.map(d => ({ remaining_amount: Number(d.remaining_amount), payment_amount: Number(d.payment_amount) })));
+      if (data) setDebtsData(data.map(d => ({ remaining_amount: Number(d.remaining_amount), payment_amount: Number(d.payment_amount), property_value: d.property_value ? Number(d.property_value) : null, currency: d.currency })));
     });
   }, [householdId, financeScope, session?.user?.id]);
 
@@ -162,12 +177,25 @@ export function useHealthScore(): HealthScoreResult {
     // Debt service ratio
     const debtServiceRatio = monthlyIncome > 0 ? (monthlyDebtPayments / monthlyIncome) * 100 : 0;
 
-    // === Adaptive weights (4 criteria, proportional to original 25:20:25:15) ===
+    // Patrimony: account balances + property values (all converted to base currency)
+    const activeAccounts = accounts.filter(a => !a.isArchived);
+    const accountsTotal = activeAccounts.reduce((s, a) => {
+      const bal = getAccountBalance(a.id);
+      return s + bal; // already in convertedAmount via transactions
+    }, 0);
+    const propertyTotal = debtsData
+      .filter(d => d.property_value && d.property_value > 0)
+      .reduce((s, d) => s + (d.property_value || 0), 0);
+    const totalPatrimony = accountsTotal + propertyTotal;
+    const patrimonyPct = EU_MEDIAN_PATRIMONY > 0 ? Math.round((totalPatrimony / EU_MEDIAN_PATRIMONY) * 100) : 0;
+
+    // === Adaptive weights (5 criteria) ===
     const baseWeights: Record<string, number> = {
-      savingsRate: 30,
-      debtToIncome: 23,
-      emergencyFund: 30,
-      debtService: 17,
+      savingsRate: 25,
+      emergencyFund: 25,
+      patrimony: 20,
+      debtToIncome: 18,
+      debtService: 12,
     };
 
     let excludedWeight = 0;
@@ -191,6 +219,7 @@ export function useHealthScore(): HealthScoreResult {
     const rawDebtToIncome = scoreDebtToIncome(totalDebtRemaining, annualIncome);
     const rawEmergencyFund = scoreEmergencyFund(totalSavings, monthlyExpenses);
     const rawDebtService = scoreDebtService(monthlyDebtPayments, monthlyIncome);
+    const rawPatrimony = scorePatrimony(totalPatrimony, EU_MEDIAN_PATRIMONY);
 
     // Final total score (normalized to 0-100)
     let totalScore: number;
@@ -199,7 +228,8 @@ export function useHealthScore(): HealthScoreResult {
         (rawSavingsRate / 20) * baseWeights.savingsRate +
         (rawDebtToIncome / 20) * baseWeights.debtToIncome +
         (rawEmergencyFund / 20) * baseWeights.emergencyFund +
-        (rawDebtService / 15) * baseWeights.debtService
+        (rawDebtService / 15) * baseWeights.debtService +
+        (rawPatrimony / 20) * baseWeights.patrimony
       );
     } else {
       totalScore = 50;
@@ -275,6 +305,29 @@ export function useHealthScore(): HealthScoreResult {
         ],
       });
     }
+    if (baseWeights.patrimony > 0) {
+      const max = addedMaxScore(baseWeights.patrimony);
+      const sc = Math.round((rawPatrimony / 20) * max);
+      let compLabel: string;
+      if (patrimonyPct >= 200) compLabel = 'Bien au-dessus de la médiane';
+      else if (patrimonyPct >= 120) compLabel = 'Au-dessus de la médiane';
+      else if (patrimonyPct >= 80) compLabel = 'Dans la moyenne européenne';
+      else if (patrimonyPct >= 50) compLabel = 'En-dessous de la médiane';
+      else compLabel = 'Bien en-dessous de la médiane';
+      criteria.push({
+        key: 'patrimony', label: 'Patrimoine total', emoji: '🏛️',
+        score: sc, maxScore: max,
+        description: `${patrimonyPct}% de la médiane européenne – ${compLabel}`,
+        formula: `(Comptes bancaires + Biens immobiliers) ÷ Médiane européenne × 100`,
+        details: [
+          { label: 'Solde comptes', value: `${fmt(accountsTotal)} ${cur}` },
+          { label: 'Immobilier', value: `${fmt(propertyTotal)} ${cur}` },
+          { label: 'Patrimoine total', value: `${fmt(totalPatrimony)} ${cur}` },
+          { label: 'Médiane européenne', value: `${fmt(EU_MEDIAN_PATRIMONY)} EUR` },
+          { label: 'Position', value: `${patrimonyPct}%` },
+        ],
+      });
+    }
 
     // Sort criteria by score/maxScore ratio ascending (weakest first for tips)
     const sortedForTips = [...criteria].sort((a, b) => (a.score / a.maxScore) - (b.score / b.maxScore));
@@ -298,6 +351,11 @@ export function useHealthScore(): HealthScoreResult {
           emoji: '🚨', title: 'Augmente ton fonds d\'urgence',
           text: `Tu as ${emergencyFundMonths >= 999 ? '∞' : emergencyFundMonths.toFixed(1)} mois de côté. Vise ${target} mois minimum.`,
         });
+      } else if (c.key === 'patrimony') {
+        tips.push({
+          emoji: '🏛️', title: 'Construis ton patrimoine',
+          text: `Ton patrimoine représente ${patrimonyPct}% de la médiane européenne (205 000€). Continue à épargner et investir.`,
+        });
       } else if (c.key === 'debtService') {
         tips.push({
           emoji: '💳', title: 'Réduis ton taux d\'endettement',
@@ -320,7 +378,7 @@ export function useHealthScore(): HealthScoreResult {
       diff: null,
       tips,
     };
-  }, [transactions, budgets, savingsGoals, savingsDeposits, accounts, debtsData, getTransactionsForMonth, getMonthSavings, getTotalSavings]);
+  }, [transactions, budgets, savingsGoals, savingsDeposits, accounts, debtsData, getTransactionsForMonth, getMonthSavings, getTotalSavings, getAccountBalance]);
 }
 
 export function useSaveHealthScore(score: number, householdId: string) {
