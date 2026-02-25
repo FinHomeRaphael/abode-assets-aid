@@ -1028,14 +1028,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [householdId]);
 
   const refreshDebtSchedules = useCallback(async () => {
-    if (!householdId) return;
-    const { data } = await supabase
-      .from('debt_schedules')
-      .select('*')
-      .eq('household_id', householdId)
-      .in('status', ['prevu', 'ajuste']);
-    if (data) {
-      setDebtSchedules(data.map((s: any) => ({
+    if (!householdId || !session?.user?.id) return;
+
+    const userId = session.user.id;
+    const [schedulesRes, debtsRes] = await Promise.all([
+      supabase
+        .from('debt_schedules')
+        .select('*')
+        .eq('household_id', householdId)
+        .in('status', ['prevu', 'ajuste']),
+      supabase
+        .from('debts')
+        .select('*')
+        .or(`and(household_id.eq.${householdId},scope.eq.household),and(created_by.eq.${userId},scope.eq.personal)`),
+    ]);
+
+    if (schedulesRes.error) {
+      console.error('Refresh debt schedules error:', schedulesRes.error);
+    }
+
+    if (debtsRes.error) {
+      console.error('Refresh debts error:', debtsRes.error);
+    }
+
+    if (schedulesRes.data) {
+      setDebtSchedules(schedulesRes.data.map((s: any) => ({
         id: s.id,
         debt_id: s.debt_id,
         due_date: s.due_date,
@@ -1049,7 +1066,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
         transaction_id: s.transaction_id,
       })));
     }
-  }, [householdId]);
+
+    if (debtsRes.data) {
+      setDebts(debtsRes.data.map((d: any) => ({
+        id: d.id, householdId: d.household_id, type: d.type, name: d.name, lender: d.lender || undefined,
+        initialAmount: Number(d.initial_amount), remainingAmount: Number(d.remaining_amount),
+        currency: d.currency, interestRate: Number(d.interest_rate), durationYears: Number(d.duration_years),
+        startDate: d.start_date, paymentFrequency: d.payment_frequency, paymentDay: d.payment_day,
+        paymentAmount: Number(d.payment_amount), categoryId: d.category_id || undefined,
+        accountId: d.account_id || undefined,
+        nextPaymentDate: d.next_payment_date || undefined, lastPaymentDate: d.last_payment_date || undefined,
+        createdAt: d.created_at, updatedAt: d.updated_at,
+        scope: d.scope || 'household', createdBy: d.created_by || undefined,
+        amortizationType: d.amortization_type || 'fixed_annuity',
+      })));
+    }
+  }, [householdId, session?.user?.id]);
 
   return (
     <AppContext.Provider value={{
