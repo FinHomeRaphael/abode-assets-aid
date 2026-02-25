@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Debt, DEBT_TYPES, getDebtEmoji, getPeriodsPerYear, PAYMENT_FREQUENCIES, PaymentFrequency, VehicleType } from '@/types/debt';
+import { Debt, DEBT_TYPES, getDebtEmoji, getPeriodsPerYear, PAYMENT_FREQUENCIES, PaymentFrequency, VehicleType, ConsumerType, DeferralType } from '@/types/debt';
 import { useCurrency } from '@/hooks/useCurrency';
 import { formatDateLong, formatAmount as formatAmountRaw } from '@/utils/format';
 import { DEFAULT_EXCHANGE_RATES } from '@/types/finance';
@@ -132,6 +132,14 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
   const isVehicle = !!debt.vehicleType;
   const vehicleTypeLabel = debt.vehicleType === 'credit' ? 'Crédit auto' : debt.vehicleType === 'leasing' ? 'Leasing (LOA)' : debt.vehicleType === 'lld' ? 'Location longue durée (LLD)' : '';
   const vehicleTypeEmoji = debt.vehicleType === 'credit' ? '💰' : debt.vehicleType === 'leasing' ? '🔄' : debt.vehicleType === 'lld' ? '📋' : '';
+
+  const isConsumer = debt.type === 'consumer';
+  const isStudent = debt.type === 'student';
+  const isOther = debt.type === 'other';
+  const isRevolving = debt.consumerType === 'revolving';
+  const consumerTypeLabel = debt.consumerType === 'personal' ? 'Prêt personnel' : debt.consumerType === 'revolving' ? 'Crédit revolving' : debt.consumerType === 'purchase' ? 'Achat à crédit' : '';
+  const consumerTypeEmoji = debt.consumerType === 'personal' ? '💰' : debt.consumerType === 'revolving' ? '🔄' : debt.consumerType === 'purchase' ? '🛒' : '';
+  const isInDeferral = isStudent && debt.hasDeferral && debt.deferralEndDate && new Date(debt.deferralEndDate) > new Date();
 
   const ppy = getPeriodsPerYear(debt.paymentFrequency as PaymentFrequency);
   const freqLabel = freqInfo?.label || 'Mensuel';
@@ -300,9 +308,19 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
               {isSwiss && <span>🇨🇭</span>}
               {isEurope && <span>🇪🇺</span>}
               {isVehicle && <span>{vehicleTypeEmoji}</span>}
+              {isConsumer && <span>{consumerTypeEmoji}</span>}
+              {isInDeferral && <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded-full font-medium">⏳ En différé</span>}
+              {debt.interestRate === 0 && (isConsumer || isOther) && <span className="text-xs bg-success/10 text-success px-1.5 py-0.5 rounded-full font-medium">Sans frais</span>}
+              {isRevolving && <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full font-medium">Revolving</span>}
             </div>
             {isVehicle ? (
               <p className="text-xs text-muted-foreground">{debt.lender ? `${debt.lender} · ` : ''}{vehicleTypeLabel}</p>
+            ) : isConsumer ? (
+              <p className="text-xs text-muted-foreground">{debt.lender ? `${debt.lender} · ` : ''}{consumerTypeLabel}</p>
+            ) : isStudent ? (
+              <p className="text-xs text-muted-foreground">{debt.lender ? `${debt.lender} · ` : ''}Prêt étudiant</p>
+            ) : isOther ? (
+              <p className="text-xs text-muted-foreground">{debt.lender ? `${debt.lender} · ` : ''}{debt.hasInterest === false ? 'Sans intérêts' : `Taux ${debt.interestRate}%`}</p>
             ) : debt.lender ? (
               <p className="text-xs text-muted-foreground">{debt.lender} · {debt.rateType === 'variable' ? 'Taux variable' : 'Taux fixe'} {debt.interestRate}%</p>
             ) : null}
@@ -448,6 +466,213 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
               📅 {debt.vehicleType === 'lld' ? 'Restitution' : 'Fin du contrat'} : {formatDateLong(debt.contractEndDate)}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Consumer credit details */}
+      {isConsumer && (
+        <div className="bg-card border border-purple-200 dark:border-purple-900/30 rounded-xl p-4">
+          <h2 className="text-sm font-semibold mb-3">{consumerTypeEmoji} {consumerTypeLabel}</h2>
+          <div className="space-y-2">
+            {isRevolving ? (
+              <>
+                {(() => {
+                  const utilPct = debt.creditLimit ? Math.min(((debt.currentBalance || 0) / debt.creditLimit) * 100, 100) : 0;
+                  const available = (debt.creditLimit || 0) - (debt.currentBalance || 0);
+                  const monthlyInterest = ((debt.currentBalance || 0) * debt.interestRate / 100) / 12;
+                  return (
+                    <>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">💳 Plafond autorisé</span>
+                        <span className="font-mono-amount font-medium">{formatAmount(debt.creditLimit || 0)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">📊 Solde utilisé</span>
+                        <span className="font-mono-amount font-semibold">{formatAmount(debt.currentBalance || 0)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">✅ Disponible</span>
+                        <span className="font-mono-amount font-medium text-success">{formatAmount(available)}</span>
+                      </div>
+                      <div className="mt-2">
+                        <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                          <span>Utilisation</span>
+                          <span>{Math.round(utilPct)}%</span>
+                        </div>
+                        <Progress value={utilPct} className="h-2" />
+                      </div>
+                      <div className="flex justify-between text-sm border-t border-purple-200 dark:border-purple-900/30 pt-2">
+                        <span className="text-muted-foreground">💰 Mensualité minimum</span>
+                        <span className="font-mono-amount font-medium">{formatAmount(debt.minimumPayment || 0)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">📉 TAEG</span>
+                        <span className="font-medium">{debt.interestRate}%</span>
+                      </div>
+                      {monthlyInterest > 0 && (
+                        <div className="mt-1 text-xs text-amber-600 dark:text-amber-400 font-medium">
+                          ⚠️ Intérêts estimés ce mois : {formatAmount(monthlyInterest)}
+                        </div>
+                      )}
+                      {utilPct > 80 && (
+                        <div className="mt-1 text-xs text-destructive font-medium">
+                          ⚠️ Utilisation élevée ({Math.round(utilPct)}% du plafond)
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </>
+            ) : debt.consumerType === 'purchase' ? (
+              <>
+                {debt.purchasePrice && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">🏷️ Prix d'achat</span>
+                    <span className="font-mono-amount font-medium">{formatAmount(debt.purchasePrice)}</span>
+                  </div>
+                )}
+                {debt.downPayment && debt.downPayment > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">💵 Acompte versé</span>
+                    <span className="font-mono-amount font-medium">{formatAmount(debt.downPayment)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">📊 Montant financé</span>
+                  <span className="font-mono-amount font-medium">{formatAmount(debt.initialAmount)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">💰 Mensualité</span>
+                  <span className="font-mono-amount font-semibold">{formatAmount(debt.paymentAmount)}</span>
+                </div>
+                {debt.interestRate === 0 && (
+                  <div className="text-xs text-success font-medium">✅ Paiement en plusieurs fois sans frais</div>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">📊 Montant emprunté</span>
+                  <span className="font-mono-amount font-medium">{formatAmount(debt.initialAmount)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">💰 Mensualité</span>
+                  <span className="font-mono-amount font-semibold">{formatAmount(debt.paymentAmount)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">📉 TAEG</span>
+                  <span className="font-medium">{debt.interestRate}%</span>
+                </div>
+                {schedule.length > 0 && (
+                  <div className="flex justify-between text-sm border-t border-purple-200 dark:border-purple-900/30 pt-2">
+                    <span className="text-muted-foreground">💸 Coût total du crédit</span>
+                    <span className="font-mono-amount font-medium">{formatAmount(totalCost)}</span>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Student loan details */}
+      {isStudent && (
+        <div className="bg-card border border-indigo-200 dark:border-indigo-900/30 rounded-xl p-4">
+          <h2 className="text-sm font-semibold mb-3">🎓 Prêt étudiant</h2>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">📊 Montant emprunté</span>
+              <span className="font-mono-amount font-medium">{formatAmount(debt.initialAmount)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">📉 Taux d'intérêt</span>
+              <span className="font-medium">{debt.interestRate}%</span>
+            </div>
+            {isInDeferral ? (
+              <>
+                {(() => {
+                  const deferEnd = new Date(debt.deferralEndDate!);
+                  const now = new Date();
+                  const monthsLeft = Math.max(0, (deferEnd.getFullYear() - now.getFullYear()) * 12 + (deferEnd.getMonth() - now.getMonth()));
+                  return (
+                    <div className="mt-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 space-y-2">
+                      <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 text-center">🎓 EN PÉRIODE DE DIFFÉRÉ ({debt.deferralType === 'total' ? 'Total' : 'Partiel'})</p>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Fin du différé</span>
+                        <span className="font-medium">{formatDateLong(debt.deferralEndDate!)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">⏳ Différé restant</span>
+                        <span className="font-semibold">{monthsLeft} mois</span>
+                      </div>
+                      {debt.deferralType === 'partial' && (
+                        <div className="flex justify-between text-xs">
+                          <span className="text-muted-foreground">Intérêts mensuels</span>
+                          <span className="font-mono-amount">{formatAmount(realRemaining * debt.interestRate / 100 / 12)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-xs border-t border-blue-200 dark:border-blue-900/30 pt-2">
+                        <span className="text-muted-foreground">Mensualité prévue</span>
+                        <span className="font-mono-amount font-semibold">{formatAmount(debt.paymentAmount)}/mois pendant {Math.round(debt.durationYears * 12)} mois</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </>
+            ) : (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">💰 Mensualité</span>
+                  <span className="font-mono-amount font-semibold">{formatAmount(debt.paymentAmount)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Capital restant dû</span>
+                  <span className="font-mono-amount font-medium text-destructive">{formatAmount(realRemaining)}</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Other debt details */}
+      {isOther && (
+        <div className="bg-card border border-border rounded-xl p-4">
+          <h2 className="text-sm font-semibold mb-3">📦 Détails</h2>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">📊 Montant initial</span>
+              <span className="font-mono-amount font-medium">{formatAmount(debt.initialAmount)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">📉 Reste à rembourser</span>
+              <span className="font-mono-amount font-medium text-destructive">{formatAmount(realRemaining)}</span>
+            </div>
+            {debt.hasInterest !== false && debt.interestRate > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">💹 Taux d'intérêt</span>
+                <span className="font-medium">{debt.interestRate}%</span>
+              </div>
+            )}
+            {debt.hasInterest === false && (
+              <div className="text-xs text-success font-medium">✅ Sans intérêts</div>
+            )}
+            {debt.hasSchedule !== false && debt.paymentAmount > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">💰 Mensualité</span>
+                <span className="font-mono-amount font-semibold">{formatAmount(debt.paymentAmount)}</span>
+              </div>
+            )}
+            {debt.hasSchedule === false && (
+              <div className="text-xs text-muted-foreground font-medium">💡 Pas d'échéancier fixe défini</div>
+            )}
+            {debt.notes && (
+              <div className="mt-2 pt-2 border-t border-border">
+                <p className="text-xs text-muted-foreground mb-1">📝 Notes</p>
+                <p className="text-sm">{debt.notes}</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
