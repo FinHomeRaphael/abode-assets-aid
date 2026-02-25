@@ -1,0 +1,430 @@
+import { useMemo, useEffect, useCallback } from 'react';
+import { useApp } from '@/context/AppContext';
+import { supabase } from '@/integrations/supabase/client';
+import { formatLocalDate } from '@/utils/format';
+
+interface CriterionResult {
+  key: string;
+  label: string;
+  emoji: string;
+  score: number;
+  maxScore: number;
+  description: string;
+}
+
+interface HealthScoreResult {
+  totalScore: number;
+  criteria: CriterionResult[];
+  label: string;
+  color: string;
+  previousScore: number | null;
+  diff: number | null;
+  tips: { emoji: string; title: string; text: string }[];
+}
+
+function getMonthYearStr(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function scoreSavingsRate(rate: number): number {
+  if (rate >= 20) return 20;
+  if (rate >= 15) return 16;
+  if (rate >= 10) return 12;
+  if (rate >= 5) return 8;
+  if (rate >= 1) return 4;
+  return 0;
+}
+
+function scoreDebtToIncome(totalDebts: number, annualIncome: number): number {
+  if (annualIncome <= 0) return 0;
+  const ratio = (totalDebts / annualIncome) * 100;
+  if (ratio < 100) return 20;
+  if (ratio < 150) return 16;
+  if (ratio < 200) return 12;
+  if (ratio < 300) return 8;
+  if (ratio < 400) return 4;
+  return 0;
+}
+
+function scoreEmergencyFund(totalSavings: number, monthlyExpenses: number): number {
+  if (monthlyExpenses <= 0) return 20;
+  const months = totalSavings / monthlyExpenses;
+  if (months >= 6) return 20;
+  if (months >= 4) return 16;
+  if (months >= 3) return 12;
+  if (months >= 2) return 8;
+  if (months >= 1) return 4;
+  return 0;
+}
+
+function scoreBudgetCompliance(respected: number, total: number): number {
+  if (total <= 0) return 15;
+  const pct = (respected / total) * 100;
+  if (pct === 100) return 15;
+  if (pct >= 80) return 12;
+  if (pct >= 60) return 9;
+  if (pct >= 40) return 6;
+  if (pct >= 20) return 3;
+  return 0;
+}
+
+function scoreDebtService(monthlyPayments: number, monthlyIncome: number): number {
+  if (monthlyIncome <= 0) return 0;
+  const ratio = (monthlyPayments / monthlyIncome) * 100;
+  if (ratio < 20) return 15;
+  if (ratio < 25) return 12;
+  if (ratio < 33) return 9;
+  if (ratio < 40) return 6;
+  if (ratio < 50) return 3;
+  return 0;
+}
+
+function scoreProgression(current: number, previous: number): number {
+  const diff = current - previous;
+  if (diff > 5) return 10;
+  if (diff >= 1) return 8;
+  if (diff >= -1) return 5;
+  if (diff >= -5) return 2;
+  return 0;
+}
+
+function getScoreLabel(score: number): string {
+  if (score <= 25) return 'Critique';
+  if (score <= 50) return 'À améliorer';
+  if (score <= 70) return 'Correcte';
+  if (score <= 85) return 'Bonne';
+  return 'Excellente';
+}
+
+function getScoreColor(score: number): string {
+  if (score <= 25) return 'hsl(0, 84%, 60%)';
+  if (score <= 50) return 'hsl(38, 92%, 50%)';
+  if (score <= 70) return 'hsl(48, 96%, 53%)';
+  if (score <= 85) return 'hsl(160, 84%, 39%)';
+  return 'hsl(160, 84%, 29%)';
+}
+
+export function useHealthScore(previousTotalScore: number | null = null): HealthScoreResult {
+  const {
+    scopedTransactions: transactions,
+    scopedBudgets: budgets,
+    scopedSavingsGoals: savingsGoals,
+    savingsDeposits,
+    scopedAccounts: accounts,
+    getTransactionsForMonth,
+    getBudgetSpent,
+    getBudgetsForMonth,
+    getMonthSavings,
+    getTotalSavings,
+    household,
+    householdId,
+  } = useApp();
+
+  const now = new Date();
+
+  return useMemo(() => {
+    const monthTx = getTransactionsForMonth(now);
+    const epargneAccountIds = new Set(accounts.filter(a => a.type === 'epargne').map(a => a.id));
+
+    // Monthly income (exclude savings accounts & transfers)
+    const monthlyIncome = monthTx
+      .filter(t => t.type === 'income' && t.category !== 'Transfert' && !(t.accountId && epargneAccountIds.has(t.accountId)))
+      .reduce((s, t) => s + t.convertedAmount, 0);
+
+    // Monthly expenses (exclude savings accounts & transfers)
+    const monthlyExpenses = monthTx
+      .filter(t => t.type === 'expense' && t.category !== 'Transfert' && !(t.accountId && epargneAccountIds.has(t.accountId)))
+      .reduce((s, t) => s + t.convertedAmount, 0);
+
+    const monthSavings = getMonthSavings(now);
+    const totalSavings = getTotalSavings();
+
+    // Savings rate
+    const savingsRatePercent = monthlyIncome > 0 ? (monthSavings / monthlyIncome) * 100 : 0;
+
+    // Debts info - get from transactions with debt_id
+    const debtTx = transactions.filter(t => t.debtId);
+    const hasDebts = debtTx.length > 0 || transactions.some(t => t.debtPaymentType);
+
+    // Total remaining debts (approximate from transaction data)
+    // We'll use monthly debt payments from current month
+    const monthlyDebtPayments = monthTx
+      .filter(t => t.debtId && t.type === 'expense')
+      .reduce((s, t) => s + t.convertedAmount, 0);
+
+    // Annual income estimate
+    const annualIncome = monthlyIncome * 12;
+
+    // Total debt amount: approximate as monthly payments * remaining months (rough)
+    // Better: just use the ratio of monthly payments to income
+    const totalDebtAmount = monthlyDebtPayments * 12 * 5; // rough estimate
+
+    // Budget compliance
+    const monthBudgets = getBudgetsForMonth(now);
+    const hasBudgets = monthBudgets.length > 0;
+    let budgetsRespected = 0;
+    if (hasBudgets) {
+      budgetsRespected = monthBudgets.filter(b => getBudgetSpent(b) <= b.limit).length;
+    }
+
+    // Previous month check
+    const prevMonth = new Date(now);
+    prevMonth.setMonth(prevMonth.getMonth() - 1);
+    const prevMonthTx = getTransactionsForMonth(prevMonth);
+    const hasPreviousMonth = prevMonthTx.length > 0 && previousTotalScore !== null;
+
+    // Emergency fund months
+    const emergencyFundMonths = monthlyExpenses > 0 ? totalSavings / monthlyExpenses : 999;
+
+    // Budget compliance percent
+    const budgetsRespectedPercent = hasBudgets ? (budgetsRespected / monthBudgets.length) * 100 : 0;
+
+    // Debt service ratio
+    const debtServiceRatio = monthlyIncome > 0 ? (monthlyDebtPayments / monthlyIncome) * 100 : 0;
+
+    // === Adaptive weights ===
+    const baseWeights: Record<string, number> = {
+      savingsRate: 20,
+      debtToIncome: 20,
+      emergencyFund: 20,
+      budgetCompliance: 15,
+      debtService: 15,
+      progression: 10,
+    };
+
+    let excludedWeight = 0;
+    if (!hasDebts) {
+      excludedWeight += baseWeights.debtToIncome + baseWeights.debtService;
+      baseWeights.debtToIncome = 0;
+      baseWeights.debtService = 0;
+    }
+    if (!hasBudgets) {
+      excludedWeight += baseWeights.budgetCompliance;
+      baseWeights.budgetCompliance = 0;
+    }
+    if (!hasPreviousMonth) {
+      excludedWeight += baseWeights.progression;
+      baseWeights.progression = 0;
+    }
+
+    const activeKeys = Object.keys(baseWeights).filter(k => baseWeights[k] > 0);
+    const redistribution = activeKeys.length > 0 ? excludedWeight / activeKeys.length : 0;
+    for (const k of activeKeys) {
+      baseWeights[k] += redistribution;
+    }
+
+    // Total weight for normalization
+    const totalWeight = Object.values(baseWeights).reduce((a, b) => a + b, 0);
+
+    // === Score each criterion (raw scores on base scale) ===
+    const rawSavingsRate = scoreSavingsRate(savingsRatePercent);
+    const rawDebtToIncome = scoreDebtToIncome(totalDebtAmount, annualIncome);
+    const rawEmergencyFund = scoreEmergencyFund(totalSavings, monthlyExpenses);
+    const rawBudgetCompliance = scoreBudgetCompliance(budgetsRespected, monthBudgets.length);
+    const rawDebtService = scoreDebtService(monthlyDebtPayments, monthlyIncome);
+
+    // Calculate score without progression first
+    const scoreWithoutProg = Math.round(
+      ((rawSavingsRate / 20) * baseWeights.savingsRate +
+        (rawDebtToIncome / 20) * baseWeights.debtToIncome +
+        (rawEmergencyFund / 20) * baseWeights.emergencyFund +
+        (rawBudgetCompliance / 15) * baseWeights.budgetCompliance +
+        (rawDebtService / 15) * baseWeights.debtService) /
+        (totalWeight - baseWeights.progression) * (100 - baseWeights.progression)
+    );
+
+    const rawProgression = hasPreviousMonth && previousTotalScore !== null
+      ? scoreProgression(scoreWithoutProg, previousTotalScore)
+      : 0;
+
+    // Final total score (normalized to 0-100)
+    let totalScore: number;
+    if (totalWeight > 0) {
+      totalScore = Math.round(
+        (rawSavingsRate / 20) * baseWeights.savingsRate +
+        (rawDebtToIncome / 20) * baseWeights.debtToIncome +
+        (rawEmergencyFund / 20) * baseWeights.emergencyFund +
+        (rawBudgetCompliance / 15) * baseWeights.budgetCompliance +
+        (rawDebtService / 15) * baseWeights.debtService +
+        (rawProgression / 10) * baseWeights.progression
+      );
+    } else {
+      totalScore = 50;
+    }
+
+    totalScore = Math.max(0, Math.min(100, totalScore));
+
+    // Build criteria list
+    const criteria: CriterionResult[] = [];
+    const addedMaxScore = (weight: number) => Math.round(weight);
+
+    if (baseWeights.savingsRate > 0) {
+      const max = addedMaxScore(baseWeights.savingsRate);
+      const sc = Math.round((rawSavingsRate / 20) * max);
+      criteria.push({
+        key: 'savingsRate', label: 'Taux d\'épargne', emoji: '💰',
+        score: sc, maxScore: max,
+        description: `${Math.round(savingsRatePercent)}% de tes revenus épargnés`,
+      });
+    }
+    if (baseWeights.emergencyFund > 0) {
+      const max = addedMaxScore(baseWeights.emergencyFund);
+      const sc = Math.round((rawEmergencyFund / 20) * max);
+      criteria.push({
+        key: 'emergencyFund', label: 'Fonds d\'urgence', emoji: '🚨',
+        score: sc, maxScore: max,
+        description: `${emergencyFundMonths >= 999 ? '∞' : emergencyFundMonths.toFixed(1)} mois de dépenses de côté`,
+      });
+    }
+    if (baseWeights.debtToIncome > 0) {
+      const max = addedMaxScore(baseWeights.debtToIncome);
+      const sc = Math.round((rawDebtToIncome / 20) * max);
+      const ratio = annualIncome > 0 ? Math.round((totalDebtAmount / annualIncome) * 100) : 0;
+      criteria.push({
+        key: 'debtToIncome', label: 'Ratio dettes/revenus', emoji: '📊',
+        score: sc, maxScore: max,
+        description: `${ratio}% de tes revenus annuels`,
+      });
+    }
+    if (baseWeights.budgetCompliance > 0) {
+      const max = addedMaxScore(baseWeights.budgetCompliance);
+      const sc = Math.round((rawBudgetCompliance / 15) * max);
+      criteria.push({
+        key: 'budgetCompliance', label: 'Respect des budgets', emoji: '📉',
+        score: sc, maxScore: max,
+        description: `${Math.round(budgetsRespectedPercent)}% de tes budgets respectés`,
+      });
+    }
+    if (baseWeights.debtService > 0) {
+      const max = addedMaxScore(baseWeights.debtService);
+      const sc = Math.round((rawDebtService / 15) * max);
+      criteria.push({
+        key: 'debtService', label: 'Taux d\'endettement', emoji: '💳',
+        score: sc, maxScore: max,
+        description: `${Math.round(debtServiceRatio)}% de tes revenus mensuels`,
+      });
+    }
+    if (baseWeights.progression > 0 && hasPreviousMonth) {
+      const max = addedMaxScore(baseWeights.progression);
+      const sc = Math.round((rawProgression / 10) * max);
+      const diff = previousTotalScore !== null ? totalScore - previousTotalScore : 0;
+      criteria.push({
+        key: 'progression', label: 'Progression', emoji: '📈',
+        score: sc, maxScore: max,
+        description: `${diff >= 0 ? '+' : ''}${diff} pts vs le mois dernier`,
+      });
+    }
+
+    // Sort criteria by score/maxScore ratio ascending (weakest first for tips)
+    const sortedForTips = [...criteria].sort((a, b) => (a.score / a.maxScore) - (b.score / b.maxScore));
+
+    // Generate tips
+    const tips: { emoji: string; title: string; text: string }[] = [];
+    for (const c of sortedForTips) {
+      if (tips.length >= 2) break;
+      const ratio = c.maxScore > 0 ? c.score / c.maxScore : 1;
+      if (ratio >= 0.9) continue;
+
+      if (c.key === 'savingsRate') {
+        const nextThreshold = savingsRatePercent < 5 ? 5 : savingsRatePercent < 10 ? 10 : savingsRatePercent < 15 ? 15 : 20;
+        tips.push({
+          emoji: '💰', title: 'Booste ton épargne',
+          text: `Passe de ${Math.round(savingsRatePercent)}% à ${nextThreshold}% d'épargne pour gagner des points supplémentaires.`,
+        });
+      } else if (c.key === 'emergencyFund') {
+        const target = emergencyFundMonths < 1 ? 1 : emergencyFundMonths < 2 ? 2 : emergencyFundMonths < 3 ? 3 : 6;
+        tips.push({
+          emoji: '🚨', title: 'Augmente ton fonds d\'urgence',
+          text: `Tu as ${emergencyFundMonths >= 999 ? '∞' : emergencyFundMonths.toFixed(1)} mois de côté. Vise ${target} mois minimum.`,
+        });
+      } else if (c.key === 'budgetCompliance') {
+        tips.push({
+          emoji: '📉', title: 'Respecte tes budgets',
+          text: `${Math.round(budgetsRespectedPercent)}% de tes budgets sont respectés. Essaie de maintenir tous tes budgets dans les limites.`,
+        });
+      } else if (c.key === 'debtService') {
+        tips.push({
+          emoji: '💳', title: 'Réduis ton taux d\'endettement',
+          text: `Tes mensualités représentent ${Math.round(debtServiceRatio)}% de tes revenus. Vise moins de 33%.`,
+        });
+      } else if (c.key === 'debtToIncome') {
+        tips.push({
+          emoji: '📊', title: 'Rembourse tes dettes',
+          text: `Ton ratio dette/revenus est élevé. Concentre-toi sur le remboursement pour améliorer ton score.`,
+        });
+      }
+    }
+
+    const diff = previousTotalScore !== null ? totalScore - previousTotalScore : null;
+
+    return {
+      totalScore,
+      criteria,
+      label: getScoreLabel(totalScore),
+      color: getScoreColor(totalScore),
+      previousScore: previousTotalScore,
+      diff,
+      tips,
+    };
+  }, [transactions, budgets, savingsGoals, savingsDeposits, accounts, previousTotalScore, getTransactionsForMonth, getBudgetSpent, getBudgetsForMonth, getMonthSavings, getTotalSavings]);
+}
+
+export function useSaveHealthScore(score: number, householdId: string) {
+  const saveScore = useCallback(async () => {
+    if (!householdId || score === undefined) return;
+    const monthYear = getMonthYearStr(new Date());
+
+    try {
+      const { data: existing } = await supabase
+        .from('health_scores')
+        .select('id')
+        .eq('household_id', householdId)
+        .eq('month_year', monthYear)
+        .maybeSingle();
+
+      const payload = {
+        household_id: householdId,
+        month_year: monthYear,
+        total_score: score,
+      };
+
+      if (existing) {
+        await supabase.from('health_scores').update({ total_score: score }).eq('id', existing.id);
+      } else {
+        await supabase.from('health_scores').insert(payload);
+      }
+    } catch (e) {
+      console.error('Error saving health score:', e);
+    }
+  }, [score, householdId]);
+
+  useEffect(() => {
+    saveScore();
+  }, [saveScore]);
+}
+
+export function useHealthScoreHistory(householdId: string) {
+  const [history, setHistory] = React.useState<{ monthYear: string; score: number }[]>([]);
+
+  useEffect(() => {
+    if (!householdId) return;
+    const fetchHistory = async () => {
+      const { data } = await supabase
+        .from('health_scores')
+        .select('month_year, total_score')
+        .eq('household_id', householdId)
+        .order('month_year', { ascending: true })
+        .limit(12);
+
+      if (data) {
+        setHistory(data.map(d => ({ monthYear: d.month_year, score: d.total_score })));
+      }
+    };
+    fetchHistory();
+  }, [householdId]);
+
+  return history;
+}
+
+// Need React import for useState
+import React from 'react';
