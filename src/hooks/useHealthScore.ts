@@ -1,7 +1,8 @@
-import { useMemo, useEffect, useCallback } from 'react';
+import { useMemo, useEffect, useCallback, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { formatLocalDate } from '@/utils/format';
+import React from 'react';
 
 interface CriterionResult {
   key: string;
@@ -111,9 +112,28 @@ export function useHealthScore(): HealthScoreResult {
     getTotalSavings,
     household,
     householdId,
+    session,
+    financeScope,
   } = useApp();
 
   const now = new Date();
+
+  // Fetch debts from DB
+  const [debtsData, setDebtsData] = useState<{ remaining_amount: number; payment_amount: number }[]>([]);
+
+  useEffect(() => {
+    if (!householdId) return;
+    const userId = session?.user?.id;
+    let query = supabase.from('debts').select('remaining_amount, payment_amount');
+    if (financeScope === 'personal') {
+      query = query.eq('scope', 'personal').eq('created_by', userId);
+    } else {
+      query = query.eq('household_id', householdId).eq('scope', 'household');
+    }
+    query.then(({ data }) => {
+      if (data) setDebtsData(data.map(d => ({ remaining_amount: Number(d.remaining_amount), payment_amount: Number(d.payment_amount) })));
+    });
+  }, [householdId, financeScope, session?.user?.id]);
 
   return useMemo(() => {
     const monthTx = getTransactionsForMonth(now);
@@ -135,22 +155,13 @@ export function useHealthScore(): HealthScoreResult {
     // Savings rate
     const savingsRatePercent = monthlyIncome > 0 ? (monthSavings / monthlyIncome) * 100 : 0;
 
-    // Debts info - get from transactions with debt_id
-    const debtTx = transactions.filter(t => t.debtId);
-    const hasDebts = debtTx.length > 0 || transactions.some(t => t.debtPaymentType);
-
-    // Total remaining debts (approximate from transaction data)
-    // We'll use monthly debt payments from current month
-    const monthlyDebtPayments = monthTx
-      .filter(t => t.debtId && t.type === 'expense')
-      .reduce((s, t) => s + t.convertedAmount, 0);
+    // Debts from DB
+    const hasDebts = debtsData.length > 0;
+    const totalDebtRemaining = debtsData.reduce((s, d) => s + d.remaining_amount, 0);
+    const monthlyDebtPayments = debtsData.reduce((s, d) => s + d.payment_amount, 0);
 
     // Annual income estimate
     const annualIncome = monthlyIncome * 12;
-
-    // Total debt amount: approximate as monthly payments * remaining months (rough)
-    // Better: just use the ratio of monthly payments to income
-    const totalDebtAmount = monthlyDebtPayments * 12 * 5; // rough estimate
 
     // Budget compliance
     const monthBudgets = getBudgetsForMonth(now);
@@ -201,7 +212,7 @@ export function useHealthScore(): HealthScoreResult {
 
     // === Score each criterion (raw scores on base scale) ===
     const rawSavingsRate = scoreSavingsRate(savingsRatePercent);
-    const rawDebtToIncome = scoreDebtToIncome(totalDebtAmount, annualIncome);
+    const rawDebtToIncome = scoreDebtToIncome(totalDebtRemaining, annualIncome);
     const rawEmergencyFund = scoreEmergencyFund(totalSavings, monthlyExpenses);
     const rawBudgetCompliance = scoreBudgetCompliance(budgetsRespected, monthBudgets.length);
     const rawDebtService = scoreDebtService(monthlyDebtPayments, monthlyIncome);
@@ -247,7 +258,7 @@ export function useHealthScore(): HealthScoreResult {
     if (baseWeights.debtToIncome > 0) {
       const max = addedMaxScore(baseWeights.debtToIncome);
       const sc = Math.round((rawDebtToIncome / 20) * max);
-      const ratio = annualIncome > 0 ? Math.round((totalDebtAmount / annualIncome) * 100) : 0;
+      const ratio = annualIncome > 0 ? Math.round((totalDebtRemaining / annualIncome) * 100) : 0;
       criteria.push({
         key: 'debtToIncome', label: 'Ratio dettes/revenus', emoji: '📊',
         score: sc, maxScore: max,
@@ -322,7 +333,7 @@ export function useHealthScore(): HealthScoreResult {
       diff: null,
       tips,
     };
-  }, [transactions, budgets, savingsGoals, savingsDeposits, accounts, getTransactionsForMonth, getBudgetSpent, getBudgetsForMonth, getMonthSavings, getTotalSavings]);
+  }, [transactions, budgets, savingsGoals, savingsDeposits, accounts, debtsData, getTransactionsForMonth, getBudgetSpent, getBudgetsForMonth, getMonthSavings, getTotalSavings]);
 }
 
 export function useSaveHealthScore(score: number, householdId: string) {
@@ -381,6 +392,3 @@ export function useHealthScoreHistory(householdId: string) {
 
   return history;
 }
-
-// Need React import for useState
-import React from 'react';
