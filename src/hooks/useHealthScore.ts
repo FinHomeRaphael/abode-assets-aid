@@ -60,16 +60,7 @@ function scoreEmergencyFund(totalSavings: number, monthlyExpenses: number): numb
   return 0;
 }
 
-function scoreBudgetCompliance(respected: number, total: number): number {
-  if (total <= 0) return 15;
-  const pct = (respected / total) * 100;
-  if (pct === 100) return 15;
-  if (pct >= 80) return 12;
-  if (pct >= 60) return 9;
-  if (pct >= 40) return 6;
-  if (pct >= 20) return 3;
-  return 0;
-}
+
 
 function scoreDebtService(monthlyPayments: number, monthlyIncome: number): number {
   if (monthlyIncome <= 0) return 0;
@@ -108,8 +99,6 @@ export function useHealthScore(): HealthScoreResult {
     savingsDeposits,
     scopedAccounts: accounts,
     getTransactionsForMonth,
-    getBudgetSpent,
-    getBudgetsForMonth,
     getMonthSavings,
     getTotalSavings,
     household,
@@ -165,31 +154,20 @@ export function useHealthScore(): HealthScoreResult {
     // Annual income estimate
     const annualIncome = monthlyIncome * 12;
 
-    // Budget compliance
-    const monthBudgets = getBudgetsForMonth(now);
-    const hasBudgets = monthBudgets.length > 0;
-    let budgetsRespected = 0;
-    if (hasBudgets) {
-      budgetsRespected = monthBudgets.filter(b => getBudgetSpent(b) <= b.limit).length;
-    }
 
 
     // Emergency fund months
     const emergencyFundMonths = monthlyExpenses > 0 ? totalSavings / monthlyExpenses : 999;
 
-    // Budget compliance percent
-    const budgetsRespectedPercent = hasBudgets ? (budgetsRespected / monthBudgets.length) * 100 : 0;
-
     // Debt service ratio
     const debtServiceRatio = monthlyIncome > 0 ? (monthlyDebtPayments / monthlyIncome) * 100 : 0;
 
-    // === Adaptive weights (5 criteria only) ===
+    // === Adaptive weights (4 criteria, proportional to original 25:20:25:15) ===
     const baseWeights: Record<string, number> = {
-      savingsRate: 25,
-      debtToIncome: 20,
-      emergencyFund: 25,
-      budgetCompliance: 15,
-      debtService: 15,
+      savingsRate: 30,
+      debtToIncome: 23,
+      emergencyFund: 30,
+      debtService: 17,
     };
 
     let excludedWeight = 0;
@@ -197,10 +175,6 @@ export function useHealthScore(): HealthScoreResult {
       excludedWeight += baseWeights.debtToIncome + baseWeights.debtService;
       baseWeights.debtToIncome = 0;
       baseWeights.debtService = 0;
-    }
-    if (!hasBudgets) {
-      excludedWeight += baseWeights.budgetCompliance;
-      baseWeights.budgetCompliance = 0;
     }
 
     const activeKeys = Object.keys(baseWeights).filter(k => baseWeights[k] > 0);
@@ -216,7 +190,6 @@ export function useHealthScore(): HealthScoreResult {
     const rawSavingsRate = scoreSavingsRate(savingsRatePercent);
     const rawDebtToIncome = scoreDebtToIncome(totalDebtRemaining, annualIncome);
     const rawEmergencyFund = scoreEmergencyFund(totalSavings, monthlyExpenses);
-    const rawBudgetCompliance = scoreBudgetCompliance(budgetsRespected, monthBudgets.length);
     const rawDebtService = scoreDebtService(monthlyDebtPayments, monthlyIncome);
 
     // Final total score (normalized to 0-100)
@@ -226,7 +199,6 @@ export function useHealthScore(): HealthScoreResult {
         (rawSavingsRate / 20) * baseWeights.savingsRate +
         (rawDebtToIncome / 20) * baseWeights.debtToIncome +
         (rawEmergencyFund / 20) * baseWeights.emergencyFund +
-        (rawBudgetCompliance / 15) * baseWeights.budgetCompliance +
         (rawDebtService / 15) * baseWeights.debtService
       );
     } else {
@@ -288,21 +260,6 @@ export function useHealthScore(): HealthScoreResult {
         ],
       });
     }
-    if (baseWeights.budgetCompliance > 0) {
-      const max = addedMaxScore(baseWeights.budgetCompliance);
-      const sc = Math.round((rawBudgetCompliance / 15) * max);
-      criteria.push({
-        key: 'budgetCompliance', label: 'Respect des budgets', emoji: '📉',
-        score: sc, maxScore: max,
-        description: `${Math.round(budgetsRespectedPercent)}% de tes budgets respectés`,
-        formula: `Budgets respectés ÷ Total budgets × 100`,
-        details: [
-          { label: 'Budgets respectés', value: `${budgetsRespected}` },
-          { label: 'Total budgets', value: `${monthBudgets.length}` },
-          { label: 'Taux de conformité', value: `${Math.round(budgetsRespectedPercent)}%` },
-        ],
-      });
-    }
     if (baseWeights.debtService > 0) {
       const max = addedMaxScore(baseWeights.debtService);
       const sc = Math.round((rawDebtService / 15) * max);
@@ -341,11 +298,6 @@ export function useHealthScore(): HealthScoreResult {
           emoji: '🚨', title: 'Augmente ton fonds d\'urgence',
           text: `Tu as ${emergencyFundMonths >= 999 ? '∞' : emergencyFundMonths.toFixed(1)} mois de côté. Vise ${target} mois minimum.`,
         });
-      } else if (c.key === 'budgetCompliance') {
-        tips.push({
-          emoji: '📉', title: 'Respecte tes budgets',
-          text: `${Math.round(budgetsRespectedPercent)}% de tes budgets sont respectés. Essaie de maintenir tous tes budgets dans les limites.`,
-        });
       } else if (c.key === 'debtService') {
         tips.push({
           emoji: '💳', title: 'Réduis ton taux d\'endettement',
@@ -368,7 +320,7 @@ export function useHealthScore(): HealthScoreResult {
       diff: null,
       tips,
     };
-  }, [transactions, budgets, savingsGoals, savingsDeposits, accounts, debtsData, getTransactionsForMonth, getBudgetSpent, getBudgetsForMonth, getMonthSavings, getTotalSavings]);
+  }, [transactions, budgets, savingsGoals, savingsDeposits, accounts, debtsData, getTransactionsForMonth, getMonthSavings, getTotalSavings]);
 }
 
 export function useSaveHealthScore(score: number, householdId: string) {
