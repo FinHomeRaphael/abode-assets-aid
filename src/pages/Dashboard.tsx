@@ -173,7 +173,7 @@ const Dashboard = () => {
           <p className={`text-3xl font-semibold font-mono-amount tracking-tight ${balance >= 0 ? 'text-foreground' : 'text-destructive'}`}>
             {balance >= 0 ? '+' : '-'}{formatAmount(Math.abs(balance))}
           </p>
-          <div className={`grid ${epargneOut > 0 ? 'grid-cols-4' : 'grid-cols-3'} gap-3 mt-5`}>
+          <div className="grid grid-cols-3 gap-3 mt-5">
             <div>
               <div className="flex items-center gap-1.5 mb-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-success" />
@@ -194,16 +194,13 @@ const Dashboard = () => {
                 <span className="text-[11px] text-muted-foreground">Épargne</span>
               </div>
               <p className="font-mono-amount text-sm font-medium">{formatAmount(monthSavings)}</p>
-            </div>
-            {epargneOut > 0 && (
-              <div>
-                <div className="flex items-center gap-1.5 mb-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-warning" />
-                  <span className="text-[11px] text-muted-foreground">Dép. épargne</span>
+              {(epargneIn > 0 || epargneOut > 0) && (
+                <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-muted-foreground">
+                  {epargneIn > 0 && <span className="text-success">+{formatAmount(epargneIn)}</span>}
+                  {epargneOut > 0 && <span className="text-destructive">-{formatAmount(epargneOut)}</span>}
                 </div>
-                <p className="font-mono-amount text-sm font-medium text-destructive">-{formatAmount(epargneOut)}</p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </motion.div>
 
