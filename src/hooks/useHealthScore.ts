@@ -74,11 +74,11 @@ function scoreBudgetCompliance(respected: number, total: number): number {
 function scoreDebtService(monthlyPayments: number, monthlyIncome: number): number {
   if (monthlyIncome <= 0) return 0;
   const ratio = (monthlyPayments / monthlyIncome) * 100;
-  if (ratio < 20) return 15;
-  if (ratio < 25) return 12;
-  if (ratio < 33) return 9;
-  if (ratio < 40) return 6;
-  if (ratio < 50) return 3;
+  // 15/15 at ≤30%, 7/15 at 35%, linear interpolation between thresholds
+  if (ratio <= 30) return 15;
+  if (ratio <= 35) return Math.round(15 - ((ratio - 30) / 5) * 8); // 15→7
+  if (ratio <= 40) return Math.round(7 - ((ratio - 35) / 5) * 4);  // 7→3
+  if (ratio <= 50) return Math.round(3 - ((ratio - 40) / 10) * 3); // 3→0
   return 0;
 }
 
