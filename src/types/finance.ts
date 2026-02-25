@@ -122,9 +122,10 @@ export interface AppState {
 }
 
 export const EXPENSE_CATEGORIES = [
-  'Logement', 'Alimentation', 'Transport', 'Santé', 'Assurance',
-  'Abonnements', 'Loisirs', 'Restaurants', 'Shopping', 'Éducation',
-  'Voyages', 'Cadeaux', 'Épargne', 'Impôts', 'Autre'
+  'Logement', 'Alimentation', 'Transport', 'Restaurants', 'Loisirs',
+  'Shopping', 'Abonnements', 'Santé', 'Famille & Enfants', 'Éducation',
+  'Voyages', 'Cadeaux', 'Impôts & Taxes', 'Assurances', 'Animaux',
+  'Frais bancaires', 'Autre'
 ] as const;
 
 export const INCOME_CATEGORIES = [
@@ -216,17 +217,20 @@ export const CATEGORY_EMOJIS: Record<string, string> = {
   Logement: '🏠',
   Alimentation: '🛒',
   Transport: '🚗',
-  Santé: '💊',
-  Assurance: '🛡️',
-  Abonnements: '📱',
-  Loisirs: '🎬',
   Restaurants: '🍽️',
-  Shopping: '🛍️',
+  Loisirs: '🎮',
+  Shopping: '👗',
+  Abonnements: '📱',
+  Santé: '💊',
+  'Famille & Enfants': '👶',
   'Éducation': '📚',
   Voyages: '✈️',
   Cadeaux: '🎁',
+  'Impôts & Taxes': '📋',
+  Assurances: '🛡️',
+  Animaux: '🐾',
+  'Frais bancaires': '💳',
   'Épargne': '💰',
-  'Impôts': '🏛️',
   Salaire: '💻',
   Freelance: '🏆',
   'Bonus / Prime': '🏆',
@@ -238,7 +242,7 @@ export const CATEGORY_EMOJIS: Record<string, string> = {
   'Cadeaux / Dons': '🎁',
   Remboursements: '💸',
   Ventes: '🛒',
-  Autre: '💵',
+  Autre: '📦',
 };
 
 export const EMOJI_LIST = [
