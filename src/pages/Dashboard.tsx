@@ -170,9 +170,24 @@ const Dashboard = () => {
         {/* Balance card */}
         <motion.div variants={fade} className="bg-gradient-to-br from-primary/10 via-card to-card border border-primary/15 rounded-2xl p-5">
           <p className="text-muted-foreground text-xs mb-1">Solde du mois</p>
-          <p className={`text-3xl font-semibold font-mono-amount tracking-tight ${balance >= 0 ? 'text-foreground' : 'text-destructive'}`}>
-            {balance >= 0 ? '+' : '-'}{formatAmount(Math.abs(balance))}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className={`text-3xl font-semibold font-mono-amount tracking-tight ${balance >= 0 ? 'text-foreground' : 'text-destructive'}`}>
+              {balance >= 0 ? '+' : '-'}{formatAmount(Math.abs(balance))}
+            </p>
+            {monthSavings < 0 && (
+              <span className="text-amber-500 text-lg" title="Épargne négative">⚠️</span>
+            )}
+          </div>
+          {monthSavings < 0 && (
+            <button
+              onClick={() => navigate('/transactions')}
+              className="flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors"
+            >
+              <span>⚠️</span>
+              <span>Vous puisez dans vos économies ce mois-ci. Pensez à faire un transfert vers votre épargne.</span>
+              <ArrowRight className="w-3 h-3 flex-shrink-0" />
+            </button>
+          )}
           <div className="grid grid-cols-3 gap-3 mt-5">
             <div>
               <div className="flex items-center gap-1.5 mb-1">
