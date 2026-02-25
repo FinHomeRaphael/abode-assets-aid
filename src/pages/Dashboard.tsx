@@ -159,8 +159,8 @@ const Dashboard = () => {
         {/* Header */}
         <motion.div variants={fade} className="flex items-center justify-between">
           <div>
-            <p className="text-muted-foreground text-xs">Bonjour,</p>
-            <h1 className="text-lg font-semibold tracking-tight">{currentUser?.name || 'Utilisateur'} 👋</h1>
+            <p className="text-muted-foreground text-[10px] uppercase tracking-widest">{now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+            <h1 className="text-lg font-semibold tracking-tight">Bonjour, {currentUser?.name || 'Utilisateur'} 👋</h1>
           </div>
           <button onClick={() => navigate('/profile')} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground">
             {currentUser ? getInitials(currentUser.name) : '?'}
