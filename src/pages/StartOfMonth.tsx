@@ -93,7 +93,7 @@ const StartOfMonth = () => {
     softDeleteRecurringTransaction(id, monthYear);
     setCancelRequested(prev => new Set(prev).add(id));
     setConfirmCancel(null);
-    toast.success('Récurrence arrêtée à partir de ce mois ✓');
+    // silent
   };
 
   const handleConfirmSavings = () => {
@@ -111,8 +111,7 @@ const StartOfMonth = () => {
       }
     }
     setSavingsConfirmed(true);
-    if (deposited) toast.success('Enveloppe du mois enregistrée ✓');
-    else toast.info('Aucune enveloppe enregistrée ce mois');
+    // silent
   };
 
   const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.35 } } };

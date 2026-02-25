@@ -67,7 +67,7 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
       recurrenceDay: isRecurring ? day : undefined,
       accountId: accountId || undefined,
     });
-    toast.success(isRecurring ? 'Transaction récurrente créée ✓' : 'Transaction ajoutée ✓');
+    // silent
     resetAndClose();
   };
 
@@ -84,7 +84,7 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
     setCategory(newCatName.trim());
     setShowCreateCat(false);
     setNewCatName('');
-    toast.success('Catégorie créée ✓');
+    // silent
   };
 
   const resetAndClose = () => {

@@ -33,7 +33,7 @@ const InvitationChoiceModal = ({ open, invitation, onComplete }: Props) => {
         _invitation_id: invitation.invitation_id,
       });
       if (error) throw error;
-      toast.success('Vous avez rejoint le foyer !');
+      // silent
       onComplete();
     } catch (err: any) {
       toast.error(err.message || 'Erreur lors de l\'acceptation');
@@ -50,7 +50,7 @@ const InvitationChoiceModal = ({ open, invitation, onComplete }: Props) => {
         _currency: currency,
       });
       if (error) throw error;
-      toast.success('Votre propre foyer a été créé');
+      // silent
       onComplete();
     } catch (err: any) {
       toast.error(err.message || 'Erreur');

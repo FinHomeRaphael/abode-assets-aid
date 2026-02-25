@@ -113,11 +113,7 @@ const SignupPage = () => {
         }
         return;
       }
-      if (isInvited) {
-        toast.success('Compte créé ! Vous allez pouvoir rejoindre le foyer.');
-      } else {
-        toast.success('Compte créé ! Vérifiez votre email pour confirmer votre inscription.');
-      }
+      // silent
       navigate('/login');
     } catch {
       toast.error('Une erreur est survenue');

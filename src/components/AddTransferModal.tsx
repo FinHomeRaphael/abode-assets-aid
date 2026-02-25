@@ -79,7 +79,7 @@ const AddTransferModal = ({ open, onClose }: Props) => {
       accountId: toAccountId,
     });
 
-    toast.success('Transfert effectué ✓');
+    // silent
     resetAndClose();
   };
 

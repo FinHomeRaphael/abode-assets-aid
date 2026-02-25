@@ -22,7 +22,7 @@ const AddSavingsGoalModal = ({ open, onClose }: Props) => {
   const handleCreate = () => {
     if (!name.trim() || !target) { toast.error('Remplissez les champs obligatoires'); return; }
     addSavingsGoal({ name: name.trim(), emoji, target: parseFloat(target), currency, targetDate: date || undefined });
-    toast.success('Objectif créé ✓');
+    // silent
     onClose();
     setName(''); setTarget(''); setDate('');
     setCurrency(household.currency);

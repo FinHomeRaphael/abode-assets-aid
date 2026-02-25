@@ -465,7 +465,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     await supabase.auth.signOut();
     setSession(null);
-    toast.success('Déconnexion réussie');
+    // silent
   };
 
   // ===== Transaction Actions =====
@@ -891,7 +891,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addMember = (name: string, email: string, role: 'admin' | 'member') => {
     const tempMember: Member = { id: `m-${Date.now()}`, name, email, role };
     setMembers(prev => [...prev, tempMember]);
-    toast.success(`${name} ajouté(e) au foyer`);
+    // silent
   };
 
   const removeMember = (id: string) => {

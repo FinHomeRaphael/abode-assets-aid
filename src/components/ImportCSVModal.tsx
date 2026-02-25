@@ -116,7 +116,7 @@ const ImportCSVModal = ({ open, onClose }: Props) => {
 
       setMapped(result);
       setStep('preview');
-      toast.success(`${result.length} transaction(s) détectée(s) par l'IA`);
+      // silent
     } catch (err: any) {
       console.error('Import error:', err);
       toast.error(err.message || 'Erreur lors de l\'analyse du fichier');
@@ -157,7 +157,7 @@ const ImportCSVModal = ({ open, onClose }: Props) => {
       });
     }
 
-    toast.success(`${selected.length} transaction(s) importée(s) ✓`);
+    // silent
     handleClose();
   };
 
