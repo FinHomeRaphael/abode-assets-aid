@@ -10,6 +10,7 @@ import { fr } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { formatLocalDate } from '@/utils/format';
+import MoneyInput from '@/components/ui/money-input';
 
 interface Props {
   open: boolean;
@@ -124,7 +125,7 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium mb-1.5">Montant *</label>
-                  <input type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0,00" className="w-full px-4 py-2.5 rounded-md border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
+                  <MoneyInput value={amount} onChange={setAmount} placeholder="0,00" className="w-full px-4 py-2.5 rounded-md border border-input bg-background text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1.5">Devise</label>
