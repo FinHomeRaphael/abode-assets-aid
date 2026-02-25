@@ -189,7 +189,7 @@ ${memberLines || 'Aucun membre'}
 --- CE MOIS-CI (${now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}) ---
 Revenus totaux: +${formatAmount(totalIncome)}
 Dépenses totales: -${formatAmount(totalExpense)}
-Épargne versée ce mois: -${formatAmount(monthSavings)}
+Épargne versée ce mois: ${monthSavings >= 0 ? '-' : '+'}${formatAmount(Math.abs(monthSavings))} ${monthSavings < 0 ? '(⚠️ retrait d\'épargne)' : ''}
 Solde disponible (revenus - dépenses - épargne): ${balance >= 0 ? '+' : '-'}${formatAmount(Math.abs(balance))}
 
 --- MOIS PRÉCÉDENT (${prevMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}) ---
