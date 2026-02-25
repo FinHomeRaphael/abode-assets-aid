@@ -11,6 +11,8 @@ interface CriterionResult {
   score: number;
   maxScore: number;
   description: string;
+  details: { label: string; value: string }[];
+  formula: string;
 }
 
 interface HealthScoreResult {
@@ -237,6 +239,9 @@ export function useHealthScore(): HealthScoreResult {
     const criteria: CriterionResult[] = [];
     const addedMaxScore = (weight: number) => Math.round(weight);
 
+    const fmt = (n: number) => n.toLocaleString('fr-FR', { maximumFractionDigits: 0 });
+    const cur = household?.currency || 'CHF';
+
     if (baseWeights.savingsRate > 0) {
       const max = addedMaxScore(baseWeights.savingsRate);
       const sc = Math.round((rawSavingsRate / 20) * max);
@@ -244,6 +249,12 @@ export function useHealthScore(): HealthScoreResult {
         key: 'savingsRate', label: 'Taux d\'épargne', emoji: '💰',
         score: sc, maxScore: max,
         description: `${Math.round(savingsRatePercent)}% de tes revenus épargnés`,
+        formula: `Épargne du mois ÷ Revenus du mois × 100`,
+        details: [
+          { label: 'Épargne du mois', value: `${fmt(monthSavings)} ${cur}` },
+          { label: 'Revenus du mois', value: `${fmt(monthlyIncome)} ${cur}` },
+          { label: 'Taux calculé', value: `${savingsRatePercent.toFixed(1)}%` },
+        ],
       });
     }
     if (baseWeights.emergencyFund > 0) {
@@ -253,6 +264,12 @@ export function useHealthScore(): HealthScoreResult {
         key: 'emergencyFund', label: 'Fonds d\'urgence', emoji: '🚨',
         score: sc, maxScore: max,
         description: `${emergencyFundMonths >= 999 ? '∞' : emergencyFundMonths.toFixed(1)} mois de dépenses de côté`,
+        formula: `Épargne totale ÷ Dépenses mensuelles`,
+        details: [
+          { label: 'Épargne totale', value: `${fmt(totalSavings)} ${cur}` },
+          { label: 'Dépenses mensuelles', value: `${fmt(monthlyExpenses)} ${cur}` },
+          { label: 'Mois couverts', value: emergencyFundMonths >= 999 ? '∞' : `${emergencyFundMonths.toFixed(1)} mois` },
+        ],
       });
     }
     if (baseWeights.debtToIncome > 0) {
@@ -263,6 +280,12 @@ export function useHealthScore(): HealthScoreResult {
         key: 'debtToIncome', label: 'Ratio dettes/revenus', emoji: '📊',
         score: sc, maxScore: max,
         description: `${ratio}% de tes revenus annuels`,
+        formula: `Dettes restantes ÷ Revenus annuels × 100`,
+        details: [
+          { label: 'Dettes restantes', value: `${fmt(totalDebtRemaining)} ${cur}` },
+          { label: 'Revenus annuels (estimés)', value: `${fmt(annualIncome)} ${cur}` },
+          { label: 'Ratio calculé', value: `${ratio}%` },
+        ],
       });
     }
     if (baseWeights.budgetCompliance > 0) {
@@ -272,6 +295,12 @@ export function useHealthScore(): HealthScoreResult {
         key: 'budgetCompliance', label: 'Respect des budgets', emoji: '📉',
         score: sc, maxScore: max,
         description: `${Math.round(budgetsRespectedPercent)}% de tes budgets respectés`,
+        formula: `Budgets respectés ÷ Total budgets × 100`,
+        details: [
+          { label: 'Budgets respectés', value: `${budgetsRespected}` },
+          { label: 'Total budgets', value: `${monthBudgets.length}` },
+          { label: 'Taux de conformité', value: `${Math.round(budgetsRespectedPercent)}%` },
+        ],
       });
     }
     if (baseWeights.debtService > 0) {
@@ -281,6 +310,12 @@ export function useHealthScore(): HealthScoreResult {
         key: 'debtService', label: 'Taux d\'endettement', emoji: '💳',
         score: sc, maxScore: max,
         description: `${Math.round(debtServiceRatio)}% de tes revenus mensuels`,
+        formula: `Mensualités dettes ÷ Revenus mensuels × 100`,
+        details: [
+          { label: 'Mensualités de dettes', value: `${fmt(monthlyDebtPayments)} ${cur}` },
+          { label: 'Revenus mensuels', value: `${fmt(monthlyIncome)} ${cur}` },
+          { label: 'Ratio calculé', value: `${Math.round(debtServiceRatio)}%` },
+        ],
       });
     }
 
