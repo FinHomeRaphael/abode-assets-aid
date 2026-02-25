@@ -41,11 +41,10 @@ function scoreSavingsRate(rate: number): number {
 function scoreDebtToPatrimony(totalDebts: number, totalPatrimony: number): number {
   if (totalPatrimony <= 0) return 0;
   const ratio = (totalDebts / totalPatrimony) * 100;
-  if (ratio < 30) return 20;
-  if (ratio < 50) return 16;
-  if (ratio < 70) return 12;
-  if (ratio < 90) return 8;
-  if (ratio < 120) return 4;
+  // 25/25 at ≤70%, 15/25 at 80%, 0/25 at ≥90%, linear interpolation
+  if (ratio <= 70) return 25;
+  if (ratio <= 80) return Math.round(25 - ((ratio - 70) / 10) * 10); // 25→15
+  if (ratio < 90) return Math.round(15 - ((ratio - 80) / 10) * 15); // 15→0
   return 0;
 }
 
@@ -226,7 +225,7 @@ export function useHealthScore(): HealthScoreResult {
     if (totalWeight > 0) {
       totalScore = Math.round(
         (rawSavingsRate / 20) * baseWeights.savingsRate +
-        (rawDebtToIncome / 20) * baseWeights.debtToIncome +
+        (rawDebtToIncome / 25) * baseWeights.debtToIncome +
         (rawEmergencyFund / 20) * baseWeights.emergencyFund +
         (rawDebtService / 15) * baseWeights.debtService +
         (rawPatrimony / 10) * baseWeights.patrimony
@@ -276,7 +275,7 @@ export function useHealthScore(): HealthScoreResult {
     }
     if (baseWeights.debtToIncome > 0) {
       const max = addedMaxScore(baseWeights.debtToIncome);
-      const sc = Math.round((rawDebtToIncome / 20) * max);
+      const sc = Math.round((rawDebtToIncome / 25) * max);
       const ratio = totalPatrimony > 0 ? Math.round((totalDebtRemaining / totalPatrimony) * 100) : 0;
       criteria.push({
         key: 'debtToIncome', label: 'Ratio dettes/patrimoine', emoji: '📊',
