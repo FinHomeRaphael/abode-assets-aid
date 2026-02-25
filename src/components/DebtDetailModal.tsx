@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Debt, DEBT_TYPES, getDebtEmoji, PAYMENT_FREQUENCIES } from '@/types/debt';
+import { Debt, DEBT_TYPES, getDebtEmoji, getPeriodsPerYear, PAYMENT_FREQUENCIES, PaymentFrequency } from '@/types/debt';
 import { useCurrency } from '@/hooks/useCurrency';
 import { formatDateLong, formatAmount as formatAmountRaw } from '@/utils/format';
 import { DEFAULT_EXCHANGE_RATES } from '@/types/finance';
@@ -95,11 +95,17 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
   const isEurope = debt.mortgageSystem === 'europe';
   const isMortgage = !!debt.mortgageSystem;
 
-  // Swiss monthly calculations
-  const swissMonthlyInterest = isSwiss ? (realRemaining * debt.interestRate / 100) / 12 : 0;
-  const swissMonthlyAmortization = isSwiss && debt.swissAmortizationType !== 'none' && debt.annualAmortization ? debt.annualAmortization / 12 : 0;
-  const swissMonthlyMaintenance = isSwiss && debt.includeMaintenance && debt.propertyValue ? (debt.propertyValue * 0.01) / 12 : 0;
-  const swissTotalMonthly = swissMonthlyInterest + swissMonthlyAmortization + swissMonthlyMaintenance;
+  const ppy = getPeriodsPerYear(debt.paymentFrequency as PaymentFrequency);
+  const freqLabel = freqInfo?.label || 'Mensuel';
+  const freqSuffix = ppy === 12 ? '/mois' : ppy === 4 ? '/trim.' : ppy === 2 ? '/sem.' : '/an';
+  const freqPeriodLabel = ppy === 12 ? 'mensuelle' : ppy === 4 ? 'trimestrielle' : ppy === 2 ? 'semestrielle' : 'annuelle';
+  const freqCeLabel = ppy === 12 ? 'ce mois' : ppy === 4 ? 'ce trimestre' : ppy === 2 ? 'ce semestre' : 'cette année';
+
+  // Swiss periodic calculations
+  const swissPeriodicInterest = isSwiss ? (realRemaining * debt.interestRate / 100) / ppy : 0;
+  const swissPeriodicAmortization = isSwiss && debt.swissAmortizationType !== 'none' && debt.annualAmortization ? debt.annualAmortization / ppy : 0;
+  const swissPeriodicMaintenance = isSwiss && debt.includeMaintenance && debt.propertyValue ? (debt.propertyValue * 0.01) / ppy : 0;
+  const swissTotalPeriodic = swissPeriodicInterest + swissPeriodicAmortization + swissPeriodicMaintenance;
 
   const totalInterest = useMemo(() => schedule.reduce((s, r) => s + r.interest_amount, 0), [schedule]);
   const totalPrincipal = useMemo(() => schedule.reduce((s, r) => s + r.principal_amount, 0), [schedule]);
@@ -277,27 +283,27 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
       {/* Mortgage-specific charge breakdown */}
       {isSwiss && (
         <div className="bg-card border border-red-200 dark:border-red-900/30 rounded-xl p-4">
-          <h2 className="text-sm font-semibold mb-3">🇨🇭 Charge mensuelle</h2>
+          <h2 className="text-sm font-semibold mb-3">🇨🇭 Charge {freqPeriodLabel}</h2>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">📉 Intérêts</span>
-              <span className="font-mono-amount font-medium">{formatAmount(swissMonthlyInterest)}</span>
+              <span className="font-mono-amount font-medium">{formatAmount(swissPeriodicInterest)}</span>
             </div>
             {debt.swissAmortizationType !== 'none' && debt.annualAmortization && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">💰 Amortissement ({debt.swissAmortizationType === 'indirect' ? 'Pilier 3a' : 'Direct'})</span>
-                <span className="font-mono-amount font-medium">{formatAmount(swissMonthlyAmortization)}</span>
+                <span className="font-mono-amount font-medium">{formatAmount(swissPeriodicAmortization)}</span>
               </div>
             )}
             {debt.includeMaintenance && (
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">🔧 Frais d'entretien</span>
-                <span className="font-mono-amount font-medium">{formatAmount(swissMonthlyMaintenance)}</span>
+                <span className="font-mono-amount font-medium">{formatAmount(swissPeriodicMaintenance)}</span>
               </div>
             )}
             <div className="flex justify-between text-sm font-semibold border-t border-red-200 dark:border-red-900/30 pt-2">
-              <span>Total mensuel</span>
-              <span className="font-mono-amount">{formatAmount(swissTotalMonthly)}</span>
+              <span>Total {freqLabel.toLowerCase()}</span>
+              <span className="font-mono-amount">{formatAmount(swissTotalPeriodic)}</span>
             </div>
           </div>
           {debt.propertyValue && (
@@ -329,18 +335,18 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
 
       {isEurope && (
         <div className="bg-card border border-blue-200 dark:border-blue-900/30 rounded-xl p-4">
-          <h2 className="text-sm font-semibold mb-3">🇪🇺 Détail mensualité</h2>
+          <h2 className="text-sm font-semibold mb-3">🇪🇺 Détail échéance {freqPeriodLabel}</h2>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">📉 Intérêts ce mois</span>
-              <span className="font-mono-amount font-medium">{formatAmount(realRemaining * debt.interestRate / 100 / 12)}</span>
+              <span className="text-muted-foreground">📉 Intérêts {freqCeLabel}</span>
+              <span className="font-mono-amount font-medium">{formatAmount(realRemaining * debt.interestRate / 100 / ppy)}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">💰 Capital ce mois</span>
-              <span className="font-mono-amount font-medium">{formatAmount(Math.max(debt.paymentAmount - realRemaining * debt.interestRate / 100 / 12, 0))}</span>
+              <span className="text-muted-foreground">💰 Capital {freqCeLabel}</span>
+              <span className="font-mono-amount font-medium">{formatAmount(Math.max(debt.paymentAmount - realRemaining * debt.interestRate / 100 / ppy, 0))}</span>
             </div>
             <div className="flex justify-between text-sm font-semibold border-t border-blue-200 dark:border-blue-900/30 pt-2">
-              <span>Mensualité fixe</span>
+              <span>Échéance {freqPeriodLabel} fixe</span>
               <span className="font-mono-amount">{formatAmount(debt.paymentAmount)}</span>
             </div>
           </div>
