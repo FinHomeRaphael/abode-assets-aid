@@ -312,7 +312,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                 </div>
                 <div className="bg-primary/5 border border-primary/15 rounded-xl p-3 text-center">
                   <Target className="w-4 h-4 text-primary mx-auto mb-1.5" />
-                  <p className="text-[10px] text-muted-foreground mb-0.5">Enveloppes</p>
+                  <p className="text-[10px] text-muted-foreground mb-0.5">Épargne</p>
                   <p className="font-mono-amount font-bold text-primary text-sm">-{formatAmount(savings)}</p>
                 </div>
               </div>

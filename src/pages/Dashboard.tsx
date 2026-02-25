@@ -339,7 +339,7 @@ const Dashboard = () => {
 
             {/* Savings */}
             <div>
-              <SectionHeader title="Enveloppes" action="Voir" onAction={() => navigate('/savings')} />
+              <SectionHeader title="Épargne" action="Voir" onAction={() => navigate('/savings')} />
               <div className="bg-card border border-border rounded-xl p-4 space-y-3">
                 {goalsData.slice(0, 3).map(g => {
                   const pct = Math.min((g.saved / g.target) * 100, 100);

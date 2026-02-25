@@ -205,7 +205,7 @@ const StartOfMonth = () => {
             <motion.div className="h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${progressPct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} />
           </div>
           <div className="flex justify-between mt-2">
-            {['Revenus', 'Charges', 'Enveloppes'].map((label, i) => (
+            {['Revenus', 'Charges', 'Épargne'].map((label, i) => (
               <span key={label} className={`text-xs font-medium ${[step1Done, step2Done, step3Done][i] ? 'text-primary' : 'text-muted-foreground'}`}>
                 {[step1Done, step2Done, step3Done][i] ? '✓ ' : ''}{label}
               </span>
@@ -288,7 +288,7 @@ const StartOfMonth = () => {
                 {step3Done ? '✓' : '3'}
               </div>
               <div>
-                <p className="font-semibold text-sm">Planifier tes enveloppes du mois</p>
+                <p className="font-semibold text-sm">Planifier ton épargne du mois</p>
                 <p className="text-xs text-muted-foreground">Définis combien mettre de côté ce mois-ci</p>
               </div>
             </div>
@@ -300,7 +300,7 @@ const StartOfMonth = () => {
             ) : step3Done ? (
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-center py-3">
                 <p className="text-sm font-medium text-primary">
-                  {savingsSkipped ? '👍 Pas de souci, le mois prochain sera le bon !' : '🐷 Enveloppes planifiées, futur toi te remerciera !'}
+                  {savingsSkipped ? '👍 Pas de souci, le mois prochain sera le bon !' : '🐷 Épargne planifiée, futur toi te remerciera !'}
                 </p>
               </motion.div>
             ) : (

@@ -31,7 +31,7 @@ const mobileNavItems = [
   { path: '/', label: 'Accueil', icon: Home },
   { path: '/transactions', label: 'Transac.', icon: CreditCard },
   { path: '/budgets', label: 'Budgets', icon: Target },
-  { path: '/savings', label: 'Envel.', icon: PiggyBank },
+  { path: '/savings', label: 'Comptes', icon: PiggyBank },
   { path: '/debts', label: 'Dettes', icon: Landmark },
   { path: '/insights', label: 'Insights', icon: Lightbulb },
 ];
@@ -40,7 +40,7 @@ const fabActions = [
   { label: 'Transaction', emoji: '💳', action: 'transaction' },
   { label: 'Scanner un ticket', emoji: '📸', action: 'scan' },
   { label: 'Budget', emoji: '🎯', action: 'budget' },
-  { label: 'Enveloppe', emoji: '🐷', action: 'savings' },
+  { label: 'Compte épargne', emoji: '🐷', action: 'savings' },
   { label: 'Dette', emoji: '💸', action: 'debt' },
   { label: 'Compte', emoji: '🏦', action: 'account' },
   { label: 'Conseiller IA', emoji: '✨', action: 'chat' },

@@ -26,7 +26,7 @@ const steps = [
   },
   {
     emoji: '🐷',
-    title: 'Crée des enveloppes d\'épargne',
+    title: 'Crée des comptes d\'épargne',
     description: 'Définis des objectifs (vacances, projet…) et suis ta progression au fil du temps.',
   },
   {

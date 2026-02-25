@@ -95,7 +95,7 @@ export const PaywallModal = ({ open, onClose, feature, description }: { open: bo
     'Insights & analyses avancées',
     'Rapport mensuel détaillé',
     'Comptes bancaires illimités',
-    'Enveloppes d\'épargne illimitées',
+    'Comptes d\'épargne illimités',
     'Budgets illimités',
     'Premium partagé avec tout le foyer',
   ];
