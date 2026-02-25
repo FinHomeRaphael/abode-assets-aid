@@ -14,7 +14,9 @@ import { Debt, getDebtEmoji, calculateNextPaymentDate } from '@/types/debt';
 import { toast } from 'sonner';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
-import { TrendingUp, TrendingDown, Target, Wallet, PiggyBank, CreditCard, Calendar, Sparkles, Camera, BarChart3, ArrowRight, ChevronRight, Lock } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Wallet, PiggyBank, CreditCard, Calendar, Sparkles, Camera, BarChart3, ArrowRight, ChevronRight, Lock, HeartPulse } from 'lucide-react';
+import HealthScoreGauge from '@/components/HealthScoreGauge';
+import { useHealthScore, useSaveHealthScore, useHealthScoreHistory } from '@/hooks/useHealthScore';
 
 function generateAIAdvices(
   budgets: { category: string; emoji: string; spent: number; limit: number }[],
@@ -139,6 +141,8 @@ const Dashboard = () => {
 
   const aiAdvices = useMemo(() => generateAIAdvices(budgetData, totalExpense, prevExpense, monthSavings, totalSavings, goalsData, currency), [budgetData, totalExpense, prevExpense, monthSavings, totalSavings, goalsData, currency]);
   const [adviceIndex, setAdviceIndex] = useState(0);
+  const healthScore = useHealthScore(null);
+  useSaveHealthScore(healthScore.totalScore, householdId);
 
   useEffect(() => {
     const timer = setInterval(() => setAdviceIndex(i => (i + 1) % aiAdvices.length), 6000);
@@ -232,6 +236,30 @@ const Dashboard = () => {
                 className={`h-1 rounded-full transition-all duration-300 ${i === adviceIndex ? 'bg-primary w-4' : 'bg-border w-1'}`}
               />
             ))}
+          </div>
+        </motion.div>
+
+        {/* Health Score Widget */}
+        <motion.div
+          variants={fade}
+          className="bg-card border border-border rounded-xl p-4 cursor-pointer hover:bg-muted/30 transition-colors"
+          onClick={() => navigate('/health-score')}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <HeartPulse className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold">Santé Financière</span>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <div className="flex justify-center">
+            <HealthScoreGauge
+              score={healthScore.totalScore}
+              label={healthScore.label}
+              color={healthScore.color}
+              diff={healthScore.diff}
+              compact
+            />
           </div>
         </motion.div>
 

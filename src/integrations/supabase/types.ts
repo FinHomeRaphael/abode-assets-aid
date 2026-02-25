@@ -492,6 +492,71 @@ export type Database = {
         }
         Relationships: []
       }
+      health_scores: {
+        Row: {
+          budget_compliance_score: number | null
+          budgets_respected_percent: number | null
+          created_at: string | null
+          debt_service_ratio: number | null
+          debt_service_score: number | null
+          debt_to_income_ratio: number | null
+          debt_to_income_score: number | null
+          emergency_fund_months: number | null
+          emergency_fund_score: number | null
+          household_id: string
+          id: string
+          month_year: string
+          progression_score: number | null
+          savings_rate_percent: number | null
+          savings_rate_score: number | null
+          total_score: number
+        }
+        Insert: {
+          budget_compliance_score?: number | null
+          budgets_respected_percent?: number | null
+          created_at?: string | null
+          debt_service_ratio?: number | null
+          debt_service_score?: number | null
+          debt_to_income_ratio?: number | null
+          debt_to_income_score?: number | null
+          emergency_fund_months?: number | null
+          emergency_fund_score?: number | null
+          household_id: string
+          id?: string
+          month_year: string
+          progression_score?: number | null
+          savings_rate_percent?: number | null
+          savings_rate_score?: number | null
+          total_score: number
+        }
+        Update: {
+          budget_compliance_score?: number | null
+          budgets_respected_percent?: number | null
+          created_at?: string | null
+          debt_service_ratio?: number | null
+          debt_service_score?: number | null
+          debt_to_income_ratio?: number | null
+          debt_to_income_score?: number | null
+          emergency_fund_months?: number | null
+          emergency_fund_score?: number | null
+          household_id?: string
+          id?: string
+          month_year?: string
+          progression_score?: number | null
+          savings_rate_percent?: number | null
+          savings_rate_score?: number | null
+          total_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_scores_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_members: {
         Row: {
           created_at: string | null
