@@ -129,7 +129,7 @@ const Dashboard = () => {
   const totalExpense = monthTx.filter(t => t.type === 'expense' && t.category !== 'Transfert' && !(t.accountId && epargneAccountIds.has(t.accountId))).reduce((s, t) => s + t.convertedAmount, 0);
   const monthSavings = getMonthSavings(now);
   const totalSavings = getTotalSavings();
-  const balance = totalIncome - totalExpense - monthSavings;
+  const balance = totalIncome - totalExpense - (monthSavings > 0 ? monthSavings : 0);
 
   const prevMonth = new Date(now);
   prevMonth.setMonth(prevMonth.getMonth() - 1);
