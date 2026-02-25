@@ -37,6 +37,7 @@ interface UpcomingPayment {
   debtEmoji: string;
   debtType: string;
   debtCurrency: string;
+  debtFrequency: string;
 }
 
 const Debts = () => {
@@ -124,6 +125,7 @@ const Debts = () => {
           debtEmoji: debt ? getDebtEmoji(debt.type) : '💳',
           debtType: debt?.type || '',
           debtCurrency: debt?.currency || 'EUR',
+          debtFrequency: debt?.paymentFrequency || 'monthly',
         };
       }));
     }
@@ -358,9 +360,9 @@ const Debts = () => {
                     );
                   })()}
 
-                  {!d.mortgageSystem && nextDate && (
+                  {nextDate && (
                     <div className="mt-1.5 text-[10px] text-muted-foreground">
-                      Prochaine échéance : {formatDateLong(nextDate)}
+                      Prochaine échéance ({getFrequencySuffix(d.paymentFrequency).slice(1)}) : {formatDateLong(nextDate)}
                     </div>
                   )}
                 </div>
