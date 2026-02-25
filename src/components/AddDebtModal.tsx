@@ -413,7 +413,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
         mortgage_system: null,
         rate_type: 'fixed',
         rate_end_date: null,
-        property_value: null,
+        property_value: parseFloat(propertyValue) || null,
         annual_amortization: null,
         swiss_amortization_type: null,
         include_maintenance: false,
@@ -459,7 +459,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
         mortgage_system: isMortgage ? mortgageSystem : null,
         rate_type: rateType,
         rate_end_date: rateEndDate ? formatLocalDate(rateEndDate) : null,
-        property_value: isMortgage ? (parseFloat(propertyValue) || null) : null,
+        property_value: parseFloat(propertyValue) || null,
         annual_amortization: isSwiss ? (parseFloat(annualAmortization) || null) : null,
         swiss_amortization_type: isSwiss ? swissAmortizationType : null,
         include_maintenance: isSwiss ? includeMaintenance : false,
@@ -1513,13 +1513,12 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                         {accountId && <p className="text-xs text-muted-foreground mt-1">Devise liée au compte sélectionné</p>}
                       </div>
 
-                      {/* Swiss: Property value */}
-                      {isMortgage && (
-                        <div>
-                          <label className="block text-sm font-medium mb-1.5">Valeur du bien</label>
-                          <MoneyInput value={propertyValue} onChange={setPropertyValue} className={monoInputClass} />
-                        </div>
-                      )}
+                      {/* Property value - all debt types for health score */}
+                      <div>
+                        <label className="block text-sm font-medium mb-1.5">Valeur du bien {!isMortgage && <span className="text-muted-foreground font-normal">(optionnel)</span>}</label>
+                        <MoneyInput value={propertyValue} onChange={setPropertyValue} className={monoInputClass} />
+                        {!isMortgage && <p className="text-[10px] text-muted-foreground mt-1">Utilisé pour le calcul du score de santé financière</p>}
+                      </div>
 
                       {/* Amounts */}
                       <div className="grid grid-cols-2 gap-3">
