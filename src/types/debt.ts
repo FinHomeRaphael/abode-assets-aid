@@ -1,5 +1,7 @@
 export type DebtType = 'mortgage' | 'auto' | 'consumer' | 'student' | 'other';
 export type VehicleType = 'credit' | 'leasing' | 'lld';
+export type ConsumerType = 'personal' | 'revolving' | 'purchase';
+export type DeferralType = 'total' | 'partial';
 export type PaymentFrequency = 'monthly' | 'quarterly' | 'semi-annual' | 'annual';
 export type AmortizationType = 'fixed_annuity' | 'fixed_capital';
 
@@ -50,6 +52,20 @@ export interface Debt {
   servicesIncluded?: string[];
   contractEndDate?: string;
   currentKm?: number;
+  // Consumer-specific
+  consumerType?: ConsumerType;
+  creditLimit?: number;
+  currentBalance?: number;
+  minimumPayment?: number;
+  purchasePrice?: number;
+  // Student-specific
+  hasDeferral?: boolean;
+  deferralEndDate?: string;
+  deferralType?: DeferralType;
+  // Other-specific
+  hasInterest?: boolean;
+  hasSchedule?: boolean;
+  notes?: string;
 }
 
 export const DEBT_TYPES: { value: DebtType; label: string; emoji: string }[] = [

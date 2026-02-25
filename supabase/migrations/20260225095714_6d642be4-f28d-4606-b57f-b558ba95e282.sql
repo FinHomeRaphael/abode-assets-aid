@@ -1,0 +1,12 @@
+
+ALTER TABLE public.debts ADD COLUMN IF NOT EXISTS consumer_type TEXT;
+ALTER TABLE public.debts ADD COLUMN IF NOT EXISTS credit_limit DECIMAL;
+ALTER TABLE public.debts ADD COLUMN IF NOT EXISTS current_balance DECIMAL;
+ALTER TABLE public.debts ADD COLUMN IF NOT EXISTS minimum_payment DECIMAL;
+ALTER TABLE public.debts ADD COLUMN IF NOT EXISTS purchase_price DECIMAL;
+ALTER TABLE public.debts ADD COLUMN IF NOT EXISTS has_deferral BOOLEAN DEFAULT false;
+ALTER TABLE public.debts ADD COLUMN IF NOT EXISTS deferral_end_date DATE;
+ALTER TABLE public.debts ADD COLUMN IF NOT EXISTS deferral_type TEXT;
+ALTER TABLE public.debts ADD COLUMN IF NOT EXISTS has_interest BOOLEAN DEFAULT true;
+ALTER TABLE public.debts ADD COLUMN IF NOT EXISTS has_schedule BOOLEAN DEFAULT true;
+ALTER TABLE public.debts ADD COLUMN IF NOT EXISTS notes TEXT;

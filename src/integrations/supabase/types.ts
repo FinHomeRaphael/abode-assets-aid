@@ -298,14 +298,22 @@ export type Database = {
           annual_amortization: number | null
           annual_km: number | null
           category_id: string | null
+          consumer_type: string | null
           contract_end_date: string | null
           created_at: string | null
           created_by: string | null
+          credit_limit: number | null
           currency: string
+          current_balance: number | null
           current_km: number | null
+          deferral_end_date: string | null
+          deferral_type: string | null
           down_payment: number | null
           duration_years: number
           excess_km_cost: number | null
+          has_deferral: boolean | null
+          has_interest: boolean | null
+          has_schedule: boolean | null
           household_id: string
           id: string
           include_maintenance: boolean | null
@@ -313,13 +321,16 @@ export type Database = {
           interest_rate: number
           last_payment_date: string | null
           lender: string | null
+          minimum_payment: number | null
           mortgage_system: string | null
           name: string
           next_payment_date: string | null
+          notes: string | null
           payment_amount: number
           payment_day: number
           payment_frequency: string
           property_value: number | null
+          purchase_price: number | null
           rate_end_date: string | null
           rate_type: string
           remaining_amount: number
@@ -340,14 +351,22 @@ export type Database = {
           annual_amortization?: number | null
           annual_km?: number | null
           category_id?: string | null
+          consumer_type?: string | null
           contract_end_date?: string | null
           created_at?: string | null
           created_by?: string | null
+          credit_limit?: number | null
           currency?: string
+          current_balance?: number | null
           current_km?: number | null
+          deferral_end_date?: string | null
+          deferral_type?: string | null
           down_payment?: number | null
           duration_years: number
           excess_km_cost?: number | null
+          has_deferral?: boolean | null
+          has_interest?: boolean | null
+          has_schedule?: boolean | null
           household_id: string
           id?: string
           include_maintenance?: boolean | null
@@ -355,13 +374,16 @@ export type Database = {
           interest_rate?: number
           last_payment_date?: string | null
           lender?: string | null
+          minimum_payment?: number | null
           mortgage_system?: string | null
           name: string
           next_payment_date?: string | null
+          notes?: string | null
           payment_amount: number
           payment_day?: number
           payment_frequency?: string
           property_value?: number | null
+          purchase_price?: number | null
           rate_end_date?: string | null
           rate_type?: string
           remaining_amount: number
@@ -382,14 +404,22 @@ export type Database = {
           annual_amortization?: number | null
           annual_km?: number | null
           category_id?: string | null
+          consumer_type?: string | null
           contract_end_date?: string | null
           created_at?: string | null
           created_by?: string | null
+          credit_limit?: number | null
           currency?: string
+          current_balance?: number | null
           current_km?: number | null
+          deferral_end_date?: string | null
+          deferral_type?: string | null
           down_payment?: number | null
           duration_years?: number
           excess_km_cost?: number | null
+          has_deferral?: boolean | null
+          has_interest?: boolean | null
+          has_schedule?: boolean | null
           household_id?: string
           id?: string
           include_maintenance?: boolean | null
@@ -397,13 +427,16 @@ export type Database = {
           interest_rate?: number
           last_payment_date?: string | null
           lender?: string | null
+          minimum_payment?: number | null
           mortgage_system?: string | null
           name?: string
           next_payment_date?: string | null
+          notes?: string | null
           payment_amount?: number
           payment_day?: number
           payment_frequency?: string
           property_value?: number | null
+          purchase_price?: number | null
           rate_end_date?: string | null
           rate_type?: string
           remaining_amount?: number
