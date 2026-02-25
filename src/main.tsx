@@ -8,4 +8,12 @@ if (theme === 'dark') {
   document.documentElement.classList.add('dark');
 }
 
+// Prevent scroll wheel from changing number input values
+document.addEventListener('wheel', (e) => {
+  const el = document.activeElement;
+  if (el && el instanceof HTMLInputElement && el.type === 'number') {
+    el.blur();
+  }
+}, { passive: true });
+
 createRoot(document.getElementById("root")!).render(<App />);
