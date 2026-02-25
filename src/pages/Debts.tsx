@@ -229,8 +229,8 @@ const Debts = () => {
             {debts.map(d => {
               const remaining = getRealRemaining(d);
               const repaidPct = d.initialAmount > 0 ? Math.min(((d.initialAmount - remaining) / d.initialAmount) * 100, 100) : 0;
-              const nextDate = d.nextPaymentDate || calculateNextPaymentDate(d);
               const nextRow = debtNextPaymentMap.get(d.id);
+              const nextDate = nextRow ? nextRow.due_date : (d.nextPaymentDate || calculateNextPaymentDate(d));
               const ppy = getPeriodsPerYear(d.paymentFrequency as PaymentFrequency);
               const freqSuffix = getFrequencySuffix(d.paymentFrequency);
               const freqAdj = d.paymentFrequency === 'monthly' ? 'mensuelle' : d.paymentFrequency === 'quarterly' ? 'trimestrielle' : d.paymentFrequency === 'semi-annual' ? 'semestrielle' : 'annuelle';
