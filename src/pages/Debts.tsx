@@ -367,6 +367,12 @@ const Debts = () => {
                     );
                   })()}
 
+                  {d.propertyValue && d.propertyValue > 0 && (
+                    <div className="mt-1.5 text-[10px] text-muted-foreground">
+                      🏠 Valeur du bien : {formatAmountWithCurrency(d.propertyValue, d.currency)}
+                    </div>
+                  )}
+
                   {nextDate && (
                     <div className="mt-1.5 text-[10px] text-muted-foreground">
                       Prochaine échéance ({getFrequencySuffix(d.paymentFrequency).slice(1)}) : {formatDateLong(nextDate)}
