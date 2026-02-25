@@ -141,7 +141,7 @@ const Dashboard = () => {
 
   const aiAdvices = useMemo(() => generateAIAdvices(budgetData, totalExpense, prevExpense, monthSavings, totalSavings, goalsData, currency), [budgetData, totalExpense, prevExpense, monthSavings, totalSavings, goalsData, currency]);
   const [adviceIndex, setAdviceIndex] = useState(0);
-  const healthScore = useHealthScore(null);
+  const healthScore = useHealthScore();
   useSaveHealthScore(healthScore.totalScore, householdId);
 
   useEffect(() => {

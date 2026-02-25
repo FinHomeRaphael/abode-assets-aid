@@ -79,14 +79,7 @@ function scoreDebtService(monthlyPayments: number, monthlyIncome: number): numbe
   return 0;
 }
 
-function scoreProgression(current: number, previous: number): number {
-  const diff = current - previous;
-  if (diff > 5) return 10;
-  if (diff >= 1) return 8;
-  if (diff >= -1) return 5;
-  if (diff >= -5) return 2;
-  return 0;
-}
+
 
 function getScoreLabel(score: number): string {
   if (score <= 25) return 'Critique';
@@ -104,7 +97,7 @@ function getScoreColor(score: number): string {
   return 'hsl(160, 84%, 29%)';
 }
 
-export function useHealthScore(previousTotalScore: number | null = null): HealthScoreResult {
+export function useHealthScore(): HealthScoreResult {
   const {
     scopedTransactions: transactions,
     scopedBudgets: budgets,
@@ -167,11 +160,6 @@ export function useHealthScore(previousTotalScore: number | null = null): Health
       budgetsRespected = monthBudgets.filter(b => getBudgetSpent(b) <= b.limit).length;
     }
 
-    // Previous month check
-    const prevMonth = new Date(now);
-    prevMonth.setMonth(prevMonth.getMonth() - 1);
-    const prevMonthTx = getTransactionsForMonth(prevMonth);
-    const hasPreviousMonth = prevMonthTx.length > 0 && previousTotalScore !== null;
 
     // Emergency fund months
     const emergencyFundMonths = monthlyExpenses > 0 ? totalSavings / monthlyExpenses : 999;
@@ -182,14 +170,13 @@ export function useHealthScore(previousTotalScore: number | null = null): Health
     // Debt service ratio
     const debtServiceRatio = monthlyIncome > 0 ? (monthlyDebtPayments / monthlyIncome) * 100 : 0;
 
-    // === Adaptive weights ===
+    // === Adaptive weights (5 criteria only) ===
     const baseWeights: Record<string, number> = {
-      savingsRate: 20,
+      savingsRate: 25,
       debtToIncome: 20,
-      emergencyFund: 20,
+      emergencyFund: 25,
       budgetCompliance: 15,
       debtService: 15,
-      progression: 10,
     };
 
     let excludedWeight = 0;
@@ -201,10 +188,6 @@ export function useHealthScore(previousTotalScore: number | null = null): Health
     if (!hasBudgets) {
       excludedWeight += baseWeights.budgetCompliance;
       baseWeights.budgetCompliance = 0;
-    }
-    if (!hasPreviousMonth) {
-      excludedWeight += baseWeights.progression;
-      baseWeights.progression = 0;
     }
 
     const activeKeys = Object.keys(baseWeights).filter(k => baseWeights[k] > 0);
@@ -223,20 +206,6 @@ export function useHealthScore(previousTotalScore: number | null = null): Health
     const rawBudgetCompliance = scoreBudgetCompliance(budgetsRespected, monthBudgets.length);
     const rawDebtService = scoreDebtService(monthlyDebtPayments, monthlyIncome);
 
-    // Calculate score without progression first
-    const scoreWithoutProg = Math.round(
-      ((rawSavingsRate / 20) * baseWeights.savingsRate +
-        (rawDebtToIncome / 20) * baseWeights.debtToIncome +
-        (rawEmergencyFund / 20) * baseWeights.emergencyFund +
-        (rawBudgetCompliance / 15) * baseWeights.budgetCompliance +
-        (rawDebtService / 15) * baseWeights.debtService) /
-        (totalWeight - baseWeights.progression) * (100 - baseWeights.progression)
-    );
-
-    const rawProgression = hasPreviousMonth && previousTotalScore !== null
-      ? scoreProgression(scoreWithoutProg, previousTotalScore)
-      : 0;
-
     // Final total score (normalized to 0-100)
     let totalScore: number;
     if (totalWeight > 0) {
@@ -245,8 +214,7 @@ export function useHealthScore(previousTotalScore: number | null = null): Health
         (rawDebtToIncome / 20) * baseWeights.debtToIncome +
         (rawEmergencyFund / 20) * baseWeights.emergencyFund +
         (rawBudgetCompliance / 15) * baseWeights.budgetCompliance +
-        (rawDebtService / 15) * baseWeights.debtService +
-        (rawProgression / 10) * baseWeights.progression
+        (rawDebtService / 15) * baseWeights.debtService
       );
     } else {
       totalScore = 50;
@@ -304,16 +272,6 @@ export function useHealthScore(previousTotalScore: number | null = null): Health
         description: `${Math.round(debtServiceRatio)}% de tes revenus mensuels`,
       });
     }
-    if (baseWeights.progression > 0 && hasPreviousMonth) {
-      const max = addedMaxScore(baseWeights.progression);
-      const sc = Math.round((rawProgression / 10) * max);
-      const diff = previousTotalScore !== null ? totalScore - previousTotalScore : 0;
-      criteria.push({
-        key: 'progression', label: 'Progression', emoji: '📈',
-        score: sc, maxScore: max,
-        description: `${diff >= 0 ? '+' : ''}${diff} pts vs le mois dernier`,
-      });
-    }
 
     // Sort criteria by score/maxScore ratio ascending (weakest first for tips)
     const sortedForTips = [...criteria].sort((a, b) => (a.score / a.maxScore) - (b.score / b.maxScore));
@@ -355,18 +313,16 @@ export function useHealthScore(previousTotalScore: number | null = null): Health
       }
     }
 
-    const diff = previousTotalScore !== null ? totalScore - previousTotalScore : null;
-
     return {
       totalScore,
       criteria,
       label: getScoreLabel(totalScore),
       color: getScoreColor(totalScore),
-      previousScore: previousTotalScore,
-      diff,
+      previousScore: null,
+      diff: null,
       tips,
     };
-  }, [transactions, budgets, savingsGoals, savingsDeposits, accounts, previousTotalScore, getTransactionsForMonth, getBudgetSpent, getBudgetsForMonth, getMonthSavings, getTotalSavings]);
+  }, [transactions, budgets, savingsGoals, savingsDeposits, accounts, getTransactionsForMonth, getBudgetSpent, getBudgetsForMonth, getMonthSavings, getTotalSavings]);
 }
 
 export function useSaveHealthScore(score: number, householdId: string) {
