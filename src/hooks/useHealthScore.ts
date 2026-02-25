@@ -13,6 +13,7 @@ interface CriterionResult {
   description: string;
   details: { label: string; value: string }[];
   formula: string;
+  tip?: string;
 }
 
 interface HealthScoreResult {
@@ -246,6 +247,7 @@ export function useHealthScore(): HealthScoreResult {
     if (baseWeights.savingsRate > 0) {
       const max = addedMaxScore(baseWeights.savingsRate);
       const sc = Math.round((rawSavingsRate / 20) * max);
+      const nextThreshold = savingsRatePercent < 5 ? 5 : savingsRatePercent < 10 ? 10 : savingsRatePercent < 15 ? 15 : 20;
       criteria.push({
         key: 'savingsRate', label: 'Taux d\'épargne', emoji: '💰',
         score: sc, maxScore: max,
@@ -256,11 +258,15 @@ export function useHealthScore(): HealthScoreResult {
           { label: 'Revenus du mois', value: `${fmt(monthlyIncome)} ${cur}` },
           { label: 'Taux calculé', value: `${savingsRatePercent.toFixed(1)}%` },
         ],
+        tip: sc < max
+          ? `💡 Passe de ${Math.round(savingsRatePercent)}% à ${nextThreshold}% d'épargne pour gagner des points.`
+          : `✅ Excellent ! Tu épargnes au moins 20% de tes revenus.`,
       });
     }
     if (baseWeights.emergencyFund > 0) {
       const max = addedMaxScore(baseWeights.emergencyFund);
       const sc = Math.round((rawEmergencyFund / 20) * max);
+      const target = emergencyFundMonths < 1 ? 1 : emergencyFundMonths < 2 ? 2 : emergencyFundMonths < 3 ? 3 : 6;
       criteria.push({
         key: 'emergencyFund', label: 'Fonds d\'urgence', emoji: '🚨',
         score: sc, maxScore: max,
@@ -271,6 +277,9 @@ export function useHealthScore(): HealthScoreResult {
           { label: 'Dépenses mensuelles', value: `${fmt(monthlyExpenses)} ${cur}` },
           { label: 'Mois couverts', value: emergencyFundMonths >= 999 ? '∞' : `${emergencyFundMonths.toFixed(1)} mois` },
         ],
+        tip: sc < max
+          ? `💡 Tu as ${emergencyFundMonths >= 999 ? '∞' : emergencyFundMonths.toFixed(1)} mois de côté. Vise ${target} mois minimum pour être serein.`
+          : `✅ Ton fonds d'urgence couvre au moins 6 mois de dépenses, bravo !`,
       });
     }
     if (baseWeights.debtToIncome > 0) {
@@ -287,6 +296,9 @@ export function useHealthScore(): HealthScoreResult {
           { label: 'Patrimoine total', value: `${fmt(totalPatrimony)} ${cur}` },
           { label: 'Ratio calculé', value: `${ratio}%` },
         ],
+        tip: sc < max
+          ? `💡 Tes dettes représentent ${ratio}% de ton patrimoine. Vise moins de 70% pour un score optimal.`
+          : `✅ Ton ratio dettes/patrimoine est sain, continue comme ça !`,
       });
     }
     if (baseWeights.debtService > 0) {
@@ -302,6 +314,9 @@ export function useHealthScore(): HealthScoreResult {
           { label: 'Revenus mensuels', value: `${fmt(monthlyIncome)} ${cur}` },
           { label: 'Ratio calculé', value: `${Math.round(debtServiceRatio)}%` },
         ],
+        tip: sc < max
+          ? `💡 Tes mensualités représentent ${Math.round(debtServiceRatio)}% de tes revenus. Vise moins de 30%.`
+          : `✅ Ton taux d'endettement est maîtrisé !`,
       });
     }
     if (baseWeights.patrimony > 0) {
@@ -325,47 +340,10 @@ export function useHealthScore(): HealthScoreResult {
           { label: 'Médiane européenne', value: `${fmt(EU_MEDIAN_PATRIMONY)} EUR` },
           { label: 'Position', value: `${patrimonyPct}%` },
         ],
+        tip: sc < max
+          ? `💡 Ton patrimoine représente ${patrimonyPct}% de la médiane européenne (205 000€). Continue à épargner et investir.`
+          : `✅ Ton patrimoine dépasse largement la médiane européenne, félicitations !`,
       });
-    }
-
-    // Sort criteria by score/maxScore ratio ascending (weakest first for tips)
-    const sortedForTips = [...criteria].sort((a, b) => (a.score / a.maxScore) - (b.score / b.maxScore));
-
-    // Generate tips
-    const tips: { emoji: string; title: string; text: string }[] = [];
-    for (const c of sortedForTips) {
-      if (tips.length >= 2) break;
-      const ratio = c.maxScore > 0 ? c.score / c.maxScore : 1;
-      if (ratio >= 0.9) continue;
-
-      if (c.key === 'savingsRate') {
-        const nextThreshold = savingsRatePercent < 5 ? 5 : savingsRatePercent < 10 ? 10 : savingsRatePercent < 15 ? 15 : 20;
-        tips.push({
-          emoji: '💰', title: 'Booste ton épargne',
-          text: `Passe de ${Math.round(savingsRatePercent)}% à ${nextThreshold}% d'épargne pour gagner des points supplémentaires.`,
-        });
-      } else if (c.key === 'emergencyFund') {
-        const target = emergencyFundMonths < 1 ? 1 : emergencyFundMonths < 2 ? 2 : emergencyFundMonths < 3 ? 3 : 6;
-        tips.push({
-          emoji: '🚨', title: 'Augmente ton fonds d\'urgence',
-          text: `Tu as ${emergencyFundMonths >= 999 ? '∞' : emergencyFundMonths.toFixed(1)} mois de côté. Vise ${target} mois minimum.`,
-        });
-      } else if (c.key === 'patrimony') {
-        tips.push({
-          emoji: '🏛️', title: 'Construis ton patrimoine',
-          text: `Ton patrimoine représente ${patrimonyPct}% de la médiane européenne (205 000€). Continue à épargner et investir.`,
-        });
-      } else if (c.key === 'debtService') {
-        tips.push({
-          emoji: '💳', title: 'Réduis ton taux d\'endettement',
-          text: `Tes mensualités représentent ${Math.round(debtServiceRatio)}% de tes revenus. Vise moins de 33%.`,
-        });
-      } else if (c.key === 'debtToIncome') {
-        tips.push({
-          emoji: '📊', title: 'Rembourse tes dettes',
-          text: `Ton ratio dette/revenus est élevé. Concentre-toi sur le remboursement pour améliorer ton score.`,
-        });
-      }
     }
 
     return {
@@ -375,7 +353,7 @@ export function useHealthScore(): HealthScoreResult {
       color: getScoreColor(totalScore),
       previousScore: null,
       diff: null,
-      tips,
+      tips: [],
     };
   }, [transactions, budgets, savingsGoals, savingsDeposits, accounts, debtsData, getTransactionsForMonth, getMonthSavings, getTotalSavings, getAccountBalance]);
 }
