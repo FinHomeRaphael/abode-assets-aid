@@ -38,14 +38,14 @@ function scoreSavingsRate(rate: number): number {
   return 0;
 }
 
-function scoreDebtToIncome(totalDebts: number, annualIncome: number): number {
-  if (annualIncome <= 0) return 0;
-  const ratio = (totalDebts / annualIncome) * 100;
-  if (ratio < 100) return 20;
-  if (ratio < 150) return 16;
-  if (ratio < 200) return 12;
-  if (ratio < 300) return 8;
-  if (ratio < 400) return 4;
+function scoreDebtToPatrimony(totalDebts: number, totalPatrimony: number): number {
+  if (totalPatrimony <= 0) return 0;
+  const ratio = (totalDebts / totalPatrimony) * 100;
+  if (ratio < 30) return 20;
+  if (ratio < 50) return 16;
+  if (ratio < 70) return 12;
+  if (ratio < 90) return 8;
+  if (ratio < 120) return 4;
   return 0;
 }
 
@@ -216,7 +216,7 @@ export function useHealthScore(): HealthScoreResult {
 
     // === Score each criterion (raw scores on base scale) ===
     const rawSavingsRate = scoreSavingsRate(savingsRatePercent);
-    const rawDebtToIncome = scoreDebtToIncome(totalDebtRemaining, annualIncome);
+    const rawDebtToIncome = scoreDebtToPatrimony(totalDebtRemaining, totalPatrimony);
     const rawEmergencyFund = scoreEmergencyFund(totalSavings, monthlyExpenses);
     const rawDebtService = scoreDebtService(monthlyDebtPayments, monthlyIncome);
     const rawPatrimony = scorePatrimony(totalPatrimony, EU_MEDIAN_PATRIMONY);
@@ -277,15 +277,15 @@ export function useHealthScore(): HealthScoreResult {
     if (baseWeights.debtToIncome > 0) {
       const max = addedMaxScore(baseWeights.debtToIncome);
       const sc = Math.round((rawDebtToIncome / 20) * max);
-      const ratio = annualIncome > 0 ? Math.round((totalDebtRemaining / annualIncome) * 100) : 0;
+      const ratio = totalPatrimony > 0 ? Math.round((totalDebtRemaining / totalPatrimony) * 100) : 0;
       criteria.push({
-        key: 'debtToIncome', label: 'Ratio dettes/revenus', emoji: '📊',
+        key: 'debtToIncome', label: 'Ratio dettes/patrimoine', emoji: '📊',
         score: sc, maxScore: max,
-        description: `${ratio}% de tes revenus annuels`,
-        formula: `Dettes restantes ÷ Revenus annuels × 100`,
+        description: `${ratio}% de ton patrimoine total`,
+        formula: `Dettes restantes ÷ Patrimoine total × 100`,
         details: [
           { label: 'Dettes restantes', value: `${fmt(totalDebtRemaining)} ${cur}` },
-          { label: 'Revenus annuels (estimés)', value: `${fmt(annualIncome)} ${cur}` },
+          { label: 'Patrimoine total', value: `${fmt(totalPatrimony)} ${cur}` },
           { label: 'Ratio calculé', value: `${ratio}%` },
         ],
       });
