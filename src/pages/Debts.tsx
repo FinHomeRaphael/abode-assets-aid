@@ -93,6 +93,20 @@ const Debts = () => {
         servicesIncluded: d.services_included || undefined,
         contractEndDate: d.contract_end_date || undefined,
         currentKm: d.current_km ? Number(d.current_km) : undefined,
+        // Consumer fields
+        consumerType: d.consumer_type || undefined,
+        creditLimit: d.credit_limit ? Number(d.credit_limit) : undefined,
+        currentBalance: d.current_balance ? Number(d.current_balance) : undefined,
+        minimumPayment: d.minimum_payment ? Number(d.minimum_payment) : undefined,
+        purchasePrice: d.purchase_price ? Number(d.purchase_price) : undefined,
+        // Student fields
+        hasDeferral: d.has_deferral || false,
+        deferralEndDate: d.deferral_end_date || undefined,
+        deferralType: d.deferral_type || undefined,
+        // Other fields
+        hasInterest: d.has_interest !== false,
+        hasSchedule: d.has_schedule !== false,
+        notes: d.notes || undefined,
       })));
     }
     if (error) console.error('Fetch debts error:', error);
@@ -264,6 +278,14 @@ const Debts = () => {
               const vehicleTypeEmoji = d.vehicleType === 'credit' ? '💰' : d.vehicleType === 'leasing' ? '🔄' : d.vehicleType === 'lld' ? '📋' : '';
               const vehicleTypeLabel = d.vehicleType === 'credit' ? 'Crédit auto' : d.vehicleType === 'leasing' ? 'Leasing (LOA)' : d.vehicleType === 'lld' ? 'LLD' : '';
 
+              const isConsumer = d.type === 'consumer';
+              const isStudent = d.type === 'student';
+              const isOther = d.type === 'other';
+              const consumerTypeEmoji = d.consumerType === 'personal' ? '💰' : d.consumerType === 'revolving' ? '🔄' : d.consumerType === 'purchase' ? '🛒' : '';
+              const consumerTypeLabel = d.consumerType === 'personal' ? 'Prêt personnel' : d.consumerType === 'revolving' ? 'Crédit revolving' : d.consumerType === 'purchase' ? 'Achat à crédit' : '';
+              const isRevolving = d.consumerType === 'revolving';
+              const isInDeferral = isStudent && d.hasDeferral && d.deferralEndDate && new Date(d.deferralEndDate) > new Date();
+
               // Use schedule row if available
               const displayTotal = nextRow ? nextRow.total_amount : 
                 d.mortgageSystem === 'swiss' ? (
@@ -296,6 +318,9 @@ const Debts = () => {
                     d.mortgageSystem === 'swiss' ? 'border-red-200 dark:border-red-900/30' :
                     d.mortgageSystem === 'europe' ? 'border-blue-200 dark:border-blue-900/30' :
                     isVehicle ? 'border-amber-200 dark:border-amber-900/30' :
+                    isRevolving ? 'border-orange-200 dark:border-orange-900/30' :
+                    isConsumer ? 'border-purple-200 dark:border-purple-900/30' :
+                    isStudent ? 'border-indigo-200 dark:border-indigo-900/30' :
                     'border-border'
                   }`}
                 >
@@ -308,19 +333,33 @@ const Debts = () => {
                           {d.mortgageSystem === 'swiss' && <span className="text-xs">🇨🇭</span>}
                           {d.mortgageSystem === 'europe' && <span className="text-xs">🇪🇺</span>}
                           {isVehicle && <span className="text-xs">{vehicleTypeEmoji}</span>}
+                          {isConsumer && <span className="text-xs">{consumerTypeEmoji}</span>}
+                          {d.interestRate === 0 && (isConsumer || isOther) && <span className="text-[9px] bg-success/10 text-success px-1.5 py-0.5 rounded-full font-medium">Sans frais</span>}
+                          {isRevolving && <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full font-medium">Revolving</span>}
+                          {isInDeferral && <span className="text-[9px] bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded-full font-medium">⏳ En différé</span>}
+                          {d.interestRate > 10 && <span className="text-[9px] bg-destructive/10 text-destructive px-1.5 py-0.5 rounded-full font-medium">⚠️ Taux élevé</span>}
                         </div>
                         <p className="text-[10px] text-muted-foreground">
                           {isVehicle ? `${d.lender ? d.lender + ' · ' : ''}${vehicleTypeLabel}` :
+                           isConsumer ? `${d.lender ? d.lender + ' · ' : ''}${consumerTypeLabel}` :
+                           isStudent ? `${d.lender ? d.lender + ' · ' : ''}Prêt étudiant` :
+                           isOther ? `${d.lender ? d.lender + ' · ' : ''}${d.hasInterest === false ? 'Sans intérêts' : `${d.interestRate}%`}` :
                            d.lender ? `${d.lender} · ${d.rateType === 'fixed' ? 'Taux fixe' : 'Taux variable'} ${d.interestRate}%` : ''}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="font-mono-amount text-sm font-semibold">
-                        {formatAmountWithCurrency(d.mortgageSystem === 'swiss' ? displayTotal + displayMaintenance : displayTotal, d.currency)}{freqSuffix}
+                        {isRevolving
+                          ? formatAmountWithCurrency(d.currentBalance || 0, d.currency)
+                          : isInDeferral
+                          ? (d.deferralType === 'partial' ? formatAmountWithCurrency(remaining * d.interestRate / 100 / 12, d.currency) + '/mois' : '—')
+                          : formatAmountWithCurrency(d.mortgageSystem === 'swiss' ? displayTotal + displayMaintenance : displayTotal, d.currency) + freqSuffix}
                       </p>
                       <p className="text-[10px] text-muted-foreground">
-                        {isVehicle ? (d.vehicleType === 'credit' ? 'Mensualité' : 'Loyer mensuel') :
+                        {isRevolving ? 'Solde utilisé' :
+                         isInDeferral ? (d.deferralType === 'partial' ? 'Intérêts seuls' : 'En différé') :
+                         isVehicle ? (d.vehicleType === 'credit' ? 'Mensualité' : 'Loyer mensuel') :
                          d.mortgageSystem ? `Charge ${freqAdj}` : `${d.interestRate}% · ${d.currency}`}
                       </p>
                     </div>
@@ -416,6 +455,87 @@ const Debts = () => {
                       {d.contractEndDate && (
                         <div className="mt-1.5 text-[10px] text-muted-foreground">
                           📅 Fin du crédit : {format(new Date(d.contractEndDate), 'MMMM yyyy', { locale: fr })}
+                        </div>
+                      )}
+                    </>
+                  ) : isRevolving ? (
+                    <>
+                      {/* Revolving: utilization bar */}
+                      {(() => {
+                        const utilPct = d.creditLimit ? Math.min(((d.currentBalance || 0) / d.creditLimit) * 100, 100) : 0;
+                        const available = (d.creditLimit || 0) - (d.currentBalance || 0);
+                        const monthlyInterest = ((d.currentBalance || 0) * d.interestRate / 100) / 12;
+                        return (
+                          <>
+                            <div className="h-1 bg-muted rounded-full overflow-hidden mb-1.5">
+                              <div className={`h-full rounded-full transition-all ${utilPct > 80 ? 'bg-destructive' : utilPct > 50 ? 'bg-warning' : 'bg-primary'}`} style={{ width: `${utilPct}%` }} />
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                              <span className="font-mono-amount">{Math.round(utilPct)}% du plafond</span>
+                              <span className="font-mono-amount">Dispo : {formatAmountWithCurrency(available, d.currency)}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                              <span>Plafond : {formatAmountWithCurrency(d.creditLimit || 0, d.currency)}</span>
+                              <span>Min. : {formatAmountWithCurrency(d.minimumPayment || 0, d.currency)}/mois</span>
+                            </div>
+                            {monthlyInterest > 0 && (
+                              <div className="mt-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                                ⚠️ Intérêts estimés ce mois : {formatAmountWithCurrency(monthlyInterest, d.currency)}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </>
+                  ) : isInDeferral ? (
+                    <>
+                      {/* Student in deferral */}
+                      {(() => {
+                        const deferEnd = new Date(d.deferralEndDate!);
+                        const now = new Date();
+                        const monthsLeft = Math.max(0, (deferEnd.getFullYear() - now.getFullYear()) * 12 + (deferEnd.getMonth() - now.getMonth()));
+                        return (
+                          <>
+                            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 mb-1.5 text-center">
+                              <p className="text-[10px] font-semibold text-blue-700 dark:text-blue-400">🎓 EN PÉRIODE DE DIFFÉRÉ</p>
+                            </div>
+                            <div className="text-[10px] text-muted-foreground space-y-0.5">
+                              <div className="flex justify-between">
+                                <span>Montant emprunté</span>
+                                <span className="font-mono-amount">{formatAmountWithCurrency(d.initialAmount, d.currency)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Début remboursement</span>
+                                <span>{format(deferEnd, 'MMMM yyyy', { locale: fr })}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Mensualité prévue</span>
+                                <span className="font-mono-amount">{formatAmountWithCurrency(d.paymentAmount, d.currency)}</span>
+                              </div>
+                            </div>
+                            <div className="mt-1 text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                              ⏳ Différé restant : {monthsLeft} mois
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </>
+                  ) : isOther && d.hasSchedule === false ? (
+                    <>
+                      {/* Other without schedule */}
+                      <div className="h-1 bg-muted rounded-full overflow-hidden mb-1.5">
+                        <div className={`h-full rounded-full transition-all ${repaidPct >= 50 ? 'bg-success' : 'bg-primary'}`} style={{ width: `${repaidPct}%` }} />
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                        <span className="font-mono-amount">{formatAmountWithCurrency(remaining, d.currency)} restant</span>
+                        <span className="font-mono-amount">{Math.round(repaidPct)}% remboursé</span>
+                      </div>
+                      <div className="mt-1 text-[10px] text-muted-foreground">
+                        💡 Pas d'échéancier fixe
+                      </div>
+                      {d.notes && (
+                        <div className="mt-0.5 text-[10px] text-muted-foreground">
+                          📝 "{d.notes}"
                         </div>
                       )}
                     </>
