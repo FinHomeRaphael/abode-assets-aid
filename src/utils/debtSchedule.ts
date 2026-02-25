@@ -64,7 +64,7 @@ export function generateAmortizationSchedule(params: GenerateScheduleParams): Sc
     const dateStr = `${y}-${m}-${d}`;
 
     const capitalBefore = remaining;
-    const interest = remaining * ratePerPeriod;
+    const interest = Math.round(remaining * ratePerPeriod * 100) / 100;
 
     let principal: number;
     let total: number;
@@ -72,17 +72,23 @@ export function generateAmortizationSchedule(params: GenerateScheduleParams): Sc
     if (repaymentMode === 'fixed_capital') {
       // Fixed capital repayment
       principal = Math.min(paymentAmount, remaining);
-      total = principal + interest;
+      total = Math.round((principal + interest) * 100) / 100;
     } else {
       // Fixed annuity (mensualité constante)
-      total = Math.min(paymentAmount, remaining + interest);
-      principal = Math.max(total - interest, 0);
+      if (remaining + interest <= paymentAmount) {
+        // Last payment
+        principal = remaining;
+        total = Math.round((remaining + interest) * 100) / 100;
+      } else {
+        total = paymentAmount;
+        principal = Math.round((total - interest) * 100) / 100;
+      }
     }
 
     // Last payment adjustment
     if (principal > remaining) {
       principal = remaining;
-      total = principal + interest;
+      total = Math.round((principal + interest) * 100) / 100;
     }
 
     const capitalAfter = Math.max(remaining - principal, 0);
