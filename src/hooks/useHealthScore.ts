@@ -125,19 +125,19 @@ export function useHealthScore(): HealthScoreResult {
   const now = new Date();
 
   // Fetch debts from DB (including property_value for patrimony)
-  const [debtsData, setDebtsData] = useState<{ remaining_amount: number; payment_amount: number; property_value: number | null; currency: string }[]>([]);
+  const [debtsData, setDebtsData] = useState<{ remaining_amount: number; payment_amount: number; property_value: number | null; vehicle_price: number | null; purchase_price: number | null; type: string; currency: string }[]>([]);
 
   useEffect(() => {
     if (!householdId) return;
     const userId = session?.user?.id;
-    let query = supabase.from('debts').select('remaining_amount, payment_amount, property_value, currency');
+    let query = supabase.from('debts').select('remaining_amount, payment_amount, property_value, vehicle_price, purchase_price, type, currency');
     if (financeScope === 'personal') {
       query = query.eq('scope', 'personal').eq('created_by', userId);
     } else {
       query = query.eq('household_id', householdId).eq('scope', 'household');
     }
     query.then(({ data }) => {
-      if (data) setDebtsData(data.map(d => ({ remaining_amount: Number(d.remaining_amount), payment_amount: Number(d.payment_amount), property_value: d.property_value ? Number(d.property_value) : null, currency: d.currency })));
+      if (data) setDebtsData(data.map(d => ({ remaining_amount: Number(d.remaining_amount), payment_amount: Number(d.payment_amount), property_value: d.property_value ? Number(d.property_value) : null, vehicle_price: d.vehicle_price ? Number(d.vehicle_price) : null, purchase_price: d.purchase_price ? Number(d.purchase_price) : null, type: d.type, currency: d.currency })));
     });
   }, [householdId, financeScope, session?.user?.id]);
 
@@ -177,16 +177,23 @@ export function useHealthScore(): HealthScoreResult {
     // Debt service ratio
     const debtServiceRatio = monthlyIncome > 0 ? (monthlyDebtPayments / monthlyIncome) * 100 : 0;
 
-    // Patrimony: account balances + property values (all converted to base currency)
+    // Patrimony: account balances + all asset values (property, vehicles, purchases)
     const activeAccounts = accounts.filter(a => !a.isArchived);
     const accountsTotal = activeAccounts.reduce((s, a) => {
       const bal = getAccountBalance(a.id);
-      return s + bal; // already in convertedAmount via transactions
+      return s + bal;
     }, 0);
     const propertyTotal = debtsData
       .filter(d => d.property_value && d.property_value > 0)
       .reduce((s, d) => s + (d.property_value || 0), 0);
-    const totalPatrimony = accountsTotal + propertyTotal;
+    const vehicleTotal = debtsData
+      .filter(d => d.vehicle_price && d.vehicle_price > 0)
+      .reduce((s, d) => s + (d.vehicle_price || 0), 0);
+    const purchaseTotal = debtsData
+      .filter(d => d.purchase_price && d.purchase_price > 0 && !d.property_value && !d.vehicle_price)
+      .reduce((s, d) => s + (d.purchase_price || 0), 0);
+    const totalAssets = propertyTotal + vehicleTotal + purchaseTotal;
+    const totalPatrimony = accountsTotal + totalAssets;
     const patrimonyPct = EU_MEDIAN_PATRIMONY > 0 ? Math.round((totalPatrimony / EU_MEDIAN_PATRIMONY) * 100) : 0;
 
     // === Adaptive weights (5 criteria) ===
@@ -332,10 +339,12 @@ export function useHealthScore(): HealthScoreResult {
         key: 'patrimony', label: 'Patrimoine total', emoji: '🏛️',
         score: sc, maxScore: max,
         description: `${patrimonyPct}% de la médiane européenne – ${compLabel}`,
-        formula: `(Comptes bancaires + Biens immobiliers) ÷ Médiane européenne × 100`,
+        formula: `(Comptes + Immobilier + Véhicules + Autres biens) ÷ Médiane européenne × 100`,
         details: [
           { label: 'Solde comptes', value: `${fmt(accountsTotal)} ${cur}` },
           { label: 'Immobilier', value: `${fmt(propertyTotal)} ${cur}` },
+          ...(vehicleTotal > 0 ? [{ label: 'Véhicules', value: `${fmt(vehicleTotal)} ${cur}` }] : []),
+          ...(purchaseTotal > 0 ? [{ label: 'Autres biens', value: `${fmt(purchaseTotal)} ${cur}` }] : []),
           { label: 'Patrimoine total', value: `${fmt(totalPatrimony)} ${cur}` },
           { label: 'Médiane européenne', value: `${fmt(EU_MEDIAN_PATRIMONY)} EUR` },
           { label: 'Position', value: `${patrimonyPct}%` },
