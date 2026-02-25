@@ -114,10 +114,23 @@ const Debts = () => {
 
   useEffect(() => { fetchUpcomingPayments(); }, [fetchUpcomingPayments]);
 
-  const totalRemaining = useMemo(() => debts.reduce((s, d) => s + d.remainingAmount, 0), [debts]);
+  // Compute real remaining per debt from upcoming payments (first upcoming = capital_before)
+  const debtRemainingMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const d of debts) {
+      // Find the first unpaid schedule row for this debt
+      const firstUpcoming = upcomingPayments.find(p => p.debt_id === d.id);
+      map.set(d.id, firstUpcoming ? firstUpcoming.capital_before : d.remainingAmount);
+    }
+    return map;
+  }, [debts, upcomingPayments]);
+
+  const getRealRemaining = (d: Debt) => debtRemainingMap.get(d.id) ?? d.remainingAmount;
+
+  const totalRemaining = useMemo(() => debts.reduce((s, d) => s + getRealRemaining(d), 0), [debts, debtRemainingMap]);
   const totalInitial = useMemo(() => debts.reduce((s, d) => s + d.initialAmount, 0), [debts]);
   const totalPayment = useMemo(() => debts.reduce((s, d) => s + d.paymentAmount, 0), [debts]);
-  const totalRepaid = useMemo(() => debts.reduce((s, d) => s + (d.initialAmount - d.remainingAmount), 0), [debts]);
+  const totalRepaid = useMemo(() => debts.reduce((s, d) => s + (d.initialAmount - getRealRemaining(d)), 0), [debts, debtRemainingMap]);
 
   const selectedDebt = useMemo(() => debts.find(d => d.id === selectedDebtId) || null, [debts, selectedDebtId]);
 
@@ -186,7 +199,8 @@ const Debts = () => {
         ) : (
           <motion.div variants={fadeUp} className="space-y-2">
             {debts.map(d => {
-              const repaidPct = d.initialAmount > 0 ? Math.min(((d.initialAmount - d.remainingAmount) / d.initialAmount) * 100, 100) : 0;
+              const remaining = getRealRemaining(d);
+              const repaidPct = d.initialAmount > 0 ? Math.min(((d.initialAmount - remaining) / d.initialAmount) * 100, 100) : 0;
               const nextDate = d.nextPaymentDate || calculateNextPaymentDate(d);
               return (
                 <div
@@ -211,7 +225,7 @@ const Debts = () => {
                     <div className={`h-full rounded-full transition-all ${repaidPct >= 100 ? 'bg-success' : repaidPct >= 50 ? 'bg-primary' : 'bg-warning'}`} style={{ width: `${repaidPct}%` }} />
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                    <span className="font-mono-amount">{formatAmount(d.remainingAmount)} restant / {formatAmount(d.initialAmount)}</span>
+                    <span className="font-mono-amount">{formatAmount(remaining)} restant / {formatAmount(d.initialAmount)}</span>
                     <span className="font-mono-amount">{Math.round(repaidPct)}%</span>
                   </div>
                   {nextDate && (
