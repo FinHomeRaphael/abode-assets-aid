@@ -3,12 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { DEBT_TYPES, PAYMENT_FREQUENCIES, DebtType, MortgageSystem, RateType, SwissAmortizationType } from '@/types/debt';
+import { DEBT_TYPES, PAYMENT_FREQUENCIES, DebtType, MortgageSystem, RateType, SwissAmortizationType, VehicleType } from '@/types/debt';
 import { formatLocalDate, formatAmount } from '@/utils/format';
 import { EXPENSE_CATEGORIES, CATEGORY_EMOJIS, CURRENCIES, CURRENCY_SYMBOLS } from '@/types/finance';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format } from 'date-fns';
+import { format, addMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { generateAmortizationSchedule } from '@/utils/debtSchedule';
 import MoneyInput from '@/components/ui/money-input';
@@ -20,12 +20,26 @@ interface Props {
   onAdded: () => void;
 }
 
-type Step = 'type' | 'mortgage_system' | 'form';
+type Step = 'type' | 'mortgage_system' | 'vehicle_type' | 'form';
+
+const VEHICLE_TYPES: { value: VehicleType; label: string; emoji: string; desc: string }[] = [
+  { value: 'credit', label: 'Crédit auto', emoji: '💰', desc: "Tu empruntes et rembourses — La voiture est à toi dès le départ" },
+  { value: 'leasing', label: 'Leasing (LOA)', emoji: '🔄', desc: "Location avec option d'achat — Tu peux racheter la voiture à la fin" },
+  { value: 'lld', label: 'Location longue durée (LLD)', emoji: '📋', desc: "Tu loues, tu rends à la fin — Souvent entretien et services inclus" },
+];
+
+const LLD_SERVICES = [
+  { value: 'maintenance', label: 'Entretien et révisions', emoji: '🔧' },
+  { value: 'insurance', label: 'Assurance tous risques', emoji: '🛡️' },
+  { value: 'assistance', label: 'Assistance 24h/24', emoji: '📞' },
+  { value: 'replacement', label: 'Véhicule de remplacement', emoji: '🚗' },
+  { value: 'winter_tires', label: 'Pneus hiver', emoji: '❄️' },
+  { value: 'fuel_card', label: 'Carte carburant', emoji: '⛽' },
+];
 
 const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
   const { householdId, household, customCategories, getActiveAccounts, financeScope, session } = useApp();
   
-  // Step state
   const [step, setStep] = useState<Step>('type');
   
   // Debt fields
@@ -49,7 +63,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
   const [debtCurrency, setDebtCurrency] = useState(household.currency);
   const [saving, setSaving] = useState(false);
   
-  // Mortgage-specific fields
+  // Mortgage-specific
   const [rateType, setRateType] = useState<RateType>('fixed');
   const [rateEndDate, setRateEndDate] = useState<Date | null>(null);
   const [propertyValue, setPropertyValue] = useState('');
@@ -58,12 +72,24 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
   const [includeMaintenance, setIncludeMaintenance] = useState(false);
   const [durationMonths, setDurationMonths] = useState('');
 
+  // Vehicle-specific
+  const [vehicleType, setVehicleType] = useState<VehicleType>('credit');
+  const [vehicleName, setVehicleName] = useState('');
+  const [vehiclePrice, setVehiclePrice] = useState('');
+  const [downPayment, setDownPayment] = useState('');
+  const [annualKm, setAnnualKm] = useState('');
+  const [residualValue, setResidualValue] = useState('');
+  const [excessKmCost, setExcessKmCost] = useState('');
+  const [servicesIncluded, setServicesIncluded] = useState<string[]>([]);
+  const [vehicleDurationMonths, setVehicleDurationMonths] = useState('');
+
   const activeAccounts = getActiveAccounts();
   const allExpenseCategories = [...EXPENSE_CATEGORIES, ...customCategories.filter(c => c.type === 'expense').map(c => c.name)];
 
   const isMortgage = type === 'mortgage';
   const isSwiss = isMortgage && mortgageSystem === 'swiss';
   const isEurope = isMortgage && mortgageSystem === 'europe';
+  const isVehicle = type === 'auto';
 
   const periodsPerYear = useMemo(() => {
     switch (paymentFrequency) {
@@ -93,7 +119,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
     }
   }, [paymentFrequency]);
 
-  // Swiss calculations — adapted to frequency
+  // Swiss calculations
   const swissPeriodicInterest = useMemo(() => {
     const rem = parseFloat(remainingAmount) || 0;
     const rate = parseFloat(interestRate) || 0;
@@ -112,19 +138,17 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
 
   const swissTotalPeriodic = swissPeriodicInterest + swissPeriodicAmortization + swissPeriodicMaintenance;
 
-  // Europe calculations — user enters payment manually, interest auto-calculated
+  // Europe calculations
   const europePeriodicPayment = useMemo(() => parseFloat(paymentAmount) || 0, [paymentAmount]);
-
   const europeCurrentInterest = useMemo(() => {
     const rem = parseFloat(remainingAmount) || 0;
     const rate = parseFloat(interestRate) || 0;
     if (rate === 0) return 0;
     return rem * (rate / 100 / periodsPerYear);
   }, [remainingAmount, interestRate, periodsPerYear]);
-
   const europeCurrentCapital = europePeriodicPayment > 0 ? Math.max(europePeriodicPayment - europeCurrentInterest, 0) : 0;
 
-  // Standard (non-mortgage) calculations
+  // Standard calculations
   const calculatedInterest = useMemo(() => {
     const rem = parseFloat(remainingAmount) || 0;
     const rate = parseFloat(interestRate) || 0;
@@ -141,6 +165,41 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
     return parseFloat(paymentAmount) || 0;
   }, [paymentAmount, calculatedInterest, amortizationType]);
 
+  // Vehicle credit calculations
+  const vehicleLoanAmount = useMemo(() => {
+    return (parseFloat(vehiclePrice) || 0) - (parseFloat(downPayment) || 0);
+  }, [vehiclePrice, downPayment]);
+
+  const vehicleMonthlyPayment = useMemo(() => {
+    if (vehicleType !== 'credit') return parseFloat(paymentAmount) || 0;
+    const rate = parseFloat(interestRate) || 0;
+    const n = parseInt(vehicleDurationMonths) || 0;
+    if (vehicleLoanAmount <= 0 || n <= 0) return 0;
+    if (rate === 0) return vehicleLoanAmount / n;
+    const monthlyRate = rate / 100 / 12;
+    return vehicleLoanAmount * (monthlyRate * Math.pow(1 + monthlyRate, n)) / (Math.pow(1 + monthlyRate, n) - 1);
+  }, [vehicleType, vehicleLoanAmount, interestRate, vehicleDurationMonths, paymentAmount]);
+
+  const vehicleTotalCost = useMemo(() => {
+    if (vehicleType === 'credit') {
+      const n = parseInt(vehicleDurationMonths) || 0;
+      return (vehicleMonthlyPayment * n) + (parseFloat(downPayment) || 0);
+    }
+    if (vehicleType === 'leasing') {
+      const n = parseInt(vehicleDurationMonths) || 0;
+      return (parseFloat(downPayment) || 0) + ((parseFloat(paymentAmount) || 0) * n) + (parseFloat(residualValue) || 0);
+    }
+    // LLD
+    const n = parseInt(vehicleDurationMonths) || 0;
+    return (parseFloat(paymentAmount) || 0) * n;
+  }, [vehicleType, vehicleMonthlyPayment, vehicleDurationMonths, downPayment, paymentAmount, residualValue]);
+
+  const vehicleContractEndDate = useMemo(() => {
+    const n = parseInt(vehicleDurationMonths) || 0;
+    if (n <= 0) return null;
+    return addMonths(startDate, n);
+  }, [startDate, vehicleDurationMonths]);
+
   const reset = () => {
     setStep('type');
     setType('mortgage'); setMortgageSystem(null); setName(''); setLender(''); setInitialAmount(''); setRemainingAmount('');
@@ -149,12 +208,17 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
     setAmortizationType('fixed_annuity'); setNextPaymentDate(new Date()); setDebtCurrency(household.currency);
     setRateType('fixed'); setRateEndDate(null); setPropertyValue(''); setAnnualAmortization('');
     setSwissAmortizationType('direct'); setIncludeMaintenance(false); setDurationMonths('');
+    setVehicleType('credit'); setVehicleName(''); setVehiclePrice(''); setDownPayment('');
+    setAnnualKm(''); setResidualValue(''); setExcessKmCost(''); setServicesIncluded([]);
+    setVehicleDurationMonths('');
   };
 
   const handleTypeSelect = (t: DebtType) => {
     setType(t);
     if (t === 'mortgage') {
       setStep('mortgage_system');
+    } else if (t === 'auto') {
+      setStep('vehicle_type');
     } else {
       setMortgageSystem(null);
       setStep('form');
@@ -173,25 +237,50 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
     setStep('form');
   };
 
+  const handleVehicleTypeSelect = (vt: VehicleType) => {
+    setVehicleType(vt);
+    setAmortizationType('fixed_annuity');
+    setPaymentFrequency('monthly');
+    setStep('form');
+  };
+
   const getEffectivePaymentAmount = () => {
-    if (isSwiss) {
-      // For Swiss, payment_amount = annual_amortization / 12 (capital portion)
-      return swissAmortizationType !== 'none' ? swissPeriodicAmortization : 0;
-    }
-    if (isEurope) {
-      return parseFloat(paymentAmount) || 0;
-    }
+    if (isSwiss) return swissAmortizationType !== 'none' ? swissPeriodicAmortization : 0;
+    if (isEurope) return parseFloat(paymentAmount) || 0;
+    if (isVehicle && vehicleType === 'credit') return vehicleMonthlyPayment;
+    if (isVehicle) return parseFloat(paymentAmount) || 0;
     return parseFloat(paymentAmount) || 0;
   };
 
   const getEffectiveDurationYears = () => {
+    if (isVehicle) return (parseInt(vehicleDurationMonths) || 0) / 12;
     return parseFloat(durationYears) || 0;
   };
 
+  const toggleService = (svc: string) => {
+    setServicesIncluded(prev => prev.includes(svc) ? prev.filter(s => s !== svc) : [...prev, svc]);
+  };
+
+  const canSubmitVehicle = () => {
+    if (!vehicleName.trim()) return false;
+    if (vehicleType === 'credit') {
+      return vehicleLoanAmount > 0 && vehicleMonthlyPayment > 0 && parseInt(vehicleDurationMonths) > 0;
+    }
+    if (vehicleType === 'leasing') {
+      return parseFloat(paymentAmount) > 0 && parseInt(vehicleDurationMonths) > 0 && parseInt(annualKm) > 0 && parseFloat(residualValue) > 0;
+    }
+    // LLD
+    return parseFloat(paymentAmount) > 0 && parseInt(vehicleDurationMonths) > 0 && parseInt(annualKm) > 0;
+  };
+
   const handleSubmit = async () => {
-    if (!name.trim() || !initialAmount || !remainingAmount) return;
-    if (!isMortgage && (!paymentAmount || !durationYears)) return;
-    if (isEurope && (!paymentAmount || !durationYears)) return;
+    if (isVehicle) {
+      if (!canSubmitVehicle()) return;
+    } else {
+      if (!name.trim() || !initialAmount || !remainingAmount) return;
+      if (!isMortgage && (!paymentAmount || !durationYears)) return;
+      if (isEurope && (!paymentAmount || !durationYears)) return;
+    }
     
     setSaving(true);
 
@@ -200,35 +289,82 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
     const effectivePayment = getEffectivePaymentAmount();
     const effectiveDuration = getEffectiveDurationYears();
 
-    const debtData: any = {
-      household_id: householdId,
-      type,
-      name: name.trim(),
-      lender: lender.trim() || null,
-      initial_amount: parseFloat(initialAmount),
-      remaining_amount: parseFloat(remainingAmount),
-      currency: debtCurrency,
-      interest_rate: parseFloat(interestRate) || 0,
-      duration_years: effectiveDuration,
-      start_date: formatLocalDate(startDate),
-      payment_frequency: paymentFrequency,
-      payment_day: day,
-      payment_amount: effectivePayment,
-      category_id: categoryId || null,
-      account_id: accountId || null,
-      amortization_type: isSwiss ? 'fixed_capital' : isEurope ? 'fixed_annuity' : amortizationType,
-      next_payment_date: nextDateStr,
-      scope: financeScope,
-      created_by: session?.user?.id,
-      // Mortgage fields
-      mortgage_system: isMortgage ? mortgageSystem : null,
-      rate_type: rateType,
-      rate_end_date: rateEndDate ? formatLocalDate(rateEndDate) : null,
-      property_value: isSwiss ? (parseFloat(propertyValue) || null) : null,
-      annual_amortization: isSwiss ? (parseFloat(annualAmortization) || null) : null,
-      swiss_amortization_type: isSwiss ? swissAmortizationType : null,
-      include_maintenance: isSwiss ? includeMaintenance : false,
-    };
+    // Build debt data
+    let debtData: any;
+
+    if (isVehicle) {
+      const loanAmt = vehicleType === 'credit' ? vehicleLoanAmount : 0;
+      const contractEnd = vehicleContractEndDate ? formatLocalDate(vehicleContractEndDate) : null;
+      
+      debtData = {
+        household_id: householdId,
+        type: 'auto',
+        name: vehicleName.trim(),
+        lender: lender.trim() || null,
+        initial_amount: vehicleType === 'credit' ? loanAmt : (parseFloat(vehiclePrice) || parseFloat(paymentAmount) * (parseInt(vehicleDurationMonths) || 0)),
+        remaining_amount: vehicleType === 'credit' ? loanAmt : (parseFloat(paymentAmount) || 0) * Math.max((parseInt(vehicleDurationMonths) || 0) - 0, 0),
+        currency: debtCurrency,
+        interest_rate: parseFloat(interestRate) || 0,
+        duration_years: effectiveDuration,
+        start_date: formatLocalDate(startDate),
+        payment_frequency: 'monthly',
+        payment_day: day,
+        payment_amount: vehicleType === 'credit' ? Math.round(vehicleMonthlyPayment * 100) / 100 : parseFloat(paymentAmount) || 0,
+        category_id: categoryId || null,
+        account_id: accountId || null,
+        amortization_type: 'fixed_annuity',
+        next_payment_date: nextDateStr,
+        scope: financeScope,
+        created_by: session?.user?.id,
+        mortgage_system: null,
+        rate_type: 'fixed',
+        rate_end_date: null,
+        property_value: null,
+        annual_amortization: null,
+        swiss_amortization_type: null,
+        include_maintenance: false,
+        // Vehicle fields
+        vehicle_type: vehicleType,
+        vehicle_name: vehicleName.trim(),
+        vehicle_price: parseFloat(vehiclePrice) || null,
+        down_payment: parseFloat(downPayment) || null,
+        annual_km: parseInt(annualKm) || null,
+        residual_value: parseFloat(residualValue) || null,
+        excess_km_cost: parseFloat(excessKmCost) || null,
+        services_included: servicesIncluded.length > 0 ? servicesIncluded : null,
+        contract_end_date: contractEnd,
+        current_km: 0,
+      };
+    } else {
+      debtData = {
+        household_id: householdId,
+        type,
+        name: name.trim(),
+        lender: lender.trim() || null,
+        initial_amount: parseFloat(initialAmount),
+        remaining_amount: parseFloat(remainingAmount),
+        currency: debtCurrency,
+        interest_rate: parseFloat(interestRate) || 0,
+        duration_years: effectiveDuration,
+        start_date: formatLocalDate(startDate),
+        payment_frequency: paymentFrequency,
+        payment_day: day,
+        payment_amount: effectivePayment,
+        category_id: categoryId || null,
+        account_id: accountId || null,
+        amortization_type: isSwiss ? 'fixed_capital' : isEurope ? 'fixed_annuity' : amortizationType,
+        next_payment_date: nextDateStr,
+        scope: financeScope,
+        created_by: session?.user?.id,
+        mortgage_system: isMortgage ? mortgageSystem : null,
+        rate_type: rateType,
+        rate_end_date: rateEndDate ? formatLocalDate(rateEndDate) : null,
+        property_value: isSwiss ? (parseFloat(propertyValue) || null) : null,
+        annual_amortization: isSwiss ? (parseFloat(annualAmortization) || null) : null,
+        swiss_amortization_type: isSwiss ? swissAmortizationType : null,
+        include_maintenance: isSwiss ? includeMaintenance : false,
+      };
+    }
 
     const { data: insertedDebt, error } = await supabase.from('debts').insert(debtData).select('id').single();
     if (error || !insertedDebt) {
@@ -238,45 +374,85 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
       return;
     }
 
-    // Generate amortization schedule
-    const schedulePayment = isSwiss
-      ? swissPeriodicAmortization
-      : isEurope
-        ? Math.round((parseFloat(paymentAmount) || 0) * 100) / 100
-        : parseFloat(paymentAmount);
+    // Generate amortization schedule (only for credit types, not leasing/LLD)
+    if (!isVehicle || vehicleType === 'credit') {
+      const schedulePayment = isSwiss
+        ? swissPeriodicAmortization
+        : isEurope
+          ? Math.round((parseFloat(paymentAmount) || 0) * 100) / 100
+          : isVehicle
+            ? Math.round(vehicleMonthlyPayment * 100) / 100
+            : parseFloat(paymentAmount);
 
-    const scheduleRows = generateAmortizationSchedule({
-      remainingPrincipal: parseFloat(remainingAmount),
-      interestRateAnnual: parseFloat(interestRate) || 0,
-      frequency: paymentFrequency as any,
-      repaymentMode: isSwiss ? 'fixed_capital' : isEurope ? 'fixed_annuity' : amortizationType,
-      paymentAmount: schedulePayment,
-      startDate: nextDateStr,
-      paymentDay: day,
-    });
+      const scheduleRemaining = isVehicle ? vehicleLoanAmount : parseFloat(remainingAmount);
 
-    if (scheduleRows.length > 0) {
-      const dbRows = scheduleRows.map(r => ({
-        debt_id: insertedDebt.id,
-        household_id: householdId,
-        due_date: r.due_date,
-        period_number: r.period_number,
-        capital_before: r.capital_before,
-        capital_after: r.capital_after,
-        interest_amount: r.interest_amount,
-        principal_amount: r.principal_amount,
-        total_amount: r.total_amount,
-        status: 'prevu',
-      }));
+      const scheduleRows = generateAmortizationSchedule({
+        remainingPrincipal: scheduleRemaining,
+        interestRateAnnual: parseFloat(interestRate) || 0,
+        frequency: (isVehicle ? 'monthly' : paymentFrequency) as any,
+        repaymentMode: isSwiss ? 'fixed_capital' : isEurope ? 'fixed_annuity' : amortizationType,
+        paymentAmount: schedulePayment,
+        startDate: nextDateStr,
+        paymentDay: day,
+      });
 
-      for (let i = 0; i < dbRows.length; i += 500) {
-        const batch = dbRows.slice(i, i + 500);
-        const { error: schedError } = await supabase.from('debt_schedules').insert(batch as any);
-        if (schedError) console.error('Insert schedule error:', schedError);
+      if (scheduleRows.length > 0) {
+        const dbRows = scheduleRows.map(r => ({
+          debt_id: insertedDebt.id,
+          household_id: householdId,
+          due_date: r.due_date,
+          period_number: r.period_number,
+          capital_before: r.capital_before,
+          capital_after: r.capital_after,
+          interest_amount: r.interest_amount,
+          principal_amount: r.principal_amount,
+          total_amount: r.total_amount,
+          status: 'prevu',
+        }));
+
+        for (let i = 0; i < dbRows.length; i += 500) {
+          const batch = dbRows.slice(i, i + 500);
+          const { error: schedError } = await supabase.from('debt_schedules').insert(batch as any);
+          if (schedError) console.error('Insert schedule error:', schedError);
+        }
+
+        toast.success(`Dette ajoutée avec ${scheduleRows.length} échéances`);
+      } else {
+        toast.success('Dette ajoutée');
+      }
+    } else {
+      // For leasing/LLD, generate simple schedule (loyer entries without amortization)
+      const n = parseInt(vehicleDurationMonths) || 0;
+      const monthly = parseFloat(paymentAmount) || 0;
+      if (n > 0 && monthly > 0) {
+        const rows = [];
+        for (let i = 1; i <= n; i++) {
+          const dueDate = addMonths(nextPaymentDate, i - 1);
+          const remaining = monthly * (n - i);
+          rows.push({
+            debt_id: insertedDebt.id,
+            household_id: householdId,
+            due_date: formatLocalDate(dueDate),
+            period_number: i,
+            capital_before: monthly * (n - i + 1),
+            capital_after: remaining,
+            interest_amount: 0,
+            principal_amount: monthly,
+            total_amount: monthly,
+            status: 'prevu' as const,
+          });
+        }
+        for (let i = 0; i < rows.length; i += 500) {
+          const batch = rows.slice(i, i + 500);
+          const { error: schedError } = await supabase.from('debt_schedules').insert(batch as any);
+          if (schedError) console.error('Insert schedule error:', schedError);
+        }
+        toast.success(`${vehicleType === 'leasing' ? 'Leasing' : 'LLD'} ajouté avec ${n} échéances`);
+      } else {
+        toast.success('Financement ajouté');
       }
     }
 
-    toast.success(`Dette ajoutée avec ${scheduleRows.length} échéances`);
     setSaving(false);
     reset();
     onAdded();
@@ -284,6 +460,20 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
 
   const inputClass = "w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring";
   const monoInputClass = `${inputClass} font-mono`;
+
+  const getStepTitle = () => {
+    if (step === 'type') return '➕ Type de dette';
+    if (step === 'mortgage_system') return '🏠 Système de remboursement';
+    if (step === 'vehicle_type') return '🚗 Type de financement';
+    return '➕ Ajouter une dette';
+  };
+
+  const handleBack = () => {
+    if (step === 'form' && isVehicle) setStep('vehicle_type');
+    else if (step === 'form' && isMortgage) setStep('mortgage_system');
+    else if (step === 'vehicle_type' || step === 'mortgage_system') setStep('type');
+    else setStep('type');
+  };
 
   return (
     <AnimatePresence>
@@ -303,13 +493,11 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
                   {step !== 'type' && (
-                    <button onClick={() => setStep(step === 'form' && isMortgage ? 'mortgage_system' : 'type')} className="p-1 rounded-lg hover:bg-muted">
+                    <button onClick={handleBack} className="p-1 rounded-lg hover:bg-muted">
                       <ArrowLeft className="w-4 h-4" />
                     </button>
                   )}
-                  <h2 className="text-lg font-bold">
-                    {step === 'type' ? '➕ Type de dette' : step === 'mortgage_system' ? '🏠 Système de remboursement' : '➕ Ajouter une dette'}
-                  </h2>
+                  <h2 className="text-lg font-bold">{getStepTitle()}</h2>
                 </div>
                 <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg">✕</button>
               </div>
@@ -317,7 +505,13 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
               {/* Step 1: Type selection */}
               {step === 'type' && (
                 <div className="space-y-2">
-                  {DEBT_TYPES.map(dt => (
+                  {[
+                    { value: 'mortgage' as const, emoji: '🏠', label: 'Crédit immobilier', desc: 'Hypothèque, prêt immobilier' },
+                    { value: 'auto' as const, emoji: '🚗', label: 'Véhicule', desc: 'Crédit auto, leasing, LLD' },
+                    { value: 'consumer' as const, emoji: '💳', label: 'Crédit consommation', desc: 'Crédit à la consommation' },
+                    { value: 'student' as const, emoji: '🎓', label: 'Prêt étudiant', desc: 'Prêt études' },
+                    { value: 'other' as const, emoji: '📦', label: 'Autre', desc: 'Autre type de dette' },
+                  ].map(dt => (
                     <button
                       key={dt.value}
                       onClick={() => handleTypeSelect(dt.value)}
@@ -325,20 +519,15 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                     >
                       <span className="text-2xl">{dt.emoji}</span>
                       <div>
-                        <p className="font-semibold text-sm">{dt.label === 'Immobilier' ? 'Crédit immobilier' : dt.label}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {dt.value === 'mortgage' ? 'Hypothèque, prêt immobilier' :
-                           dt.value === 'auto' ? 'Leasing, financement véhicule' :
-                           dt.value === 'consumer' ? 'Crédit à la consommation' :
-                           dt.value === 'student' ? 'Prêt études' : 'Autre type de dette'}
-                        </p>
+                        <p className="font-semibold text-sm">{dt.label}</p>
+                        <p className="text-[10px] text-muted-foreground">{dt.desc}</p>
                       </div>
                     </button>
                   ))}
                 </div>
               )}
 
-              {/* Step 2: Mortgage system selection */}
+              {/* Step 2a: Mortgage system */}
               {step === 'mortgage_system' && (
                 <div className="space-y-3">
                   <button
@@ -366,10 +555,36 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                 </div>
               )}
 
+              {/* Step 2b: Vehicle type selection */}
+              {step === 'vehicle_type' && (
+                <div className="space-y-3">
+                  {VEHICLE_TYPES.map(vt => (
+                    <button
+                      key={vt.value}
+                      onClick={() => handleVehicleTypeSelect(vt.value)}
+                      className="w-full flex items-start gap-3 px-4 py-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left"
+                    >
+                      <span className="text-2xl">{vt.emoji}</span>
+                      <div>
+                        <p className="font-semibold text-sm">{vt.label}</p>
+                        <p className="text-[10px] text-muted-foreground leading-relaxed">{vt.desc}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {/* Step 3: Form */}
               {step === 'form' && (
                 <div className="space-y-4">
-                  {/* System badge for mortgage */}
+                  {/* Vehicle badge */}
+                  {isVehicle && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                      {VEHICLE_TYPES.find(v => v.value === vehicleType)?.emoji} {VEHICLE_TYPES.find(v => v.value === vehicleType)?.label}
+                    </div>
+                  )}
+
+                  {/* Mortgage badge */}
                   {isMortgage && (
                     <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
                       isSwiss ? 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400'
@@ -378,163 +593,157 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                     </div>
                   )}
 
-                  {/* Name */}
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">{isMortgage ? 'Nom du bien' : 'Nom du crédit'}</label>
-                    <input value={name} onChange={e => setName(e.target.value)} placeholder={isMortgage ? 'Ex: Appartement Lausanne' : 'Ex: Crédit auto'}
-                      className={inputClass} />
-                  </div>
-
-                  {/* Lender */}
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">Banque / Prêteur <span className="text-muted-foreground">(optionnel)</span></label>
-                    <input value={lender} onChange={e => setLender(e.target.value)} placeholder="Ex: UBS, Crédit Agricole"
-                      className={inputClass} />
-                  </div>
-
-                  {/* Currency */}
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">Devise</label>
-                    <select value={debtCurrency} onChange={e => setDebtCurrency(e.target.value)} className={inputClass}>
-                      {CURRENCIES.map(c => <option key={c} value={c}>{CURRENCY_SYMBOLS[c] || c} — {c}</option>)}
-                    </select>
-                  </div>
-
-                  {/* Swiss: Property value */}
-                  {isSwiss && (
-                    <div>
-                      <label className="block text-sm font-medium mb-1.5">Valeur du bien</label>
-                      <MoneyInput value={propertyValue} onChange={setPropertyValue} className={monoInputClass} />
-                    </div>
-                  )}
-
-                  {/* Amounts */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium mb-1.5">{isSwiss ? "Montant de l'hypothèque" : 'Montant emprunté'}</label>
-                      <MoneyInput value={initialAmount} onChange={setInitialAmount} className={monoInputClass} />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-1.5">Capital restant dû</label>
-                      <MoneyInput value={remainingAmount} onChange={setRemainingAmount} className={monoInputClass} />
-                    </div>
-                  </div>
-
-                  {/* Rate */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-medium mb-1.5">Taux d'intérêt (%)</label>
-                      <input type="number" step="0.01" value={interestRate} onChange={e => setInterestRate(e.target.value)} className={monoInputClass} />
-                    </div>
-                    {isMortgage ? (
+                  {/* ===== VEHICLE FORMS ===== */}
+                  {isVehicle && (
+                    <>
+                      {/* Vehicle name */}
                       <div>
-                        <label className="block text-sm font-medium mb-1.5">Type de taux</label>
-                        <select value={rateType} onChange={e => setRateType(e.target.value as RateType)} className={inputClass}>
-                          <option value="fixed">Fixe</option>
-                          <option value="variable">{isSwiss ? 'Variable (SARON)' : 'Variable'}</option>
+                        <label className="block text-sm font-medium mb-1.5">Véhicule</label>
+                        <input value={vehicleName} onChange={e => setVehicleName(e.target.value)} 
+                          placeholder={vehicleType === 'credit' ? 'Ex: Volkswagen Golf 8' : vehicleType === 'leasing' ? 'Ex: BMW Série 3' : 'Ex: Renault Clio'}
+                          className={inputClass} />
+                      </div>
+
+                      {/* Lender */}
+                      <div>
+                        <label className="block text-sm font-medium mb-1.5">
+                          {vehicleType === 'credit' ? 'Organisme de crédit' : vehicleType === 'leasing' ? 'Société de leasing' : 'Société de location'} <span className="text-muted-foreground">(optionnel)</span>
+                        </label>
+                        <input value={lender} onChange={e => setLender(e.target.value)} 
+                          placeholder={vehicleType === 'credit' ? 'Ex: Cetelem' : vehicleType === 'leasing' ? 'Ex: BMW Financial Services' : 'Ex: Arval, ALD'}
+                          className={inputClass} />
+                      </div>
+
+                      {/* Currency */}
+                      <div>
+                        <label className="block text-sm font-medium mb-1.5">Devise</label>
+                        <select value={debtCurrency} onChange={e => setDebtCurrency(e.target.value)} className={inputClass}>
+                          {CURRENCIES.map(c => <option key={c} value={c}>{CURRENCY_SYMBOLS[c] || c} — {c}</option>)}
                         </select>
                       </div>
-                    ) : (
-                      <div>
-                        <label className="block text-sm font-medium mb-1.5">Durée (années)</label>
-                        <input type="number" step="1" value={durationYears} onChange={e => setDurationYears(e.target.value)} className={monoInputClass} />
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Rate end date for fixed mortgage */}
-                  {isMortgage && rateType === 'fixed' && (
-                    <div>
-                      <label className="block text-sm font-medium mb-1.5">Date de fin du taux <span className="text-muted-foreground">(optionnel)</span></label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button className={`${inputClass} text-left`}>
-                            {rateEndDate ? format(rateEndDate, 'dd MMMM yyyy', { locale: fr }) : 'Non définie'}
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar mode="single" selected={rateEndDate || undefined} onSelect={d => setRateEndDate(d || null)} className="p-3 pointer-events-auto" />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  )}
-
-                  {/* Europe: Duration in years + payment amount */}
-                  {isEurope && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium mb-1.5">Durée (années)</label>
-                        <input type="number" step="1" value={durationYears} onChange={e => setDurationYears(e.target.value)} placeholder="Ex: 20" className={monoInputClass} />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1.5">Échéance {frequencyLabelFem} fixe</label>
-                        <MoneyInput value={paymentAmount} onChange={setPaymentAmount} placeholder="Montant de l'échéance" className={monoInputClass} />
-                      </div>
-                    </>
-                  )}
-
-                  {/* Swiss: Amortization type */}
-                  {isSwiss && (
-                    <>
-                      <div>
-                        <label className="block text-sm font-medium mb-1.5">Durée (années)</label>
-                        <input type="number" step="1" value={durationYears} onChange={e => setDurationYears(e.target.value)} className={monoInputClass} />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1.5">Type d'amortissement</label>
-                        <div className="flex gap-2">
-                          {[
-                            { value: 'none' as const, label: 'Aucun' },
-                            { value: 'direct' as const, label: 'Direct' },
-                            { value: 'indirect' as const, label: 'Indirect (3a)' },
-                          ].map(opt => (
-                            <button key={opt.value} onClick={() => setSwissAmortizationType(opt.value)}
-                              className={`flex-1 px-3 py-2 rounded-xl border text-sm transition-all ${
-                                swissAmortizationType === opt.value ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'
-                              }`}>
-                              {opt.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      {swissAmortizationType !== 'none' && (
-                        <div>
-                          <label className="block text-sm font-medium mb-1.5">Amortissement annuel</label>
-                          <MoneyInput value={annualAmortization} onChange={setAnnualAmortization} className={monoInputClass} />
-                        </div>
+                      {/* Credit auto specific */}
+                      {vehicleType === 'credit' && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">Prix du véhicule</label>
+                            <MoneyInput value={vehiclePrice} onChange={setVehiclePrice} className={monoInputClass} />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">Apport initial <span className="text-muted-foreground">(optionnel)</span></label>
+                            <MoneyInput value={downPayment} onChange={setDownPayment} className={monoInputClass} />
+                          </div>
+                          <div className="bg-muted/50 rounded-xl p-3">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Montant emprunté</span>
+                              <span className="font-mono font-semibold">{formatAmount(vehicleLoanAmount, debtCurrency)}</span>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-sm font-medium mb-1.5">Taux d'intérêt (%)</label>
+                              <input type="number" step="0.01" value={interestRate} onChange={e => setInterestRate(e.target.value)} className={monoInputClass} />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium mb-1.5">Durée (mois)</label>
+                              <input type="number" step="1" value={vehicleDurationMonths} onChange={e => setVehicleDurationMonths(e.target.value)} placeholder="Ex: 48, 60, 72" className={monoInputClass} />
+                            </div>
+                          </div>
+                        </>
                       )}
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" checked={includeMaintenance} onChange={e => setIncludeMaintenance(e.target.checked)} className="rounded border-border" />
-                        <span className="text-sm">Inclure frais d'entretien (1%/an de la valeur du bien)</span>
-                      </label>
-                    </>
-                  )}
 
-                  {/* Start date */}
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">Date de signature</label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <button className={`${inputClass} text-left`}>
-                          {format(startDate, 'dd MMMM yyyy', { locale: fr })}
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={startDate} onSelect={d => d && setStartDate(d)} className="p-3 pointer-events-auto" />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                      {/* Leasing specific */}
+                      {vehicleType === 'leasing' && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">Prix catalogue</label>
+                            <MoneyInput value={vehiclePrice} onChange={setVehiclePrice} className={monoInputClass} />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">1er loyer majoré <span className="text-muted-foreground">(optionnel)</span></label>
+                            <MoneyInput value={downPayment} onChange={setDownPayment} className={monoInputClass} />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">Loyer mensuel</label>
+                            <MoneyInput value={paymentAmount} onChange={setPaymentAmount} className={monoInputClass} />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-sm font-medium mb-1.5">Durée (mois)</label>
+                              <input type="number" step="1" value={vehicleDurationMonths} onChange={e => setVehicleDurationMonths(e.target.value)} placeholder="Ex: 36, 48" className={monoInputClass} />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium mb-1.5">Km annuels</label>
+                              <input type="number" step="1000" value={annualKm} onChange={e => setAnnualKm(e.target.value)} placeholder="Ex: 15000" className={monoInputClass} />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">Valeur résiduelle (rachat)</label>
+                            <MoneyInput value={residualValue} onChange={setResidualValue} className={monoInputClass} />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">Coût km excédentaire <span className="text-muted-foreground">(optionnel)</span></label>
+                            <MoneyInput value={excessKmCost} onChange={setExcessKmCost} placeholder="Ex: 0.15" className={monoInputClass} />
+                          </div>
+                        </>
+                      )}
 
-                  {/* Non-mortgage: Frequency, Day, Mode, Payment */}
-                  {!isMortgage && (
-                    <>
+                      {/* LLD specific */}
+                      {vehicleType === 'lld' && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">Loyer mensuel</label>
+                            <MoneyInput value={paymentAmount} onChange={setPaymentAmount} className={monoInputClass} />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-sm font-medium mb-1.5">Durée (mois)</label>
+                              <input type="number" step="1" value={vehicleDurationMonths} onChange={e => setVehicleDurationMonths(e.target.value)} placeholder="Ex: 24, 36, 48" className={monoInputClass} />
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium mb-1.5">Km annuels</label>
+                              <input type="number" step="1000" value={annualKm} onChange={e => setAnnualKm(e.target.value)} placeholder="Ex: 20000" className={monoInputClass} />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">Coût km excédentaire <span className="text-muted-foreground">(optionnel)</span></label>
+                            <MoneyInput value={excessKmCost} onChange={setExcessKmCost} placeholder="Ex: 0.12" className={monoInputClass} />
+                          </div>
+                          {/* Services included */}
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Services inclus <span className="text-muted-foreground">(optionnel)</span></label>
+                            <div className="grid grid-cols-2 gap-2">
+                              {LLD_SERVICES.map(svc => (
+                                <label key={svc.value} className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border cursor-pointer transition-all text-sm ${
+                                  servicesIncluded.includes(svc.value) ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'
+                                }`}>
+                                  <input type="checkbox" checked={servicesIncluded.includes(svc.value)} onChange={() => toggleService(svc.value)} className="sr-only" />
+                                  <span>{svc.emoji}</span>
+                                  <span className="text-xs">{svc.label}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Start date */}
+                      <div>
+                        <label className="block text-sm font-medium mb-1.5">Date de début</label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button className={`${inputClass} text-left`}>
+                              {format(startDate, 'dd MMMM yyyy', { locale: fr })}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar mode="single" selected={startDate} onSelect={d => d && setStartDate(d)} className="p-3 pointer-events-auto" />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+
+                      {/* Payment day + 1st due */}
                       <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-sm font-medium mb-1.5">Fréquence</label>
-                          <select value={paymentFrequency} onChange={e => setPaymentFrequency(e.target.value)} className={inputClass}>
-                            {PAYMENT_FREQUENCIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                          </select>
-                        </div>
                         <div>
                           <label className="block text-sm font-medium mb-1.5">Jour de prélèvement</label>
                           <input type="number" min="1" max="31" value={endOfMonth ? '' : paymentDay} disabled={endOfMonth}
@@ -545,190 +754,460 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                             <span className="text-xs text-muted-foreground">Fin du mois</span>
                           </label>
                         </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium mb-1.5">Mode de remboursement</label>
-                        <div className="flex gap-2">
-                          <button onClick={() => setAmortizationType('fixed_annuity')}
-                            className={`flex-1 px-3 py-2 rounded-xl border text-sm transition-all ${amortizationType === 'fixed_annuity' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>
-                            Mensualité constante
-                          </button>
-                          <button onClick={() => setAmortizationType('fixed_capital')}
-                            className={`flex-1 px-3 py-2 rounded-xl border text-sm transition-all ${amortizationType === 'fixed_capital' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>
-                            Amortissement constant
-                          </button>
+                        <div>
+                          <label className="block text-sm font-medium mb-1.5">1ère échéance</label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className={`${inputClass} text-left`}>
+                                {format(nextPaymentDate, 'dd MMM yyyy', { locale: fr })}
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar mode="single" selected={nextPaymentDate} onSelect={d => d && setNextPaymentDate(d)} className="p-3 pointer-events-auto" />
+                            </PopoverContent>
+                          </Popover>
                         </div>
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          {amortizationType === 'fixed_annuity'
-                            ? "L'échéance totale reste identique. L'amortissement augmente quand les intérêts baissent."
-                            : "Le capital remboursé reste fixe. L'échéance totale diminue au fil du temps."}
-                        </p>
                       </div>
 
+                      {/* Vehicle summary */}
+                      <div className="rounded-xl border border-amber-200 bg-amber-50/50 dark:border-amber-900/30 dark:bg-amber-950/10 p-3 space-y-1.5">
+                        {vehicleType === 'credit' && (
+                          <>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">💰 Mensualité calculée</span>
+                              <span className="font-mono font-semibold">{formatAmount(vehicleMonthlyPayment, debtCurrency)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">📊 Coût total du crédit</span>
+                              <span className="font-mono font-medium">{formatAmount(vehicleTotalCost, debtCurrency)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">📉 Total intérêts</span>
+                              <span className="font-mono font-medium text-destructive">{formatAmount(vehicleTotalCost - (parseFloat(vehiclePrice) || 0), debtCurrency)}</span>
+                            </div>
+                          </>
+                        )}
+                        {vehicleType === 'leasing' && (
+                          <>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">🔄 Total des loyers</span>
+                              <span className="font-mono font-medium">{formatAmount((parseFloat(downPayment) || 0) + (parseFloat(paymentAmount) || 0) * (parseInt(vehicleDurationMonths) || 0), debtCurrency)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">💰 Coût total si rachat</span>
+                              <span className="font-mono font-semibold">{formatAmount(vehicleTotalCost, debtCurrency)}</span>
+                            </div>
+                            {annualKm && vehicleDurationMonths && (
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">🛣️ Km total autorisés</span>
+                                <span className="font-mono font-medium">{((parseInt(annualKm) || 0) * (parseInt(vehicleDurationMonths) || 0) / 12).toLocaleString('fr-FR')} km</span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {vehicleType === 'lld' && (
+                          <>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">📋 Total des loyers</span>
+                              <span className="font-mono font-semibold">{formatAmount(vehicleTotalCost, debtCurrency)}</span>
+                            </div>
+                            {annualKm && vehicleDurationMonths && (
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">🛣️ Km total autorisés</span>
+                                <span className="font-mono font-medium">{((parseInt(annualKm) || 0) * (parseInt(vehicleDurationMonths) || 0) / 12).toLocaleString('fr-FR')} km</span>
+                              </div>
+                            )}
+                            {servicesIncluded.length > 0 && (
+                              <div className="text-[10px] text-muted-foreground mt-1 flex flex-wrap gap-1">
+                                {servicesIncluded.map(s => {
+                                  const svc = LLD_SERVICES.find(sv => sv.value === s);
+                                  return svc ? <span key={s} className="bg-muted px-1.5 py-0.5 rounded">{svc.emoji} {svc.label}</span> : null;
+                                })}
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {vehicleContractEndDate && (
+                          <div className="text-[10px] text-muted-foreground mt-1">
+                            📅 Fin du contrat : {format(vehicleContractEndDate, 'MMMM yyyy', { locale: fr })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Account */}
                       <div>
-                        <label className="block text-sm font-medium mb-1.5">
-                          {amortizationType === 'fixed_annuity' ? 'Échéance totale (fixe)' : 'Amortissement (capital fixe)'}
-                        </label>
-                        <MoneyInput value={paymentAmount} onChange={setPaymentAmount}
-                          placeholder={amortizationType === 'fixed_annuity' ? "Montant total de l'échéance" : 'Montant du remboursement du capital'}
-                          className={monoInputClass} />
+                        <label className="block text-sm font-medium mb-1.5">Compte de prélèvement</label>
+                        <select value={accountId} onChange={e => setAccountId(e.target.value)} className={inputClass}>
+                          <option value="">Aucun</option>
+                          {activeAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                        </select>
+                      </div>
+
+                      {/* Category */}
+                      <div>
+                        <label className="block text-sm font-medium mb-1.5">Catégorie de dépense</label>
+                        <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className={inputClass}>
+                          <option value="">Aucune</option>
+                          {allExpenseCategories.map(c => <option key={c} value={c}>{CATEGORY_EMOJIS[c] || '📌'} {c}</option>)}
+                        </select>
                       </div>
                     </>
                   )}
 
-                  {/* Mortgage: Frequency + Day of payment */}
-                  {isMortgage && (
+                  {/* ===== NON-VEHICLE FORMS (existing) ===== */}
+                  {!isVehicle && (
                     <>
-                    <div className="grid grid-cols-2 gap-3">
+                      {/* Name */}
                       <div>
-                        <label className="block text-sm font-medium mb-1.5">Fréquence</label>
-                        <select value={paymentFrequency} onChange={e => setPaymentFrequency(e.target.value)} className={inputClass}>
-                          {PAYMENT_FREQUENCIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                        <label className="block text-sm font-medium mb-1.5">{isMortgage ? 'Nom du bien' : 'Nom du crédit'}</label>
+                        <input value={name} onChange={e => setName(e.target.value)} placeholder={isMortgage ? 'Ex: Appartement Lausanne' : 'Ex: Crédit auto'}
+                          className={inputClass} />
+                      </div>
+
+                      {/* Lender */}
+                      <div>
+                        <label className="block text-sm font-medium mb-1.5">Banque / Prêteur <span className="text-muted-foreground">(optionnel)</span></label>
+                        <input value={lender} onChange={e => setLender(e.target.value)} placeholder="Ex: UBS, Crédit Agricole"
+                          className={inputClass} />
+                      </div>
+
+                      {/* Currency */}
+                      <div>
+                        <label className="block text-sm font-medium mb-1.5">Devise</label>
+                        <select value={debtCurrency} onChange={e => setDebtCurrency(e.target.value)} className={inputClass}>
+                          {CURRENCIES.map(c => <option key={c} value={c}>{CURRENCY_SYMBOLS[c] || c} — {c}</option>)}
                         </select>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1.5">Jour de prélèvement</label>
-                        <input type="number" min="1" max="31" value={endOfMonth ? '' : paymentDay} disabled={endOfMonth}
-                          onChange={e => setPaymentDay(e.target.value)} placeholder={endOfMonth ? 'Fin du mois' : ''}
-                          className={`${monoInputClass} disabled:opacity-50`} />
-                        <label className="flex items-center gap-2 mt-1.5 cursor-pointer">
-                          <input type="checkbox" checked={endOfMonth} onChange={e => { setEndOfMonth(e.target.checked); if (e.target.checked) setPaymentDay('31'); }} className="rounded border-border" />
-                          <span className="text-xs text-muted-foreground">Fin du mois</span>
-                        </label>
+
+                      {/* Swiss: Property value */}
+                      {isSwiss && (
+                        <div>
+                          <label className="block text-sm font-medium mb-1.5">Valeur du bien</label>
+                          <MoneyInput value={propertyValue} onChange={setPropertyValue} className={monoInputClass} />
+                        </div>
+                      )}
+
+                      {/* Amounts */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium mb-1.5">{isSwiss ? "Montant de l'hypothèque" : 'Montant emprunté'}</label>
+                          <MoneyInput value={initialAmount} onChange={setInitialAmount} className={monoInputClass} />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium mb-1.5">Capital restant dû</label>
+                          <MoneyInput value={remainingAmount} onChange={setRemainingAmount} className={monoInputClass} />
+                        </div>
                       </div>
+
+                      {/* Rate */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium mb-1.5">Taux d'intérêt (%)</label>
+                          <input type="number" step="0.01" value={interestRate} onChange={e => setInterestRate(e.target.value)} className={monoInputClass} />
+                        </div>
+                        {isMortgage ? (
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">Type de taux</label>
+                            <select value={rateType} onChange={e => setRateType(e.target.value as RateType)} className={inputClass}>
+                              <option value="fixed">Fixe</option>
+                              <option value="variable">{isSwiss ? 'Variable (SARON)' : 'Variable'}</option>
+                            </select>
+                          </div>
+                        ) : (
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">Durée (années)</label>
+                            <input type="number" step="1" value={durationYears} onChange={e => setDurationYears(e.target.value)} className={monoInputClass} />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Rate end date for fixed mortgage */}
+                      {isMortgage && rateType === 'fixed' && (
+                        <div>
+                          <label className="block text-sm font-medium mb-1.5">Date de fin du taux <span className="text-muted-foreground">(optionnel)</span></label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className={`${inputClass} text-left`}>
+                                {rateEndDate ? format(rateEndDate, 'dd MMMM yyyy', { locale: fr }) : 'Non définie'}
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar mode="single" selected={rateEndDate || undefined} onSelect={d => setRateEndDate(d || null)} className="p-3 pointer-events-auto" />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      )}
+
+                      {/* Europe: Duration + payment */}
+                      {isEurope && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">Durée (années)</label>
+                            <input type="number" step="1" value={durationYears} onChange={e => setDurationYears(e.target.value)} placeholder="Ex: 20" className={monoInputClass} />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">Échéance {frequencyLabelFem} fixe</label>
+                            <MoneyInput value={paymentAmount} onChange={setPaymentAmount} placeholder="Montant de l'échéance" className={monoInputClass} />
+                          </div>
+                        </>
+                      )}
+
+                      {/* Swiss: Amortization */}
+                      {isSwiss && (
+                        <>
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">Durée (années)</label>
+                            <input type="number" step="1" value={durationYears} onChange={e => setDurationYears(e.target.value)} className={monoInputClass} />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">Type d'amortissement</label>
+                            <div className="flex gap-2">
+                              {[
+                                { value: 'none' as const, label: 'Aucun' },
+                                { value: 'direct' as const, label: 'Direct' },
+                                { value: 'indirect' as const, label: 'Indirect (3a)' },
+                              ].map(opt => (
+                                <button key={opt.value} onClick={() => setSwissAmortizationType(opt.value)}
+                                  className={`flex-1 px-3 py-2 rounded-xl border text-sm transition-all ${
+                                    swissAmortizationType === opt.value ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'
+                                  }`}>
+                                  {opt.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          {swissAmortizationType !== 'none' && (
+                            <div>
+                              <label className="block text-sm font-medium mb-1.5">Amortissement annuel</label>
+                              <MoneyInput value={annualAmortization} onChange={setAnnualAmortization} className={monoInputClass} />
+                            </div>
+                          )}
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" checked={includeMaintenance} onChange={e => setIncludeMaintenance(e.target.checked)} className="rounded border-border" />
+                            <span className="text-sm">Inclure frais d'entretien (1%/an de la valeur du bien)</span>
+                          </label>
+                        </>
+                      )}
+
+                      {/* Start date */}
                       <div>
-                        <label className="block text-sm font-medium mb-1.5">1ère échéance</label>
+                        <label className="block text-sm font-medium mb-1.5">Date de signature</label>
                         <Popover>
                           <PopoverTrigger asChild>
                             <button className={`${inputClass} text-left`}>
-                              {format(nextPaymentDate, 'dd MMM yyyy', { locale: fr })}
+                              {format(startDate, 'dd MMMM yyyy', { locale: fr })}
                             </button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={nextPaymentDate} onSelect={d => d && setNextPaymentDate(d)} className="p-3 pointer-events-auto" />
+                            <Calendar mode="single" selected={startDate} onSelect={d => d && setStartDate(d)} className="p-3 pointer-events-auto" />
                           </PopoverContent>
                         </Popover>
                       </div>
-                    </div>
+
+                      {/* Non-mortgage: Frequency, Day, Mode, Payment */}
+                      {!isMortgage && (
+                        <>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-sm font-medium mb-1.5">Fréquence</label>
+                              <select value={paymentFrequency} onChange={e => setPaymentFrequency(e.target.value)} className={inputClass}>
+                                {PAYMENT_FREQUENCIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-sm font-medium mb-1.5">Jour de prélèvement</label>
+                              <input type="number" min="1" max="31" value={endOfMonth ? '' : paymentDay} disabled={endOfMonth}
+                                onChange={e => setPaymentDay(e.target.value)} placeholder={endOfMonth ? 'Fin du mois' : ''}
+                                className={`${monoInputClass} disabled:opacity-50`} />
+                              <label className="flex items-center gap-2 mt-1.5 cursor-pointer">
+                                <input type="checkbox" checked={endOfMonth} onChange={e => { setEndOfMonth(e.target.checked); if (e.target.checked) setPaymentDay('31'); }} className="rounded border-border" />
+                                <span className="text-xs text-muted-foreground">Fin du mois</span>
+                              </label>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">Mode de remboursement</label>
+                            <div className="flex gap-2">
+                              <button onClick={() => setAmortizationType('fixed_annuity')}
+                                className={`flex-1 px-3 py-2 rounded-xl border text-sm transition-all ${amortizationType === 'fixed_annuity' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>
+                                Mensualité constante
+                              </button>
+                              <button onClick={() => setAmortizationType('fixed_capital')}
+                                className={`flex-1 px-3 py-2 rounded-xl border text-sm transition-all ${amortizationType === 'fixed_capital' ? 'border-primary bg-primary/5 text-primary' : 'border-border hover:bg-muted'}`}>
+                                Amortissement constant
+                              </button>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              {amortizationType === 'fixed_annuity'
+                                ? "L'échéance totale reste identique. L'amortissement augmente quand les intérêts baissent."
+                                : "Le capital remboursé reste fixe. L'échéance totale diminue au fil du temps."}
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">
+                              {amortizationType === 'fixed_annuity' ? 'Échéance totale (fixe)' : 'Amortissement (capital fixe)'}
+                            </label>
+                            <MoneyInput value={paymentAmount} onChange={setPaymentAmount}
+                              placeholder={amortizationType === 'fixed_annuity' ? "Montant total de l'échéance" : 'Montant du remboursement du capital'}
+                              className={monoInputClass} />
+                          </div>
+                        </>
+                      )}
+
+                      {/* Mortgage: Frequency + Day */}
+                      {isMortgage && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">Fréquence</label>
+                            <select value={paymentFrequency} onChange={e => setPaymentFrequency(e.target.value)} className={inputClass}>
+                              {PAYMENT_FREQUENCIES.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">Jour de prélèvement</label>
+                            <input type="number" min="1" max="31" value={endOfMonth ? '' : paymentDay} disabled={endOfMonth}
+                              onChange={e => setPaymentDay(e.target.value)} placeholder={endOfMonth ? 'Fin du mois' : ''}
+                              className={`${monoInputClass} disabled:opacity-50`} />
+                            <label className="flex items-center gap-2 mt-1.5 cursor-pointer">
+                              <input type="checkbox" checked={endOfMonth} onChange={e => { setEndOfMonth(e.target.checked); if (e.target.checked) setPaymentDay('31'); }} className="rounded border-border" />
+                              <span className="text-xs text-muted-foreground">Fin du mois</span>
+                            </label>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1.5">1ère échéance</label>
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button className={`${inputClass} text-left`}>
+                                  {format(nextPaymentDate, 'dd MMM yyyy', { locale: fr })}
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar mode="single" selected={nextPaymentDate} onSelect={d => d && setNextPaymentDate(d)} className="p-3 pointer-events-auto" />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Summary box */}
+                      <div className={`rounded-xl border p-3 space-y-1.5 ${
+                        isSwiss ? 'border-red-200 bg-red-50/50 dark:border-red-900/30 dark:bg-red-950/10' :
+                        isEurope ? 'border-blue-200 bg-blue-50/50 dark:border-blue-900/30 dark:bg-blue-950/10' :
+                        'border-border bg-muted/50'
+                      }`}>
+                        {isSwiss ? (
+                          <>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">📉 Intérêts ({frequencyLabel}s)</span>
+                              <span className="font-mono font-medium">{formatAmount(swissPeriodicInterest, debtCurrency)}</span>
+                            </div>
+                            {swissAmortizationType !== 'none' && (
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">💰 Amortissement {frequencyLabel}</span>
+                                <span className="font-mono font-medium">{formatAmount(swissPeriodicAmortization, debtCurrency)}</span>
+                              </div>
+                            )}
+                            {includeMaintenance && (
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">🔧 Frais d'entretien</span>
+                                <span className="font-mono font-medium">{formatAmount(swissPeriodicMaintenance, debtCurrency)}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between text-sm font-semibold border-t border-red-200 dark:border-red-900/30 pt-1.5">
+                              <span>Charge {frequencyLabelFem} totale</span>
+                              <span className="font-mono">{formatAmount(swissTotalPeriodic, debtCurrency)}</span>
+                            </div>
+                            {propertyValue && parseFloat(remainingAmount) > 0 && (
+                              <div className="text-[10px] text-muted-foreground mt-1">
+                                LTV : {Math.round((parseFloat(remainingAmount) / parseFloat(propertyValue)) * 100)}% de la valeur du bien
+                              </div>
+                            )}
+                          </>
+                        ) : isEurope ? (
+                          <>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">📉 Intérêts (période)</span>
+                              <span className="font-mono font-medium">{formatAmount(europeCurrentInterest, debtCurrency)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">💰 Capital (période)</span>
+                              <span className="font-mono font-medium">{formatAmount(europeCurrentCapital, debtCurrency)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm font-semibold border-t border-blue-200 dark:border-blue-900/30 pt-1.5">
+                              <span>Échéance {frequencyLabelFem} fixe</span>
+                              <span className="font-mono">{formatAmount(europePeriodicPayment, debtCurrency)}</span>
+                            </div>
+                            {durationYears && (
+                              <div className="text-[10px] text-muted-foreground mt-1">
+                                📅 {durationYears} ans — {Math.round(parseFloat(durationYears) * periodsPerYear)} échéances
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Intérêts (1ère échéance)</span>
+                              <span className="font-mono font-medium">{formatAmount(calculatedInterest, debtCurrency)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Amortissement</span>
+                              <span className="font-mono font-medium">{formatAmount(displayedCapital, debtCurrency)}</span>
+                            </div>
+                            <div className="flex justify-between text-sm font-semibold border-t border-border pt-1.5">
+                              <span>Échéance totale</span>
+                              <span className="font-mono">{formatAmount(totalPayment, debtCurrency)}</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Next payment date (non-mortgage) */}
+                      {!isMortgage && (
+                        <div>
+                          <label className="block text-sm font-medium mb-1.5">Date de la 1ère échéance</label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className={`${inputClass} text-left`}>
+                                {format(nextPaymentDate, 'dd MMMM yyyy', { locale: fr })}
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar mode="single" selected={nextPaymentDate} onSelect={d => d && setNextPaymentDate(d)} className="p-3 pointer-events-auto" />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                      )}
+
+                      {/* Account */}
+                      <div>
+                        <label className="block text-sm font-medium mb-1.5">Compte de prélèvement</label>
+                        <select value={accountId} onChange={e => setAccountId(e.target.value)} className={inputClass}>
+                          <option value="">Aucun</option>
+                          {activeAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                        </select>
+                      </div>
+
+                      {/* Category */}
+                      <div>
+                        <label className="block text-sm font-medium mb-1.5">Catégorie de dépense</label>
+                        <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className={inputClass}>
+                          <option value="">Aucune</option>
+                          {allExpenseCategories.map(c => <option key={c} value={c}>{CATEGORY_EMOJIS[c] || '📌'} {c}</option>)}
+                        </select>
+                      </div>
                     </>
                   )}
-
-                  {/* Summary box */}
-                  <div className={`rounded-xl border p-3 space-y-1.5 ${
-                    isSwiss ? 'border-red-200 bg-red-50/50 dark:border-red-900/30 dark:bg-red-950/10' :
-                    isEurope ? 'border-blue-200 bg-blue-50/50 dark:border-blue-900/30 dark:bg-blue-950/10' :
-                    'border-border bg-muted/50'
-                  }`}>
-                    {isSwiss ? (
-                      <>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">📉 Intérêts ({frequencyLabel}s)</span>
-                          <span className="font-mono font-medium">{formatAmount(swissPeriodicInterest, debtCurrency)}</span>
-                        </div>
-                        {swissAmortizationType !== 'none' && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">💰 Amortissement {frequencyLabel}</span>
-                            <span className="font-mono font-medium">{formatAmount(swissPeriodicAmortization, debtCurrency)}</span>
-                          </div>
-                        )}
-                        {includeMaintenance && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">🔧 Frais d'entretien</span>
-                            <span className="font-mono font-medium">{formatAmount(swissPeriodicMaintenance, debtCurrency)}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between text-sm font-semibold border-t border-red-200 dark:border-red-900/30 pt-1.5">
-                          <span>Charge {frequencyLabelFem} totale</span>
-                          <span className="font-mono">{formatAmount(swissTotalPeriodic, debtCurrency)}</span>
-                        </div>
-                        {propertyValue && parseFloat(remainingAmount) > 0 && (
-                          <div className="text-[10px] text-muted-foreground mt-1">
-                            LTV : {Math.round((parseFloat(remainingAmount) / parseFloat(propertyValue)) * 100)}% de la valeur du bien
-                          </div>
-                        )}
-                      </>
-                    ) : isEurope ? (
-                      <>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">📉 Intérêts (période)</span>
-                          <span className="font-mono font-medium">{formatAmount(europeCurrentInterest, debtCurrency)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">💰 Capital (période)</span>
-                          <span className="font-mono font-medium">{formatAmount(europeCurrentCapital, debtCurrency)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm font-semibold border-t border-blue-200 dark:border-blue-900/30 pt-1.5">
-                          <span>Échéance {frequencyLabelFem} fixe</span>
-                          <span className="font-mono">{formatAmount(europePeriodicPayment, debtCurrency)}</span>
-                        </div>
-                        {durationYears && (
-                          <div className="text-[10px] text-muted-foreground mt-1">
-                            📅 {durationYears} ans — {Math.round(parseFloat(durationYears) * periodsPerYear)} échéances
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Intérêts (1ère échéance)</span>
-                          <span className="font-mono font-medium">{formatAmount(calculatedInterest, debtCurrency)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Amortissement</span>
-                          <span className="font-mono font-medium">{formatAmount(displayedCapital, debtCurrency)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm font-semibold border-t border-border pt-1.5">
-                          <span>Échéance totale</span>
-                          <span className="font-mono">{formatAmount(totalPayment, debtCurrency)}</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Next payment date (non-mortgage) */}
-                  {!isMortgage && (
-                    <div>
-                      <label className="block text-sm font-medium mb-1.5">Date de la 1ère échéance</label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button className={`${inputClass} text-left`}>
-                            {format(nextPaymentDate, 'dd MMMM yyyy', { locale: fr })}
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar mode="single" selected={nextPaymentDate} onSelect={d => d && setNextPaymentDate(d)} className="p-3 pointer-events-auto" />
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                  )}
-
-                  {/* Account */}
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">Compte de prélèvement</label>
-                    <select value={accountId} onChange={e => setAccountId(e.target.value)} className={inputClass}>
-                      <option value="">Aucun</option>
-                      {activeAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                    </select>
-                  </div>
-
-                  {/* Category */}
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">Catégorie de dépense</label>
-                    <select value={categoryId} onChange={e => setCategoryId(e.target.value)} className={inputClass}>
-                      <option value="">Aucune</option>
-                      {allExpenseCategories.map(c => <option key={c} value={c}>{CATEGORY_EMOJIS[c] || '📌'} {c}</option>)}
-                    </select>
-                  </div>
                 </div>
               )}
 
-              {/* Submit (only on form step) */}
+              {/* Submit */}
               {step === 'form' && (
                 <div className="mt-6 flex gap-3">
                   <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">Annuler</button>
                   <button onClick={handleSubmit}
-                    disabled={saving || !name.trim() || !initialAmount || !remainingAmount || (!isMortgage && !paymentAmount) || (isEurope && (!paymentAmount || !durationYears))}
+                    disabled={saving || (isVehicle ? !canSubmitVehicle() : (!name.trim() || !initialAmount || !remainingAmount || (!isMortgage && !paymentAmount) || (isEurope && (!paymentAmount || !durationYears))))}
                     className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50">
                     {saving ? 'Génération...' : 'Ajouter'}
                   </button>

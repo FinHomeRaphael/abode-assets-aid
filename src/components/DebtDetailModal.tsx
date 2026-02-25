@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Debt, DEBT_TYPES, getDebtEmoji, getPeriodsPerYear, PAYMENT_FREQUENCIES, PaymentFrequency } from '@/types/debt';
+import { Debt, DEBT_TYPES, getDebtEmoji, getPeriodsPerYear, PAYMENT_FREQUENCIES, PaymentFrequency, VehicleType } from '@/types/debt';
 import { useCurrency } from '@/hooks/useCurrency';
 import { formatDateLong, formatAmount as formatAmountRaw } from '@/utils/format';
 import { DEFAULT_EXCHANGE_RATES } from '@/types/finance';
@@ -29,6 +29,41 @@ interface Props {
   onClose: () => void;
   onUpdated: () => void;
 }
+
+// Inline km update component
+const UpdateKmButton = ({ debt, onUpdated, formatAmount }: { debt: Debt; onUpdated: () => void; formatAmount: (n: number) => string }) => {
+  const [editing, setEditing] = useState(false);
+  const [km, setKm] = useState(String(debt.currentKm || 0));
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const { error } = await supabase.from('debts').update({ current_km: parseInt(km) || 0 }).eq('id', debt.id);
+    setSaving(false);
+    if (error) { toast.error('Erreur'); return; }
+    toast.success('Kilométrage mis à jour');
+    setEditing(false);
+    onUpdated();
+  };
+
+  if (!editing) {
+    return (
+      <button onClick={() => setEditing(true)} className="mt-2 w-full py-1.5 rounded-xl bg-muted/50 text-muted-foreground text-xs font-medium hover:bg-muted transition-colors">
+        ✏️ Mettre à jour le kilométrage
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-2 flex gap-2 items-center">
+      <input type="number" value={km} onChange={e => setKm(e.target.value)} className="flex-1 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-mono focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Km actuel" />
+      <button onClick={handleSave} disabled={saving} className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50">
+        {saving ? '...' : 'OK'}
+      </button>
+      <button onClick={() => setEditing(false)} className="px-2 py-1.5 rounded-lg border border-border text-xs">✕</button>
+    </div>
+  );
+};
 
 const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
   const { formatAmount: formatHouseholdAmount } = useCurrency();
@@ -94,6 +129,9 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
   const isSwiss = debt.mortgageSystem === 'swiss';
   const isEurope = debt.mortgageSystem === 'europe';
   const isMortgage = !!debt.mortgageSystem;
+  const isVehicle = !!debt.vehicleType;
+  const vehicleTypeLabel = debt.vehicleType === 'credit' ? 'Crédit auto' : debt.vehicleType === 'leasing' ? 'Leasing (LOA)' : debt.vehicleType === 'lld' ? 'Location longue durée (LLD)' : '';
+  const vehicleTypeEmoji = debt.vehicleType === 'credit' ? '💰' : debt.vehicleType === 'leasing' ? '🔄' : debt.vehicleType === 'lld' ? '📋' : '';
 
   const ppy = getPeriodsPerYear(debt.paymentFrequency as PaymentFrequency);
   const freqLabel = freqInfo?.label || 'Mensuel';
@@ -258,11 +296,16 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
           <span className="text-xl">{getDebtEmoji(debt.type)}</span>
           <div>
             <div className="flex items-center gap-1.5">
-              <h1 className="text-lg font-bold">{debt.name}</h1>
+              <h1 className="text-lg font-bold">{debt.vehicleName || debt.name}</h1>
               {isSwiss && <span>🇨🇭</span>}
               {isEurope && <span>🇪🇺</span>}
+              {isVehicle && <span>{vehicleTypeEmoji}</span>}
             </div>
-            {debt.lender && <p className="text-xs text-muted-foreground">{debt.lender} · {debt.rateType === 'variable' ? 'Taux variable' : 'Taux fixe'} {debt.interestRate}%</p>}
+            {isVehicle ? (
+              <p className="text-xs text-muted-foreground">{debt.lender ? `${debt.lender} · ` : ''}{vehicleTypeLabel}</p>
+            ) : debt.lender ? (
+              <p className="text-xs text-muted-foreground">{debt.lender} · {debt.rateType === 'variable' ? 'Taux variable' : 'Taux fixe'} {debt.interestRate}%</p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -280,7 +323,134 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
         </div>
       </div>
 
-      {/* Mortgage-specific charge breakdown */}
+      {/* Vehicle-specific details */}
+      {isVehicle && (
+        <div className="bg-card border border-amber-200 dark:border-amber-900/30 rounded-xl p-4">
+          <h2 className="text-sm font-semibold mb-3">{vehicleTypeEmoji} Détails {vehicleTypeLabel}</h2>
+          <div className="space-y-2">
+            {debt.vehiclePrice && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{debt.vehicleType === 'credit' ? '🏷️ Prix du véhicule' : '🏷️ Prix catalogue'}</span>
+                <span className="font-mono-amount font-medium">{formatAmount(debt.vehiclePrice)}</span>
+              </div>
+            )}
+            {debt.downPayment && debt.downPayment > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{debt.vehicleType === 'credit' ? '💵 Apport initial' : '💵 1er loyer majoré'}</span>
+                <span className="font-mono-amount font-medium">{formatAmount(debt.downPayment)}</span>
+              </div>
+            )}
+            {debt.vehicleType === 'credit' && (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">📊 Montant emprunté</span>
+                  <span className="font-mono-amount font-medium">{formatAmount(debt.initialAmount)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">💰 Mensualité</span>
+                  <span className="font-mono-amount font-semibold">{formatAmount(debt.paymentAmount)}</span>
+                </div>
+                {debt.interestRate > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">📉 TAEG</span>
+                    <span className="font-medium">{debt.interestRate}%</span>
+                  </div>
+                )}
+              </>
+            )}
+            {(debt.vehicleType === 'leasing' || debt.vehicleType === 'lld') && (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">💰 Loyer mensuel</span>
+                  <span className="font-mono-amount font-semibold">{formatAmount(debt.paymentAmount)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">📊 Total des loyers</span>
+                  <span className="font-mono-amount font-medium">{formatAmount((debt.downPayment || 0) + debt.paymentAmount * Math.round(debt.durationYears * 12))}</span>
+                </div>
+              </>
+            )}
+            {debt.vehicleType === 'leasing' && debt.residualValue && (
+              <div className="flex justify-between text-sm font-semibold border-t border-amber-200 dark:border-amber-900/30 pt-2">
+                <span>💰 Valeur de rachat</span>
+                <span className="font-mono-amount">{formatAmount(debt.residualValue)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Contract progress */}
+          {(() => {
+            const totalMonths = Math.round(debt.durationYears * 12);
+            const start = new Date(debt.startDate);
+            const now = new Date();
+            const elapsed = Math.max(0, (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()));
+            const remaining = Math.max(0, totalMonths - elapsed);
+            const pct = totalMonths > 0 ? Math.min((elapsed / totalMonths) * 100, 100) : 0;
+            return (
+              <div className="mt-3 pt-2 border-t border-amber-200 dark:border-amber-900/30">
+                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                  <span>Contrat</span>
+                  <span>{elapsed}/{totalMonths} mois ({remaining} restants)</span>
+                </div>
+                <Progress value={pct} className="h-2" />
+              </div>
+            );
+          })()}
+
+          {/* Km tracking */}
+          {(debt.vehicleType === 'leasing' || debt.vehicleType === 'lld') && debt.annualKm && (() => {
+            const totalKm = debt.annualKm * debt.durationYears;
+            const totalMonths = Math.round(debt.durationYears * 12);
+            const start = new Date(debt.startDate);
+            const now = new Date();
+            const elapsed = Math.max(0, (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()));
+            const expectedKm = totalMonths > 0 ? (totalKm * elapsed) / totalMonths : 0;
+            const currentKm = debt.currentKm || 0;
+            const diff = currentKm - expectedKm;
+            const kmPct = totalKm > 0 ? Math.min((currentKm / totalKm) * 100, 100) : 0;
+            const isOver = diff > 0;
+            
+            return (
+              <div className="mt-3 pt-2 border-t border-amber-200 dark:border-amber-900/30">
+                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                  <span>📍 Kilométrage</span>
+                  <span>{currentKm.toLocaleString('fr-FR')} / {totalKm.toLocaleString('fr-FR')} km</span>
+                </div>
+                <Progress value={kmPct} className="h-2" />
+                {currentKm > 0 && (
+                  <div className={`mt-1 text-[10px] font-medium ${isOver ? 'text-destructive' : 'text-success'}`}>
+                    {isOver 
+                      ? `⚠️ Tu dépasses de ${Math.round(diff).toLocaleString('fr-FR')} km${debt.excessKmCost ? ` — Surcoût estimé : ${formatAmount(Math.round(diff) * debt.excessKmCost)}` : ''}` 
+                      : `✅ Tu es dans les clous ! (${Math.round(Math.abs(diff)).toLocaleString('fr-FR')} km d'avance)`}
+                  </div>
+                )}
+                {/* Update km button */}
+                <UpdateKmButton debt={debt} onUpdated={onUpdated} formatAmount={formatAmount} />
+              </div>
+            );
+          })()}
+
+          {/* LLD Services */}
+          {debt.vehicleType === 'lld' && debt.servicesIncluded && debt.servicesIncluded.length > 0 && (
+            <div className="mt-3 pt-2 border-t border-amber-200 dark:border-amber-900/30">
+              <p className="text-xs text-muted-foreground mb-2">Services inclus</p>
+              <div className="flex flex-wrap gap-1.5">
+                {debt.servicesIncluded.map((s: string) => {
+                  const labels: Record<string, string> = { maintenance: '🔧 Entretien', insurance: '🛡️ Assurance', assistance: '📞 Assistance', replacement: '🚗 Remplacement', winter_tires: '❄️ Pneus hiver', fuel_card: '⛽ Carburant' };
+                  return <span key={s} className="bg-muted px-2 py-1 rounded-lg text-[10px] font-medium">{labels[s] || s}</span>;
+                })}
+              </div>
+            </div>
+          )}
+
+          {debt.contractEndDate && (
+            <div className="mt-2 text-xs text-muted-foreground">
+              📅 {debt.vehicleType === 'lld' ? 'Restitution' : 'Fin du contrat'} : {formatDateLong(debt.contractEndDate)}
+            </div>
+          )}
+        </div>
+      )}
+
       {isSwiss && (
         <div className="bg-card border border-red-200 dark:border-red-900/30 rounded-xl p-4">
           <h2 className="text-sm font-semibold mb-3">🇨🇭 Charge {freqPeriodLabel}</h2>

@@ -296,11 +296,16 @@ export type Database = {
           account_id: string | null
           amortization_type: string
           annual_amortization: number | null
+          annual_km: number | null
           category_id: string | null
+          contract_end_date: string | null
           created_at: string | null
           created_by: string | null
           currency: string
+          current_km: number | null
+          down_payment: number | null
           duration_years: number
+          excess_km_cost: number | null
           household_id: string
           id: string
           include_maintenance: boolean | null
@@ -318,21 +323,31 @@ export type Database = {
           rate_end_date: string | null
           rate_type: string
           remaining_amount: number
+          residual_value: number | null
           scope: string
+          services_included: string[] | null
           start_date: string
           swiss_amortization_type: string | null
           type: string
           updated_at: string | null
+          vehicle_name: string | null
+          vehicle_price: number | null
+          vehicle_type: string | null
         }
         Insert: {
           account_id?: string | null
           amortization_type?: string
           annual_amortization?: number | null
+          annual_km?: number | null
           category_id?: string | null
+          contract_end_date?: string | null
           created_at?: string | null
           created_by?: string | null
           currency?: string
+          current_km?: number | null
+          down_payment?: number | null
           duration_years: number
+          excess_km_cost?: number | null
           household_id: string
           id?: string
           include_maintenance?: boolean | null
@@ -350,21 +365,31 @@ export type Database = {
           rate_end_date?: string | null
           rate_type?: string
           remaining_amount: number
+          residual_value?: number | null
           scope?: string
+          services_included?: string[] | null
           start_date: string
           swiss_amortization_type?: string | null
           type: string
           updated_at?: string | null
+          vehicle_name?: string | null
+          vehicle_price?: number | null
+          vehicle_type?: string | null
         }
         Update: {
           account_id?: string | null
           amortization_type?: string
           annual_amortization?: number | null
+          annual_km?: number | null
           category_id?: string | null
+          contract_end_date?: string | null
           created_at?: string | null
           created_by?: string | null
           currency?: string
+          current_km?: number | null
+          down_payment?: number | null
           duration_years?: number
+          excess_km_cost?: number | null
           household_id?: string
           id?: string
           include_maintenance?: boolean | null
@@ -382,11 +407,16 @@ export type Database = {
           rate_end_date?: string | null
           rate_type?: string
           remaining_amount?: number
+          residual_value?: number | null
           scope?: string
+          services_included?: string[] | null
           start_date?: string
           swiss_amortization_type?: string | null
           type?: string
           updated_at?: string | null
+          vehicle_name?: string | null
+          vehicle_price?: number | null
+          vehicle_type?: string | null
         }
         Relationships: [
           {

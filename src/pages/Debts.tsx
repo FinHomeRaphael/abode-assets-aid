@@ -82,6 +82,17 @@ const Debts = () => {
         annualAmortization: d.annual_amortization ? Number(d.annual_amortization) : undefined,
         swissAmortizationType: d.swiss_amortization_type || undefined,
         includeMaintenance: d.include_maintenance || false,
+        // Vehicle fields
+        vehicleType: d.vehicle_type || undefined,
+        vehicleName: d.vehicle_name || undefined,
+        vehiclePrice: d.vehicle_price ? Number(d.vehicle_price) : undefined,
+        downPayment: d.down_payment ? Number(d.down_payment) : undefined,
+        annualKm: d.annual_km ? Number(d.annual_km) : undefined,
+        residualValue: d.residual_value ? Number(d.residual_value) : undefined,
+        excessKmCost: d.excess_km_cost ? Number(d.excess_km_cost) : undefined,
+        servicesIncluded: d.services_included || undefined,
+        contractEndDate: d.contract_end_date || undefined,
+        currentKm: d.current_km ? Number(d.current_km) : undefined,
       })));
     }
     if (error) console.error('Fetch debts error:', error);
@@ -249,7 +260,11 @@ const Debts = () => {
               const freqSuffix = getFrequencySuffix(d.paymentFrequency);
               const freqAdj = d.paymentFrequency === 'monthly' ? 'mensuelle' : d.paymentFrequency === 'quarterly' ? 'trimestrielle' : d.paymentFrequency === 'semi-annual' ? 'semestrielle' : 'annuelle';
 
-              // Use schedule row if available for consistent display
+              const isVehicle = !!d.vehicleType;
+              const vehicleTypeEmoji = d.vehicleType === 'credit' ? '💰' : d.vehicleType === 'leasing' ? '🔄' : d.vehicleType === 'lld' ? '📋' : '';
+              const vehicleTypeLabel = d.vehicleType === 'credit' ? 'Crédit auto' : d.vehicleType === 'leasing' ? 'Leasing (LOA)' : d.vehicleType === 'lld' ? 'LLD' : '';
+
+              // Use schedule row if available
               const displayTotal = nextRow ? nextRow.total_amount : 
                 d.mortgageSystem === 'swiss' ? (
                   (remaining * d.interestRate / 100 / ppy) +
@@ -262,6 +277,17 @@ const Debts = () => {
                 Math.max(d.paymentAmount - displayInterest, 0);
               const displayMaintenance = d.includeMaintenance && d.propertyValue ? d.propertyValue * 0.01 / ppy : 0;
 
+              // Vehicle contract progress
+              const vehicleContractMonths = isVehicle ? Math.round(d.durationYears * 12) : 0;
+              const vehicleElapsedMonths = isVehicle ? (() => {
+                const start = new Date(d.startDate);
+                const now = new Date();
+                return Math.max(0, (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth()));
+              })() : 0;
+              const vehicleContractPct = vehicleContractMonths > 0 ? Math.min((vehicleElapsedMonths / vehicleContractMonths) * 100, 100) : 0;
+              const vehicleTotalKm = isVehicle && d.annualKm ? d.annualKm * d.durationYears : 0;
+              const vehicleKmPct = vehicleTotalKm > 0 && d.currentKm ? Math.min((d.currentKm / vehicleTotalKm) * 100, 100) : 0;
+
               return (
                 <div
                   key={d.id}
@@ -269,6 +295,7 @@ const Debts = () => {
                   className={`bg-card border rounded-xl p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
                     d.mortgageSystem === 'swiss' ? 'border-red-200 dark:border-red-900/30' :
                     d.mortgageSystem === 'europe' ? 'border-blue-200 dark:border-blue-900/30' :
+                    isVehicle ? 'border-amber-200 dark:border-amber-900/30' :
                     'border-border'
                   }`}
                 >
@@ -277,11 +304,15 @@ const Debts = () => {
                       <span className="text-lg">{getDebtEmoji(d.type)}</span>
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <p className="font-semibold text-sm">{d.name}</p>
+                          <p className="font-semibold text-sm">{d.vehicleName || d.name}</p>
                           {d.mortgageSystem === 'swiss' && <span className="text-xs">🇨🇭</span>}
                           {d.mortgageSystem === 'europe' && <span className="text-xs">🇪🇺</span>}
+                          {isVehicle && <span className="text-xs">{vehicleTypeEmoji}</span>}
                         </div>
-                        {d.lender && <p className="text-[10px] text-muted-foreground">{d.lender} · {d.rateType === 'fixed' ? 'Taux fixe' : 'Taux variable'} {d.interestRate}%</p>}
+                        <p className="text-[10px] text-muted-foreground">
+                          {isVehicle ? `${d.lender ? d.lender + ' · ' : ''}${vehicleTypeLabel}` :
+                           d.lender ? `${d.lender} · ${d.rateType === 'fixed' ? 'Taux fixe' : 'Taux variable'} ${d.interestRate}%` : ''}
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -289,7 +320,8 @@ const Debts = () => {
                         {formatAmountWithCurrency(d.mortgageSystem === 'swiss' ? displayTotal + displayMaintenance : displayTotal, d.currency)}{freqSuffix}
                       </p>
                       <p className="text-[10px] text-muted-foreground">
-                        {d.mortgageSystem ? `Charge ${freqAdj}` : `${d.interestRate}% · ${d.currency}`}
+                        {isVehicle ? (d.vehicleType === 'credit' ? 'Mensualité' : 'Loyer mensuel') :
+                         d.mortgageSystem ? `Charge ${freqAdj}` : `${d.interestRate}% · ${d.currency}`}
                       </p>
                     </div>
                   </div>
@@ -316,7 +348,7 @@ const Debts = () => {
                     </div>
                   )}
 
-                  {/* Europe: current breakdown */}
+                  {/* Europe: breakdown */}
                   {d.mortgageSystem === 'europe' && (
                     <div className="text-[10px] text-muted-foreground mb-2 space-y-0.5">
                       <div className="flex justify-between">
@@ -330,67 +362,127 @@ const Debts = () => {
                     </div>
                   )}
 
-                  <div className="h-1 bg-muted rounded-full overflow-hidden mb-1.5">
-                    {d.mortgageSystem === 'swiss' && d.propertyValue ? (
-                      // Swiss: LTV bar
-                      <div className={`h-full rounded-full transition-all ${
-                        (remaining / d.propertyValue) <= 0.65 ? 'bg-success' : (remaining / d.propertyValue) <= 0.80 ? 'bg-primary' : 'bg-warning'
-                      }`} style={{ width: `${Math.min((1 - remaining / d.propertyValue) * 100, 100)}%` }} />
-                    ) : (
-                      <div className={`h-full rounded-full transition-all ${repaidPct >= 100 ? 'bg-success' : repaidPct >= 50 ? 'bg-primary' : 'bg-warning'}`} style={{ width: `${repaidPct}%` }} />
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                    <span className="font-mono-amount">{formatAmountWithCurrency(remaining, d.currency)} restant{d.mortgageSystem === 'swiss' && d.propertyValue ? ` / ${formatAmountWithCurrency(d.propertyValue, d.currency)}` : ` / ${formatAmountWithCurrency(d.initialAmount, d.currency)}`}</span>
-                    <span className="font-mono-amount">
-                      {d.mortgageSystem === 'swiss' && d.propertyValue
-                        ? `LTV ${Math.round((remaining / d.propertyValue) * 100)}%`
-                        : `${Math.round(repaidPct)}%`}
-                    </span>
-                  </div>
-                  
-                  {/* Rate renewal alert for Swiss */}
-                  {d.mortgageSystem === 'swiss' && d.rateEndDate && (() => {
-                    const endDate = new Date(d.rateEndDate!);
-                    const now = new Date();
-                    const monthsLeft = (endDate.getFullYear() - now.getFullYear()) * 12 + (endDate.getMonth() - now.getMonth());
-                    if (monthsLeft <= 12 && monthsLeft > 0) {
-                      const years = Math.floor(monthsLeft / 12);
-                      const months = monthsLeft % 12;
-                      return (
-                        <div className="mt-1.5 text-[10px] text-amber-600 dark:text-amber-400 font-medium">
-                          ⚠️ Renouvellement taux dans {years > 0 ? `${years} an${years > 1 ? 's' : ''} ` : ''}{months} mois
+                  {/* Vehicle: contract progress bar */}
+                  {isVehicle && (d.vehicleType === 'leasing' || d.vehicleType === 'lld') ? (
+                    <>
+                      <div className="mb-1.5">
+                        <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">
+                          <span>Contrat</span>
+                          <span>{vehicleElapsedMonths}/{vehicleContractMonths} mois</span>
                         </div>
-                      );
-                    }
-                    return null;
-                  })()}
-
-                  {/* Europe: end date */}
-                  {d.mortgageSystem === 'europe' && d.durationYears > 0 && (() => {
-                    const startD = new Date(d.startDate);
-                    const endD = new Date(startD);
-                    endD.setFullYear(endD.getFullYear() + Math.floor(d.durationYears));
-                    endD.setMonth(endD.getMonth() + Math.round((d.durationYears % 1) * 12));
-                    const now = new Date();
-                    const yearsLeft = Math.max(0, Math.round((endD.getTime() - now.getTime()) / (365.25 * 24 * 3600 * 1000)));
-                    return (
-                      <div className="mt-1.5 text-[10px] text-muted-foreground">
-                        📅 Fin du crédit : {format(endD, 'MMMM yyyy', { locale: fr })} ({yearsLeft} ans restants)
+                        <div className="h-1 bg-muted rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full transition-all ${vehicleContractPct >= 90 ? 'bg-warning' : 'bg-primary'}`} style={{ width: `${vehicleContractPct}%` }} />
+                        </div>
                       </div>
-                    );
-                  })()}
+                      {d.annualKm && d.currentKm !== undefined && d.currentKm > 0 && (
+                        <div className="mb-1.5">
+                          <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">
+                            <span>Kilométrage</span>
+                            <span>{d.currentKm.toLocaleString('fr-FR')} / {vehicleTotalKm.toLocaleString('fr-FR')} km</span>
+                          </div>
+                          <div className="h-1 bg-muted rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all ${vehicleKmPct > 100 ? 'bg-destructive' : vehicleKmPct > 80 ? 'bg-warning' : 'bg-success'}`} style={{ width: `${Math.min(vehicleKmPct, 100)}%` }} />
+                          </div>
+                        </div>
+                      )}
+                      {d.vehicleType === 'leasing' && d.residualValue && (
+                        <div className="text-[10px] text-muted-foreground">
+                          💰 Valeur de rachat : {formatAmountWithCurrency(d.residualValue, d.currency)}
+                        </div>
+                      )}
+                      {d.vehicleType === 'lld' && d.servicesIncluded && d.servicesIncluded.length > 0 && (
+                        <div className="text-[10px] text-muted-foreground flex flex-wrap gap-1 mt-1">
+                          {d.servicesIncluded.map((s: string) => {
+                            const svcMap: Record<string, string> = { maintenance: '🔧', insurance: '🛡️', assistance: '📞', replacement: '🚗', winter_tires: '❄️', fuel_card: '⛽' };
+                            return <span key={s}>{svcMap[s] || '✅'}</span>;
+                          })}
+                        </div>
+                      )}
+                      {d.contractEndDate && (
+                        <div className="mt-1 text-[10px] text-muted-foreground">
+                          📅 {d.vehicleType === 'lld' ? 'Restitution' : 'Fin du contrat'} : {format(new Date(d.contractEndDate), 'MMMM yyyy', { locale: fr })}
+                        </div>
+                      )}
+                    </>
+                  ) : isVehicle && d.vehicleType === 'credit' ? (
+                    <>
+                      <div className="h-1 bg-muted rounded-full overflow-hidden mb-1.5">
+                        <div className={`h-full rounded-full transition-all ${repaidPct >= 100 ? 'bg-success' : repaidPct >= 50 ? 'bg-primary' : 'bg-warning'}`} style={{ width: `${repaidPct}%` }} />
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                        <span className="font-mono-amount">{formatAmountWithCurrency(remaining, d.currency)} restant</span>
+                        <span className="font-mono-amount">{Math.round(repaidPct)}% remboursé</span>
+                      </div>
+                      {d.contractEndDate && (
+                        <div className="mt-1.5 text-[10px] text-muted-foreground">
+                          📅 Fin du crédit : {format(new Date(d.contractEndDate), 'MMMM yyyy', { locale: fr })}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="h-1 bg-muted rounded-full overflow-hidden mb-1.5">
+                        {d.mortgageSystem === 'swiss' && d.propertyValue ? (
+                          <div className={`h-full rounded-full transition-all ${
+                            (remaining / d.propertyValue) <= 0.65 ? 'bg-success' : (remaining / d.propertyValue) <= 0.80 ? 'bg-primary' : 'bg-warning'
+                          }`} style={{ width: `${Math.min((1 - remaining / d.propertyValue) * 100, 100)}%` }} />
+                        ) : (
+                          <div className={`h-full rounded-full transition-all ${repaidPct >= 100 ? 'bg-success' : repaidPct >= 50 ? 'bg-primary' : 'bg-warning'}`} style={{ width: `${repaidPct}%` }} />
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                        <span className="font-mono-amount">{formatAmountWithCurrency(remaining, d.currency)} restant{d.mortgageSystem === 'swiss' && d.propertyValue ? ` / ${formatAmountWithCurrency(d.propertyValue, d.currency)}` : ` / ${formatAmountWithCurrency(d.initialAmount, d.currency)}`}</span>
+                        <span className="font-mono-amount">
+                          {d.mortgageSystem === 'swiss' && d.propertyValue
+                            ? `LTV ${Math.round((remaining / d.propertyValue) * 100)}%`
+                            : `${Math.round(repaidPct)}%`}
+                        </span>
+                      </div>
+                      
+                      {/* Rate renewal alert for Swiss */}
+                      {d.mortgageSystem === 'swiss' && d.rateEndDate && (() => {
+                        const endDate = new Date(d.rateEndDate!);
+                        const now = new Date();
+                        const monthsLeft = (endDate.getFullYear() - now.getFullYear()) * 12 + (endDate.getMonth() - now.getMonth());
+                        if (monthsLeft <= 12 && monthsLeft > 0) {
+                          const years = Math.floor(monthsLeft / 12);
+                          const months = monthsLeft % 12;
+                          return (
+                            <div className="mt-1.5 text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                              ⚠️ Renouvellement taux dans {years > 0 ? `${years} an${years > 1 ? 's' : ''} ` : ''}{months} mois
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
 
-                  {d.propertyValue && d.propertyValue > 0 && (
-                    <div className="mt-1.5 text-[10px] text-muted-foreground">
-                      🏠 Valeur du bien : {formatAmountWithCurrency(d.propertyValue, d.currency)}
-                    </div>
-                  )}
+                      {/* Europe: end date */}
+                      {d.mortgageSystem === 'europe' && d.durationYears > 0 && (() => {
+                        const startD = new Date(d.startDate);
+                        const endD = new Date(startD);
+                        endD.setFullYear(endD.getFullYear() + Math.floor(d.durationYears));
+                        endD.setMonth(endD.getMonth() + Math.round((d.durationYears % 1) * 12));
+                        const now = new Date();
+                        const yearsLeft = Math.max(0, Math.round((endD.getTime() - now.getTime()) / (365.25 * 24 * 3600 * 1000)));
+                        return (
+                          <div className="mt-1.5 text-[10px] text-muted-foreground">
+                            📅 Fin du crédit : {format(endD, 'MMMM yyyy', { locale: fr })} ({yearsLeft} ans restants)
+                          </div>
+                        );
+                      })()}
 
-                  {nextDate && (
-                    <div className="mt-1.5 text-[10px] text-muted-foreground">
-                      Prochaine échéance ({getFrequencySuffix(d.paymentFrequency).slice(1)}) : {formatDateLong(nextDate)}
-                    </div>
+                      {d.propertyValue && d.propertyValue > 0 && (
+                        <div className="mt-1.5 text-[10px] text-muted-foreground">
+                          🏠 Valeur du bien : {formatAmountWithCurrency(d.propertyValue, d.currency)}
+                        </div>
+                      )}
+
+                      {nextDate && (
+                        <div className="mt-1.5 text-[10px] text-muted-foreground">
+                          Prochaine échéance ({getFrequencySuffix(d.paymentFrequency).slice(1)}) : {formatDateLong(nextDate)}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               );
