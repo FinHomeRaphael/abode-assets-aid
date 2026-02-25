@@ -134,16 +134,24 @@ const Debts = () => {
 
   useEffect(() => { fetchUpcomingPayments(); }, [fetchUpcomingPayments]);
 
-  // Compute real remaining per debt from upcoming payments (first upcoming = capital_before)
-  const debtRemainingMap = useMemo(() => {
-    const map = new Map<string, number>();
+  // Compute real remaining per debt + next payment row from schedule
+  const debtNextPaymentMap = useMemo(() => {
+    const map = new Map<string, UpcomingPayment>();
     for (const d of debts) {
-      // Find the first unpaid schedule row for this debt
       const firstUpcoming = upcomingPayments.find(p => p.debt_id === d.id);
-      map.set(d.id, firstUpcoming ? firstUpcoming.capital_before : d.remainingAmount);
+      if (firstUpcoming) map.set(d.id, firstUpcoming);
     }
     return map;
   }, [debts, upcomingPayments]);
+
+  const debtRemainingMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const d of debts) {
+      const firstUpcoming = debtNextPaymentMap.get(d.id);
+      map.set(d.id, firstUpcoming ? firstUpcoming.capital_before : d.remainingAmount);
+    }
+    return map;
+  }, [debts, debtNextPaymentMap]);
 
   const getRealRemaining = (d: Debt) => debtRemainingMap.get(d.id) ?? d.remainingAmount;
 
@@ -222,6 +230,24 @@ const Debts = () => {
               const remaining = getRealRemaining(d);
               const repaidPct = d.initialAmount > 0 ? Math.min(((d.initialAmount - remaining) / d.initialAmount) * 100, 100) : 0;
               const nextDate = d.nextPaymentDate || calculateNextPaymentDate(d);
+              const nextRow = debtNextPaymentMap.get(d.id);
+              const ppy = getPeriodsPerYear(d.paymentFrequency as PaymentFrequency);
+              const freqSuffix = getFrequencySuffix(d.paymentFrequency);
+              const freqAdj = d.paymentFrequency === 'monthly' ? 'mensuelle' : d.paymentFrequency === 'quarterly' ? 'trimestrielle' : d.paymentFrequency === 'semi-annual' ? 'semestrielle' : 'annuelle';
+
+              // Use schedule row if available for consistent display
+              const displayTotal = nextRow ? nextRow.total_amount : 
+                d.mortgageSystem === 'swiss' ? (
+                  (remaining * d.interestRate / 100 / ppy) +
+                  (d.swissAmortizationType !== 'none' && d.annualAmortization ? d.annualAmortization / ppy : 0) +
+                  (d.includeMaintenance && d.propertyValue ? d.propertyValue * 0.01 / ppy : 0)
+                ) : d.paymentAmount;
+              const displayInterest = nextRow ? nextRow.interest_amount : remaining * d.interestRate / 100 / ppy;
+              const displayCapital = nextRow ? nextRow.principal_amount : 
+                d.mortgageSystem === 'swiss' ? (d.annualAmortization ? d.annualAmortization / ppy : 0) : 
+                Math.max(d.paymentAmount - displayInterest, 0);
+              const displayMaintenance = d.includeMaintenance && d.propertyValue ? d.propertyValue * 0.01 / ppy : 0;
+
               return (
                 <div
                   key={d.id}
@@ -245,69 +271,50 @@ const Debts = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      {d.mortgageSystem === 'swiss' ? (() => {
-                        const ppy = getPeriodsPerYear(d.paymentFrequency as PaymentFrequency);
-                        const periodicTotal =
-                          (remaining * d.interestRate / 100 / ppy) +
-                          (d.swissAmortizationType !== 'none' && d.annualAmortization ? d.annualAmortization / ppy : 0) +
-                          (d.includeMaintenance && d.propertyValue ? d.propertyValue * 0.01 / ppy : 0);
-                        return (
-                          <>
-                            <p className="font-mono-amount text-sm font-semibold">{formatAmountWithCurrency(periodicTotal, d.currency)}{getFrequencySuffix(d.paymentFrequency)}</p>
-                            <p className="text-[10px] text-muted-foreground">Charge {d.paymentFrequency === 'monthly' ? 'mensuelle' : d.paymentFrequency === 'quarterly' ? 'trimestrielle' : d.paymentFrequency === 'semi-annual' ? 'semestrielle' : 'annuelle'}</p>
-                          </>
-                        );
-                      })() : (
-                        <>
-                          <p className="font-mono-amount text-sm font-semibold">{formatAmountWithCurrency(d.paymentAmount, d.currency)}{getFrequencySuffix(d.paymentFrequency)}</p>
-                          <p className="text-[10px] text-muted-foreground">{d.interestRate}% · {d.currency}</p>
-                        </>
-                      )}
+                      <p className="font-mono-amount text-sm font-semibold">
+                        {formatAmountWithCurrency(d.mortgageSystem === 'swiss' ? displayTotal + displayMaintenance : displayTotal, d.currency)}{freqSuffix}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {d.mortgageSystem ? `Charge ${freqAdj}` : `${d.interestRate}% · ${d.currency}`}
+                      </p>
                     </div>
                   </div>
                   
                   {/* Swiss: breakdown */}
-                  {d.mortgageSystem === 'swiss' && (() => {
-                    const ppy = getPeriodsPerYear(d.paymentFrequency as PaymentFrequency);
-                    return (
-                      <div className="text-[10px] text-muted-foreground mb-2 space-y-0.5">
-                        <div className="flex justify-between">
-                          <span>├ Intérêts</span>
-                          <span className="font-mono-amount">{formatAmountWithCurrency(remaining * d.interestRate / 100 / ppy, d.currency)}</span>
-                        </div>
-                        {d.swissAmortizationType !== 'none' && d.annualAmortization && (
-                          <div className="flex justify-between">
-                            <span>├ Amortissement</span>
-                            <span className="font-mono-amount">{formatAmountWithCurrency(d.annualAmortization / ppy, d.currency)}</span>
-                          </div>
-                        )}
-                        {d.includeMaintenance && d.propertyValue && (
-                          <div className="flex justify-between">
-                            <span>└ Frais entretien</span>
-                            <span className="font-mono-amount">{formatAmountWithCurrency(d.propertyValue * 0.01 / ppy, d.currency)}</span>
-                          </div>
-                        )}
+                  {d.mortgageSystem === 'swiss' && (
+                    <div className="text-[10px] text-muted-foreground mb-2 space-y-0.5">
+                      <div className="flex justify-between">
+                        <span>├ Intérêts</span>
+                        <span className="font-mono-amount">{formatAmountWithCurrency(displayInterest, d.currency)}</span>
                       </div>
-                    );
-                  })()}
+                      {d.swissAmortizationType !== 'none' && displayCapital > 0 && (
+                        <div className="flex justify-between">
+                          <span>├ Amortissement</span>
+                          <span className="font-mono-amount">{formatAmountWithCurrency(displayCapital, d.currency)}</span>
+                        </div>
+                      )}
+                      {d.includeMaintenance && displayMaintenance > 0 && (
+                        <div className="flex justify-between">
+                          <span>└ Frais entretien</span>
+                          <span className="font-mono-amount">{formatAmountWithCurrency(displayMaintenance, d.currency)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Europe: current breakdown */}
-                  {d.mortgageSystem === 'europe' && (() => {
-                    const ppy = getPeriodsPerYear(d.paymentFrequency as PaymentFrequency);
-                    const periodicInterest = remaining * d.interestRate / 100 / ppy;
-                    return (
-                      <div className="text-[10px] text-muted-foreground mb-2 space-y-0.5">
-                        <div className="flex justify-between">
-                          <span>├ Intérêts {getFrequencyLabel(d.paymentFrequency)}</span>
-                          <span className="font-mono-amount">{formatAmountWithCurrency(periodicInterest, d.currency)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>└ Capital {getFrequencyLabel(d.paymentFrequency)}</span>
-                          <span className="font-mono-amount">{formatAmountWithCurrency(Math.max(d.paymentAmount - periodicInterest, 0), d.currency)}</span>
-                        </div>
+                  {d.mortgageSystem === 'europe' && (
+                    <div className="text-[10px] text-muted-foreground mb-2 space-y-0.5">
+                      <div className="flex justify-between">
+                        <span>├ Intérêts {getFrequencyLabel(d.paymentFrequency)}</span>
+                        <span className="font-mono-amount">{formatAmountWithCurrency(displayInterest, d.currency)}</span>
                       </div>
-                    );
-                  })()}
+                      <div className="flex justify-between">
+                        <span>└ Capital {getFrequencyLabel(d.paymentFrequency)}</span>
+                        <span className="font-mono-amount">{formatAmountWithCurrency(displayCapital, d.currency)}</span>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="h-1 bg-muted rounded-full overflow-hidden mb-1.5">
                     {d.mortgageSystem === 'swiss' && d.propertyValue ? (
