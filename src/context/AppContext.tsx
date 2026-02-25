@@ -573,8 +573,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       // Sync paired transfer in DB
       if (pairedTxId) {
+        const pairedTx = transactions.find(t => t.id === pairedTxId);
         const pairedDbUpdates: any = {};
-        if (updates.amount !== undefined) pairedDbUpdates.amount = updates.amount;
+        if (updates.amount !== undefined) {
+          pairedDbUpdates.amount = updates.amount;
+          if (pairedTx) {
+            const rate = getExchangeRate(pairedTx.currency, baseCurrency);
+            pairedDbUpdates.converted_amount = updates.amount * rate;
+            pairedDbUpdates.exchange_rate = rate;
+          }
+        }
         if (updates.date !== undefined) pairedDbUpdates.date = updates.date;
         if (Object.keys(pairedDbUpdates).length > 0) {
           supabase.from('transactions').update(pairedDbUpdates).eq('id', pairedTxId).then(({ error }) => {
@@ -586,10 +594,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteTransaction = (id: string) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
+    // Find paired transfer transaction before deleting
+    const currentTx = transactions.find(t => t.id === id);
+    let pairedTxId: string | null = null;
+    if (currentTx?.category === 'Transfert' && currentTx.notes) {
+      const match = currentTx.notes.match(/\[Transfert #([^\]]+)\]/);
+      if (match) {
+        const transferTag = `[Transfert #${match[1]}]`;
+        const paired = transactions.find(t => t.id !== id && t.notes?.includes(transferTag));
+        if (paired) pairedTxId = paired.id;
+      }
+    }
+
+    setTransactions(prev => prev.filter(t => t.id !== id && t.id !== pairedTxId));
     supabase.from('transactions').delete().eq('id', id).then(({ error }) => {
       if (error) console.error('Delete tx error:', error);
     });
+    if (pairedTxId) {
+      supabase.from('transactions').delete().eq('id', pairedTxId).then(({ error }) => {
+        if (error) console.error('Delete paired transfer error:', error);
+      });
+    }
   };
 
   const softDeleteRecurringTransaction = (id: string, fromMonthYear?: string) => {
