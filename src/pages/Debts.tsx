@@ -83,7 +83,7 @@ const Debts = () => {
       .from('debt_schedules')
       .select('*')
       .in('debt_id', debtIds)
-      .eq('status', 'prevu')
+      .in('status', ['prevu', 'ajuste'])
       .gte('due_date', today)
       .lte('due_date', maxDate)
       .order('due_date', { ascending: true });
