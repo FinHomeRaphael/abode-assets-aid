@@ -30,7 +30,7 @@ interface UpcomingPayment {
 }
 
 const Debts = () => {
-  const { householdId, session, household, financeScope } = useApp();
+  const { householdId, session, household, financeScope, refreshDebtSchedules } = useApp();
   const { formatAmount } = useCurrency();
   const { canAdd } = useSubscription(householdId, session?.user?.id);
   const [debts, setDebts] = useState<Debt[]>([]);
@@ -134,7 +134,7 @@ const Debts = () => {
 
   const selectedDebt = useMemo(() => debts.find(d => d.id === selectedDebtId) || null, [debts, selectedDebtId]);
 
-  const handleDebtAdded = () => { fetchDebts(); setShowAdd(false); toast.success('Dette ajoutée ✓'); };
+  const handleDebtAdded = async () => { await fetchDebts(); await refreshDebtSchedules(); setShowAdd(false); toast.success('Dette ajoutée ✓'); };
   const handleDebtUpdated = () => { fetchDebts(); setSelectedDebtId(null); };
 
   const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
