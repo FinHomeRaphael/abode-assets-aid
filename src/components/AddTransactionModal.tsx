@@ -175,7 +175,7 @@ const AddTransactionModal = ({ open, onClose }: Props) => {
                 </div>
               ) : (
                 <div className="p-3 rounded-md border border-border bg-muted/50 text-sm text-muted-foreground">
-                  💡 Tu peux <button type="button" onClick={() => { resetAndClose(); navigate('/savings'); }} className="text-primary underline">créer un compte</button> dans l'onglet Enveloppes pour suivre tes soldes.
+                  💡 Tu peux <button type="button" onClick={() => { resetAndClose(); navigate('/savings'); }} className="text-primary underline">créer un compte</button> dans l'onglet Comptes bancaires pour suivre tes soldes.
                 </div>
               )}
 
