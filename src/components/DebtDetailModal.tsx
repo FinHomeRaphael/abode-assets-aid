@@ -91,6 +91,16 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
   const typeInfo = DEBT_TYPES.find(t => t.value === debt.type);
   const freqInfo = PAYMENT_FREQUENCIES.find(f => f.value === debt.paymentFrequency);
 
+  const isSwiss = debt.mortgageSystem === 'swiss';
+  const isEurope = debt.mortgageSystem === 'europe';
+  const isMortgage = !!debt.mortgageSystem;
+
+  // Swiss monthly calculations
+  const swissMonthlyInterest = isSwiss ? (realRemaining * debt.interestRate / 100) / 12 : 0;
+  const swissMonthlyAmortization = isSwiss && debt.swissAmortizationType !== 'none' && debt.annualAmortization ? debt.annualAmortization / 12 : 0;
+  const swissMonthlyMaintenance = isSwiss && debt.includeMaintenance && debt.propertyValue ? (debt.propertyValue * 0.01) / 12 : 0;
+  const swissTotalMonthly = swissMonthlyInterest + swissMonthlyAmortization + swissMonthlyMaintenance;
+
   const totalInterest = useMemo(() => schedule.reduce((s, r) => s + r.interest_amount, 0), [schedule]);
   const totalPrincipal = useMemo(() => schedule.reduce((s, r) => s + r.principal_amount, 0), [schedule]);
   const totalCost = useMemo(() => schedule.reduce((s, r) => s + r.total_amount, 0), [schedule]);
@@ -241,8 +251,12 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
         <div className="flex items-center gap-2 flex-1">
           <span className="text-xl">{getDebtEmoji(debt.type)}</span>
           <div>
-            <h1 className="text-lg font-bold">{debt.name}</h1>
-            {debt.lender && <p className="text-xs text-muted-foreground">{debt.lender}</p>}
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-lg font-bold">{debt.name}</h1>
+              {isSwiss && <span>🇨🇭</span>}
+              {isEurope && <span>🇪🇺</span>}
+            </div>
+            {debt.lender && <p className="text-xs text-muted-foreground">{debt.lender} · {debt.rateType === 'variable' ? 'Taux variable' : 'Taux fixe'} {debt.interestRate}%</p>}
           </div>
         </div>
       </div>
@@ -259,6 +273,92 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
           <span>{formatAmount(realRemaining)} restant</span>
         </div>
       </div>
+
+      {/* Mortgage-specific charge breakdown */}
+      {isSwiss && (
+        <div className="bg-card border border-red-200 dark:border-red-900/30 rounded-xl p-4">
+          <h2 className="text-sm font-semibold mb-3">🇨🇭 Charge mensuelle</h2>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">📉 Intérêts</span>
+              <span className="font-mono-amount font-medium">{formatAmount(swissMonthlyInterest)}</span>
+            </div>
+            {debt.swissAmortizationType !== 'none' && debt.annualAmortization && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">💰 Amortissement ({debt.swissAmortizationType === 'indirect' ? 'Pilier 3a' : 'Direct'})</span>
+                <span className="font-mono-amount font-medium">{formatAmount(swissMonthlyAmortization)}</span>
+              </div>
+            )}
+            {debt.includeMaintenance && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">🔧 Frais d'entretien</span>
+                <span className="font-mono-amount font-medium">{formatAmount(swissMonthlyMaintenance)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm font-semibold border-t border-red-200 dark:border-red-900/30 pt-2">
+              <span>Total mensuel</span>
+              <span className="font-mono-amount">{formatAmount(swissTotalMonthly)}</span>
+            </div>
+          </div>
+          {debt.propertyValue && (
+            <div className="mt-3 pt-2 border-t border-red-200 dark:border-red-900/30">
+              <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                <span>LTV (Loan-to-Value)</span>
+                <span className="font-mono-amount">{Math.round((realRemaining / debt.propertyValue) * 100)}%</span>
+              </div>
+              <Progress value={Math.min((1 - realRemaining / debt.propertyValue) * 100, 100)} className="h-2" />
+            </div>
+          )}
+          {debt.rateEndDate && (() => {
+            const endDate = new Date(debt.rateEndDate);
+            const now = new Date();
+            const monthsLeft = (endDate.getFullYear() - now.getFullYear()) * 12 + (endDate.getMonth() - now.getMonth());
+            if (monthsLeft > 0) {
+              const years = Math.floor(monthsLeft / 12);
+              const months = monthsLeft % 12;
+              return (
+                <div className={`mt-2 text-xs font-medium ${monthsLeft <= 12 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
+                  {monthsLeft <= 12 ? '⚠️' : '📅'} Renouvellement du taux dans {years > 0 ? `${years} an${years > 1 ? 's' : ''} ` : ''}{months > 0 ? `${months} mois` : ''}
+                </div>
+              );
+            }
+            return null;
+          })()}
+        </div>
+      )}
+
+      {isEurope && (
+        <div className="bg-card border border-blue-200 dark:border-blue-900/30 rounded-xl p-4">
+          <h2 className="text-sm font-semibold mb-3">🇪🇺 Détail mensualité</h2>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">📉 Intérêts ce mois</span>
+              <span className="font-mono-amount font-medium">{formatAmount(realRemaining * debt.interestRate / 100 / 12)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">💰 Capital ce mois</span>
+              <span className="font-mono-amount font-medium">{formatAmount(Math.max(debt.paymentAmount - realRemaining * debt.interestRate / 100 / 12, 0))}</span>
+            </div>
+            <div className="flex justify-between text-sm font-semibold border-t border-blue-200 dark:border-blue-900/30 pt-2">
+              <span>Mensualité fixe</span>
+              <span className="font-mono-amount">{formatAmount(debt.paymentAmount)}</span>
+            </div>
+          </div>
+          {debt.durationYears > 0 && (() => {
+            const startD = new Date(debt.startDate);
+            const endD = new Date(startD);
+            endD.setFullYear(endD.getFullYear() + Math.floor(debt.durationYears));
+            endD.setMonth(endD.getMonth() + Math.round((debt.durationYears % 1) * 12));
+            const now = new Date();
+            const yearsLeft = Math.max(0, Math.round((endD.getTime() - now.getTime()) / (365.25 * 24 * 3600 * 1000)));
+            return (
+              <div className="mt-2 text-xs text-muted-foreground">
+                📅 Fin du crédit : {endD.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })} ({yearsLeft} ans restants)
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Contract Info */}
       <div className="bg-card border border-border rounded-xl p-4">
