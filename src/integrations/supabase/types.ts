@@ -295,6 +295,7 @@ export type Database = {
         Row: {
           account_id: string | null
           amortization_type: string
+          annual_amortization: number | null
           category_id: string | null
           created_at: string | null
           created_by: string | null
@@ -302,24 +303,31 @@ export type Database = {
           duration_years: number
           household_id: string
           id: string
+          include_maintenance: boolean | null
           initial_amount: number
           interest_rate: number
           last_payment_date: string | null
           lender: string | null
+          mortgage_system: string | null
           name: string
           next_payment_date: string | null
           payment_amount: number
           payment_day: number
           payment_frequency: string
+          property_value: number | null
+          rate_end_date: string | null
+          rate_type: string
           remaining_amount: number
           scope: string
           start_date: string
+          swiss_amortization_type: string | null
           type: string
           updated_at: string | null
         }
         Insert: {
           account_id?: string | null
           amortization_type?: string
+          annual_amortization?: number | null
           category_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -327,24 +335,31 @@ export type Database = {
           duration_years: number
           household_id: string
           id?: string
+          include_maintenance?: boolean | null
           initial_amount: number
           interest_rate?: number
           last_payment_date?: string | null
           lender?: string | null
+          mortgage_system?: string | null
           name: string
           next_payment_date?: string | null
           payment_amount: number
           payment_day?: number
           payment_frequency?: string
+          property_value?: number | null
+          rate_end_date?: string | null
+          rate_type?: string
           remaining_amount: number
           scope?: string
           start_date: string
+          swiss_amortization_type?: string | null
           type: string
           updated_at?: string | null
         }
         Update: {
           account_id?: string | null
           amortization_type?: string
+          annual_amortization?: number | null
           category_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -352,18 +367,24 @@ export type Database = {
           duration_years?: number
           household_id?: string
           id?: string
+          include_maintenance?: boolean | null
           initial_amount?: number
           interest_rate?: number
           last_payment_date?: string | null
           lender?: string | null
+          mortgage_system?: string | null
           name?: string
           next_payment_date?: string | null
           payment_amount?: number
           payment_day?: number
           payment_frequency?: string
+          property_value?: number | null
+          rate_end_date?: string | null
+          rate_type?: string
           remaining_amount?: number
           scope?: string
           start_date?: string
+          swiss_amortization_type?: string | null
           type?: string
           updated_at?: string | null
         }

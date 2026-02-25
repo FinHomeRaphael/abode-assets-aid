@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import Layout from '@/components/Layout';
 import { useCurrency } from '@/hooks/useCurrency';
 import { formatDateLong, formatAmount as formatAmountWithCurrency } from '@/utils/format';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useApp } from '@/context/AppContext';
 import { Debt, DEBT_TYPES, getDebtEmoji, getPeriodsPerYear, calculateNextPaymentDate } from '@/types/debt';
@@ -63,6 +65,13 @@ const Debts = () => {
         scope: d.scope || 'household', createdBy: d.created_by || undefined,
         amortizationType: d.amortization_type || 'fixed_annuity',
         accountId: d.account_id || undefined,
+        mortgageSystem: d.mortgage_system || undefined,
+        rateType: d.rate_type || 'fixed',
+        rateEndDate: d.rate_end_date || undefined,
+        propertyValue: d.property_value ? Number(d.property_value) : undefined,
+        annualAmortization: d.annual_amortization ? Number(d.annual_amortization) : undefined,
+        swissAmortizationType: d.swiss_amortization_type || undefined,
+        includeMaintenance: d.include_maintenance || false,
       })));
     }
     if (error) console.error('Fetch debts error:', error);
@@ -208,29 +217,132 @@ const Debts = () => {
                 <div
                   key={d.id}
                   onClick={() => setSelectedDebtId(d.id)}
-                  className="bg-card border border-border rounded-xl p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+                  className={`bg-card border rounded-xl p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
+                    d.mortgageSystem === 'swiss' ? 'border-red-200 dark:border-red-900/30' :
+                    d.mortgageSystem === 'europe' ? 'border-blue-200 dark:border-blue-900/30' :
+                    'border-border'
+                  }`}
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-lg">{getDebtEmoji(d.type)}</span>
                       <div>
-                        <p className="font-semibold text-sm">{d.name}</p>
-                        {d.lender && <p className="text-[10px] text-muted-foreground">{d.lender}</p>}
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-semibold text-sm">{d.name}</p>
+                          {d.mortgageSystem === 'swiss' && <span className="text-xs">🇨🇭</span>}
+                          {d.mortgageSystem === 'europe' && <span className="text-xs">🇪🇺</span>}
+                        </div>
+                        {d.lender && <p className="text-[10px] text-muted-foreground">{d.lender} · {d.rateType === 'fixed' ? 'Taux fixe' : 'Taux variable'} {d.interestRate}%</p>}
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-mono-amount text-sm font-semibold">{formatAmountWithCurrency(d.paymentAmount, d.currency)}/mois</p>
-                      <p className="text-[10px] text-muted-foreground">{d.interestRate}% · {d.currency}</p>
+                      {d.mortgageSystem === 'swiss' ? (
+                        <>
+                          <p className="font-mono-amount text-sm font-semibold">{formatAmountWithCurrency(
+                            (remaining * d.interestRate / 100 / 12) + 
+                            (d.swissAmortizationType !== 'none' && d.annualAmortization ? d.annualAmortization / 12 : 0) +
+                            (d.includeMaintenance && d.propertyValue ? d.propertyValue * 0.01 / 12 : 0),
+                            d.currency
+                          )}/mois</p>
+                          <p className="text-[10px] text-muted-foreground">Charge mensuelle</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-mono-amount text-sm font-semibold">{formatAmountWithCurrency(d.paymentAmount, d.currency)}/mois</p>
+                          <p className="text-[10px] text-muted-foreground">{d.interestRate}% · {d.currency}</p>
+                        </>
+                      )}
                     </div>
                   </div>
+                  
+                  {/* Swiss: breakdown */}
+                  {d.mortgageSystem === 'swiss' && (
+                    <div className="text-[10px] text-muted-foreground mb-2 space-y-0.5">
+                      <div className="flex justify-between">
+                        <span>├ Intérêts</span>
+                        <span className="font-mono-amount">{formatAmountWithCurrency(remaining * d.interestRate / 100 / 12, d.currency)}</span>
+                      </div>
+                      {d.swissAmortizationType !== 'none' && d.annualAmortization && (
+                        <div className="flex justify-between">
+                          <span>├ Amortissement</span>
+                          <span className="font-mono-amount">{formatAmountWithCurrency(d.annualAmortization / 12, d.currency)}</span>
+                        </div>
+                      )}
+                      {d.includeMaintenance && d.propertyValue && (
+                        <div className="flex justify-between">
+                          <span>└ Frais entretien</span>
+                          <span className="font-mono-amount">{formatAmountWithCurrency(d.propertyValue * 0.01 / 12, d.currency)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Europe: current breakdown */}
+                  {d.mortgageSystem === 'europe' && (
+                    <div className="text-[10px] text-muted-foreground mb-2 space-y-0.5">
+                      <div className="flex justify-between">
+                        <span>├ Intérêts ce mois</span>
+                        <span className="font-mono-amount">{formatAmountWithCurrency(remaining * d.interestRate / 100 / 12, d.currency)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>└ Capital ce mois</span>
+                        <span className="font-mono-amount">{formatAmountWithCurrency(Math.max(d.paymentAmount - remaining * d.interestRate / 100 / 12, 0), d.currency)}</span>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="h-1 bg-muted rounded-full overflow-hidden mb-1.5">
-                    <div className={`h-full rounded-full transition-all ${repaidPct >= 100 ? 'bg-success' : repaidPct >= 50 ? 'bg-primary' : 'bg-warning'}`} style={{ width: `${repaidPct}%` }} />
+                    {d.mortgageSystem === 'swiss' && d.propertyValue ? (
+                      // Swiss: LTV bar
+                      <div className={`h-full rounded-full transition-all ${
+                        (remaining / d.propertyValue) <= 0.65 ? 'bg-success' : (remaining / d.propertyValue) <= 0.80 ? 'bg-primary' : 'bg-warning'
+                      }`} style={{ width: `${Math.min((1 - remaining / d.propertyValue) * 100, 100)}%` }} />
+                    ) : (
+                      <div className={`h-full rounded-full transition-all ${repaidPct >= 100 ? 'bg-success' : repaidPct >= 50 ? 'bg-primary' : 'bg-warning'}`} style={{ width: `${repaidPct}%` }} />
+                    )}
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                    <span className="font-mono-amount">{formatAmountWithCurrency(remaining, d.currency)} restant / {formatAmountWithCurrency(d.initialAmount, d.currency)}</span>
-                    <span className="font-mono-amount">{Math.round(repaidPct)}%</span>
+                    <span className="font-mono-amount">{formatAmountWithCurrency(remaining, d.currency)} restant{d.mortgageSystem === 'swiss' && d.propertyValue ? ` / ${formatAmountWithCurrency(d.propertyValue, d.currency)}` : ` / ${formatAmountWithCurrency(d.initialAmount, d.currency)}`}</span>
+                    <span className="font-mono-amount">
+                      {d.mortgageSystem === 'swiss' && d.propertyValue
+                        ? `LTV ${Math.round((remaining / d.propertyValue) * 100)}%`
+                        : `${Math.round(repaidPct)}%`}
+                    </span>
                   </div>
-                  {nextDate && (
+                  
+                  {/* Rate renewal alert for Swiss */}
+                  {d.mortgageSystem === 'swiss' && d.rateEndDate && (() => {
+                    const endDate = new Date(d.rateEndDate!);
+                    const now = new Date();
+                    const monthsLeft = (endDate.getFullYear() - now.getFullYear()) * 12 + (endDate.getMonth() - now.getMonth());
+                    if (monthsLeft <= 12 && monthsLeft > 0) {
+                      const years = Math.floor(monthsLeft / 12);
+                      const months = monthsLeft % 12;
+                      return (
+                        <div className="mt-1.5 text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                          ⚠️ Renouvellement taux dans {years > 0 ? `${years} an${years > 1 ? 's' : ''} ` : ''}{months} mois
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {/* Europe: end date */}
+                  {d.mortgageSystem === 'europe' && d.durationYears > 0 && (() => {
+                    const startD = new Date(d.startDate);
+                    const endD = new Date(startD);
+                    endD.setFullYear(endD.getFullYear() + Math.floor(d.durationYears));
+                    endD.setMonth(endD.getMonth() + Math.round((d.durationYears % 1) * 12));
+                    const now = new Date();
+                    const yearsLeft = Math.max(0, Math.round((endD.getTime() - now.getTime()) / (365.25 * 24 * 3600 * 1000)));
+                    return (
+                      <div className="mt-1.5 text-[10px] text-muted-foreground">
+                        📅 Fin du crédit : {format(endD, 'MMMM yyyy', { locale: fr })} ({yearsLeft} ans restants)
+                      </div>
+                    );
+                  })()}
+
+                  {!d.mortgageSystem && nextDate && (
                     <div className="mt-1.5 text-[10px] text-muted-foreground">
                       Prochaine échéance : {formatDateLong(nextDate)}
                     </div>

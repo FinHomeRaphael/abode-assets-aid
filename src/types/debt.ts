@@ -2,6 +2,10 @@ export type DebtType = 'mortgage' | 'auto' | 'consumer' | 'student' | 'other';
 export type PaymentFrequency = 'monthly' | 'quarterly' | 'semi-annual' | 'annual';
 export type AmortizationType = 'fixed_annuity' | 'fixed_capital';
 
+export type MortgageSystem = 'swiss' | 'europe';
+export type RateType = 'fixed' | 'variable';
+export type SwissAmortizationType = 'none' | 'direct' | 'indirect';
+
 export interface Debt {
   id: string;
   householdId: string;
@@ -26,6 +30,14 @@ export interface Debt {
   updatedAt: string;
   scope?: 'household' | 'personal';
   createdBy?: string;
+  // Mortgage-specific
+  mortgageSystem?: MortgageSystem;
+  rateType?: RateType;
+  rateEndDate?: string;
+  propertyValue?: number;
+  annualAmortization?: number;
+  swissAmortizationType?: SwissAmortizationType;
+  includeMaintenance?: boolean;
 }
 
 export const DEBT_TYPES: { value: DebtType; label: string; emoji: string }[] = [
