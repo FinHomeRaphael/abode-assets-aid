@@ -110,6 +110,16 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
   const activeAccounts = getActiveAccounts();
   const allExpenseCategories = [...EXPENSE_CATEGORIES, ...customCategories.filter(c => c.type === 'expense').map(c => c.name)];
 
+  const handleAccountChange = (newAccountId: string) => {
+    setAccountId(newAccountId);
+    if (newAccountId) {
+      const account = activeAccounts.find(a => a.id === newAccountId);
+      if (account) {
+        setDebtCurrency(account.currency);
+      }
+    }
+  };
+
   const isMortgage = type === 'mortgage';
   const isSwiss = isMortgage && mortgageSystem === 'swiss';
   const isEurope = isMortgage && mortgageSystem === 'europe';
@@ -779,11 +789,12 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                       </div>
 
                       {/* Currency */}
-                      <div>
+                       <div>
                         <label className="block text-sm font-medium mb-1.5">Devise</label>
-                        <select value={debtCurrency} onChange={e => setDebtCurrency(e.target.value)} className={inputClass}>
+                        <select value={debtCurrency} onChange={e => { setDebtCurrency(e.target.value); setAccountId(''); }} disabled={!!accountId} className={inputClass}>
                           {CURRENCIES.map(c => <option key={c} value={c}>{CURRENCY_SYMBOLS[c] || c} — {c}</option>)}
                         </select>
+                        {accountId && <p className="text-xs text-muted-foreground mt-1">Devise liée au compte sélectionné</p>}
                       </div>
 
                       {/* Credit auto specific */}
@@ -1001,9 +1012,9 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                       {/* Account */}
                       <div>
                         <label className="block text-sm font-medium mb-1.5">Compte de prélèvement</label>
-                        <select value={accountId} onChange={e => setAccountId(e.target.value)} className={inputClass}>
+                        <select value={accountId} onChange={e => handleAccountChange(e.target.value)} className={inputClass}>
                           <option value="">Aucun</option>
-                          {activeAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                          {activeAccounts.map(a => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
                         </select>
                       </div>
 
@@ -1039,9 +1050,10 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                           </div>
                           <div>
                             <label className="block text-sm font-medium mb-1.5">Devise</label>
-                            <select value={debtCurrency} onChange={e => setDebtCurrency(e.target.value)} className={inputClass}>
+                            <select value={debtCurrency} onChange={e => { setDebtCurrency(e.target.value); setAccountId(''); }} disabled={!!accountId} className={inputClass}>
                               {CURRENCIES.map(c => <option key={c} value={c}>{CURRENCY_SYMBOLS[c] || c} — {c}</option>)}
                             </select>
+                            {accountId && <p className="text-xs text-muted-foreground mt-1">Devise liée au compte sélectionné</p>}
                           </div>
 
                           {/* Personal loan */}
@@ -1210,9 +1222,9 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                           {/* Account & Category */}
                           <div>
                             <label className="block text-sm font-medium mb-1.5">Compte de prélèvement</label>
-                            <select value={accountId} onChange={e => setAccountId(e.target.value)} className={inputClass}>
+                            <select value={accountId} onChange={e => handleAccountChange(e.target.value)} className={inputClass}>
                               <option value="">Aucun</option>
-                              {activeAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                              {activeAccounts.map(a => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
                             </select>
                           </div>
                           <div>
@@ -1238,9 +1250,10 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                           </div>
                           <div>
                             <label className="block text-sm font-medium mb-1.5">Devise</label>
-                            <select value={debtCurrency} onChange={e => setDebtCurrency(e.target.value)} className={inputClass}>
+                            <select value={debtCurrency} onChange={e => { setDebtCurrency(e.target.value); setAccountId(''); }} disabled={!!accountId} className={inputClass}>
                               {CURRENCIES.map(c => <option key={c} value={c}>{CURRENCY_SYMBOLS[c] || c} — {c}</option>)}
                             </select>
+                            {accountId && <p className="text-xs text-muted-foreground mt-1">Devise liée au compte sélectionné</p>}
                           </div>
                           <div className="grid grid-cols-2 gap-3">
                             <div>
@@ -1354,9 +1367,9 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
 
                           <div>
                             <label className="block text-sm font-medium mb-1.5">Compte de prélèvement</label>
-                            <select value={accountId} onChange={e => setAccountId(e.target.value)} className={inputClass}>
+                            <select value={accountId} onChange={e => handleAccountChange(e.target.value)} className={inputClass}>
                               <option value="">Aucun</option>
-                              {activeAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                              {activeAccounts.map(a => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
                             </select>
                           </div>
                           <div>
@@ -1382,9 +1395,10 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                           </div>
                           <div>
                             <label className="block text-sm font-medium mb-1.5">Devise</label>
-                            <select value={debtCurrency} onChange={e => setDebtCurrency(e.target.value)} className={inputClass}>
+                            <select value={debtCurrency} onChange={e => { setDebtCurrency(e.target.value); setAccountId(''); }} disabled={!!accountId} className={inputClass}>
                               {CURRENCIES.map(c => <option key={c} value={c}>{CURRENCY_SYMBOLS[c] || c} — {c}</option>)}
                             </select>
+                            {accountId && <p className="text-xs text-muted-foreground mt-1">Devise liée au compte sélectionné</p>}
                           </div>
                           <div className="grid grid-cols-2 gap-3">
                             <div>
@@ -1465,9 +1479,9 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
 
                           <div>
                             <label className="block text-sm font-medium mb-1.5">Compte de prélèvement</label>
-                            <select value={accountId} onChange={e => setAccountId(e.target.value)} className={inputClass}>
+                            <select value={accountId} onChange={e => handleAccountChange(e.target.value)} className={inputClass}>
                               <option value="">Aucun</option>
-                              {activeAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                              {activeAccounts.map(a => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
                             </select>
                           </div>
                         </>
@@ -1493,9 +1507,10 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                       {/* Currency */}
                       <div>
                         <label className="block text-sm font-medium mb-1.5">Devise</label>
-                        <select value={debtCurrency} onChange={e => setDebtCurrency(e.target.value)} className={inputClass}>
+                        <select value={debtCurrency} onChange={e => { setDebtCurrency(e.target.value); setAccountId(''); }} disabled={!!accountId} className={inputClass}>
                           {CURRENCIES.map(c => <option key={c} value={c}>{CURRENCY_SYMBOLS[c] || c} — {c}</option>)}
                         </select>
+                        {accountId && <p className="text-xs text-muted-foreground mt-1">Devise liée au compte sélectionné</p>}
                       </div>
 
                       {/* Swiss: Property value */}
@@ -1802,9 +1817,9 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                       {/* Account */}
                       <div>
                         <label className="block text-sm font-medium mb-1.5">Compte de prélèvement</label>
-                        <select value={accountId} onChange={e => setAccountId(e.target.value)} className={inputClass}>
+                        <select value={accountId} onChange={e => handleAccountChange(e.target.value)} className={inputClass}>
                           <option value="">Aucun</option>
-                          {activeAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                          {activeAccounts.map(a => <option key={a.id} value={a.id}>{a.name} ({a.currency})</option>)}
                         </select>
                       </div>
 
