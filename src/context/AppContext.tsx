@@ -515,14 +515,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updateTransaction = (id: string, updates: Partial<Omit<Transaction, 'id' | 'exchangeRate' | 'baseCurrency' | 'convertedAmount'>>) => {
     const baseCurrency = household.currency;
+    
+    // Find the transaction being updated
+    const currentTx = transactions.find(t => t.id === id);
+    
+    // Check if this is a transfer and find the paired transaction
+    let pairedTxId: string | null = null;
+    if (currentTx?.category === 'Transfert' && currentTx.notes) {
+      const match = currentTx.notes.match(/\[Transfert #([^\]]+)\]/);
+      if (match) {
+        const transferTag = `[Transfert #${match[1]}]`;
+        const paired = transactions.find(t => t.id !== id && t.notes?.includes(transferTag));
+        if (paired) pairedTxId = paired.id;
+      }
+    }
+
     setTransactions(prev => prev.map(t => {
-      if (t.id !== id) return t;
-      const merged = { ...t, ...updates };
-      if (updates.amount !== undefined || updates.currency !== undefined) {
+      if (t.id !== id && t.id !== pairedTxId) return t;
+      
+      if (t.id === id) {
+        const merged = { ...t, ...updates };
+        if (updates.amount !== undefined || updates.currency !== undefined) {
+          const rate = getExchangeRate(merged.currency, baseCurrency);
+          return { ...merged, exchangeRate: rate, baseCurrency, convertedAmount: merged.amount * rate } as Transaction;
+        }
+        return merged as Transaction;
+      }
+      
+      // Sync paired transfer transaction (amount and date only)
+      if (t.id === pairedTxId) {
+        const pairedUpdates: any = {};
+        if (updates.amount !== undefined) pairedUpdates.amount = updates.amount;
+        if (updates.date !== undefined) pairedUpdates.date = updates.date;
+        if (Object.keys(pairedUpdates).length === 0) return t;
+        const merged = { ...t, ...pairedUpdates };
         const rate = getExchangeRate(merged.currency, baseCurrency);
         return { ...merged, exchangeRate: rate, baseCurrency, convertedAmount: merged.amount * rate } as Transaction;
       }
-      return merged as Transaction;
+      
+      return t;
     }));
 
     const dbUpdates: any = {};
@@ -539,6 +570,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       supabase.from('transactions').update(dbUpdates).eq('id', id).then(({ error }) => {
         if (error) console.error('Update tx error:', error);
       });
+      
+      // Sync paired transfer in DB
+      if (pairedTxId) {
+        const pairedDbUpdates: any = {};
+        if (updates.amount !== undefined) pairedDbUpdates.amount = updates.amount;
+        if (updates.date !== undefined) pairedDbUpdates.date = updates.date;
+        if (Object.keys(pairedDbUpdates).length > 0) {
+          supabase.from('transactions').update(pairedDbUpdates).eq('id', pairedTxId).then(({ error }) => {
+            if (error) console.error('Update paired transfer error:', error);
+          });
+        }
+      }
     }
   };
 
