@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import Layout from '@/components/Layout';
 import HealthScoreGauge from '@/components/HealthScoreGauge';
@@ -6,31 +6,11 @@ import HealthScoreDetail from '@/components/HealthScoreDetail';
 import HealthScoreHistory from '@/components/HealthScoreHistory';
 import { useHealthScore, useSaveHealthScore, useHealthScoreHistory } from '@/hooks/useHealthScore';
 import { useApp } from '@/context/AppContext';
-import { supabase } from '@/integrations/supabase/client';
 
 const HealthScorePage: React.FC = () => {
   const { householdId } = useApp();
-  const [previousScore, setPreviousScore] = useState<number | null>(null);
 
-  // Fetch previous month's score
-  useEffect(() => {
-    if (!householdId) return;
-    const now = new Date();
-    const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const prevMonthYear = `${prev.getFullYear()}-${String(prev.getMonth() + 1).padStart(2, '0')}`;
-
-    supabase
-      .from('health_scores')
-      .select('total_score')
-      .eq('household_id', householdId)
-      .eq('month_year', prevMonthYear)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) setPreviousScore(data.total_score);
-      });
-  }, [householdId]);
-
-  const healthScore = useHealthScore(previousScore);
+  const healthScore = useHealthScore();
   useSaveHealthScore(healthScore.totalScore, householdId);
   const history = useHealthScoreHistory(householdId);
 
