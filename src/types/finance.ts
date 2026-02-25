@@ -128,7 +128,9 @@ export const EXPENSE_CATEGORIES = [
 ] as const;
 
 export const INCOME_CATEGORIES = [
-  'Salaire', 'Freelance', 'Investissements', 'Aides & Allocations', 'Autre'
+  'Salaire', 'Freelance', 'Bonus / Prime', 'Revenus locatifs', 'Investissements',
+  'Allocations', 'Pension / Retraite', 'Pension alimentaire',
+  'Cadeaux / Dons', 'Remboursements', 'Ventes', 'Autre'
 ] as const;
 
 export const CURRENCIES = [
@@ -225,11 +227,18 @@ export const CATEGORY_EMOJIS: Record<string, string> = {
   Cadeaux: '🎁',
   'Épargne': '💰',
   'Impôts': '🏛️',
-  Salaire: '💵',
-  Freelance: '💻',
+  Salaire: '💻',
+  Freelance: '🏆',
+  'Bonus / Prime': '🏆',
+  'Revenus locatifs': '🏠',
   Investissements: '📈',
-  'Aides & Allocations': '🤝',
-  Autre: '📌',
+  Allocations: '👶',
+  'Pension / Retraite': '👴',
+  'Pension alimentaire': '👨‍👩‍👧',
+  'Cadeaux / Dons': '🎁',
+  Remboursements: '💸',
+  Ventes: '🛒',
+  Autre: '💵',
 };
 
 export const EMOJI_LIST = [
