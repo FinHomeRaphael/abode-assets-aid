@@ -459,7 +459,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
         mortgage_system: isMortgage ? mortgageSystem : null,
         rate_type: rateType,
         rate_end_date: rateEndDate ? formatLocalDate(rateEndDate) : null,
-        property_value: isSwiss ? (parseFloat(propertyValue) || null) : null,
+        property_value: isMortgage ? (parseFloat(propertyValue) || null) : null,
         annual_amortization: isSwiss ? (parseFloat(annualAmortization) || null) : null,
         swiss_amortization_type: isSwiss ? swissAmortizationType : null,
         include_maintenance: isSwiss ? includeMaintenance : false,
@@ -1514,7 +1514,7 @@ const AddDebtModal = ({ open, onClose, onAdded }: Props) => {
                       </div>
 
                       {/* Swiss: Property value */}
-                      {isSwiss && (
+                      {isMortgage && (
                         <div>
                           <label className="block text-sm font-medium mb-1.5">Valeur du bien</label>
                           <MoneyInput value={propertyValue} onChange={setPropertyValue} className={monoInputClass} />
