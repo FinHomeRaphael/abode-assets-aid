@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { TrendingUp, TrendingDown, Wallet, Search, Plus, ArrowLeftRight, Download, CheckSquare, X, Trash2, Eye } from 'lucide-react';
 import { recalculateScheduleFromRow } from '@/utils/recalculateSchedule';
 import { getPeriodsPerYear } from '@/types/debt';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 const Transactions = () => {
   const { scopedTransactions: transactions, getMemberById, household, householdId, getTransactionsForMonth, deleteTransaction, updateTransaction, softDeleteRecurringTransaction, scopedAccounts: accounts, financeScope } = useApp();
@@ -691,7 +691,7 @@ const Transactions = () => {
 
                     <div className="bg-warning/10 border border-warning/20 rounded-xl p-3 flex items-start gap-2">
                       <Eye className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                      <p className="text-xs text-warning">Pour modifier cette échéance, rendez-vous dans l'onglet <strong>Dettes</strong>.</p>
+                      <p className="text-xs text-warning">Pour modifier cette échéance, rendez-vous dans l'onglet <Link to="/debts" className="underline font-semibold text-warning hover:text-warning/80">Dettes</Link>.</p>
                     </div>
                   </div>
 
