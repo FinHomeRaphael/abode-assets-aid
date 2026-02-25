@@ -84,14 +84,14 @@ const Savings = () => {
   const handleCreateGoal = () => {
     if (!goalName.trim() || !goalTarget) { toast.error('Remplissez les champs obligatoires'); return; }
     addSavingsGoal({ name: goalName.trim(), emoji: goalEmoji, target: parseFloat(goalTarget), currency: goalCurrency, targetDate: goalDate || undefined });
-    toast.success('Objectif créé ✓');
+    // silent
     setShowCreateGoal(false); setGoalName(''); setGoalTarget(''); setGoalDate(''); setGoalCurrency(household.currency);
   };
 
   const handleAddDeposit = () => {
     if (!depositGoalId || !depositAmount) { toast.error('Remplissez les champs obligatoires'); return; }
     addSavingsDeposit({ goalId: depositGoalId, amount: parseFloat(depositAmount), memberId: depositMemberId, date: depositDate });
-    toast.success('Versement ajouté ✓');
+    // silent
     setShowAddDeposit(false); setDepositAmount('');
   };
 
@@ -102,15 +102,15 @@ const Savings = () => {
   const handleSaveEdit = () => {
     if (!editGoal || !editName.trim() || !editTarget) return;
     updateSavingsGoal(editGoal.id, { name: editName.trim(), emoji: editEmoji, target: parseFloat(editTarget), currency: editCurrency, targetDate: editDate || undefined });
-    toast.success('Objectif modifié ✓'); setEditGoal(null);
+    setEditGoal(null); // silent
   };
 
-  const handleDeleteGoal = () => { if (!editGoal) return; deleteSavingsGoal(editGoal.id); toast.success('Objectif supprimé'); setEditGoal(null); };
+  const handleDeleteGoal = () => { if (!editGoal) return; deleteSavingsGoal(editGoal.id); setEditGoal(null); };
 
   const handleCreateAccount = () => {
     if (!accName.trim()) { toast.error('Donnez un nom au compte'); return; }
     addAccount({ name: accName.trim(), type: accType, currency: accCurrency, startingBalance: parseFloat(accBalance) || 0, startingDate: accDate });
-    toast.success('Compte créé ✓');
+    // silent
     setShowCreateAccount(false); setAccName(''); setAccBalance(''); setAccDate(formatLocalDate(new Date())); setAccCurrency(household.currency);
   };
 
@@ -275,7 +275,7 @@ const Savings = () => {
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <span className="font-mono-amount font-medium text-primary">+{formatAmount(d.amount, editCurrency)}</span>
-                                      <button onClick={() => { deleteSavingsDeposit(d.id); toast.success('Supprimé'); }} className="text-destructive hover:text-destructive/80 text-[10px]">✕</button>
+                                      <button onClick={() => { deleteSavingsDeposit(d.id); }} className="text-destructive hover:text-destructive/80 text-[10px]">✕</button>
                                     </div>
                                   </div>
                                 );

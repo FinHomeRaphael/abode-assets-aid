@@ -88,7 +88,7 @@ const ScanTicketModal = ({ open, onClose }: Props) => {
       date,
       emoji: CATEGORY_EMOJIS[category] || '📌',
     });
-    toast.success('Ticket enregistré ✓');
+    // silent
     handleClose();
   };
 

@@ -43,7 +43,7 @@ const Budgets = () => {
       ? `${newStartYear}-01`
       : newStartMonth;
     addBudget({ category: newCategory, limit: parseFloat(newLimit), period: newPeriod, emoji: CATEGORY_EMOJIS[newCategory] || '📌', alertsEnabled: newAlerts, recurring: newIsRecurring, isRecurring: newIsRecurring, monthYear: newIsRecurring ? undefined : monthYear, startMonth: monthYear });
-    toast.success('Budget créé ✓');
+    // silent
     setShowCreate(false); setNewCategory(''); setNewLimit('');
   };
 
@@ -59,12 +59,12 @@ const Budgets = () => {
   const handleSaveEdit = () => {
     if (!editTarget || !editLimit) return;
     updateBudget(editTarget.id, { limit: parseFloat(editLimit), isRecurring: editIsRecurring, alertsEnabled: editAlerts });
-    toast.success('Budget modifié ✓'); setEditTarget(null);
+    setEditTarget(null); // silent
   };
 
   const handleDeleteFromEdit = () => { if (!editTarget) return; setDeleteTarget(editTarget); setEditTarget(null); };
-  const handleSoftDelete = () => { if (!deleteTarget) return; softDeleteBudget(deleteTarget.id); toast.success('Budget arrêté'); setDeleteTarget(null); };
-  const handleHardDelete = () => { if (!deleteTarget) return; deleteBudget(deleteTarget.id); toast.success('Budget supprimé'); setDeleteTarget(null); };
+  const handleSoftDelete = () => { if (!deleteTarget) return; softDeleteBudget(deleteTarget.id); setDeleteTarget(null); };
+  const handleHardDelete = () => { if (!deleteTarget) return; deleteBudget(deleteTarget.id); setDeleteTarget(null); };
 
   const formatMonth = (monthStr: string) => {
     const [y, m] = monthStr.split('-');

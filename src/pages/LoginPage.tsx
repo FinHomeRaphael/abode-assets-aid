@@ -42,9 +42,9 @@ const LoginPage = () => {
         // If auto-confirmed, create household immediately
         if (signUpData.session) {
           await createHousehold(signUpData.session.user.id, lastName, currency);
-          toast.success('Bienvenue sur FineHome ! 🎉');
+          // silent
         } else {
-          toast.success('Vérifiez votre email pour confirmer votre compte !');
+          // silent
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -58,7 +58,7 @@ const LoginPage = () => {
           }
           return;
         }
-        toast.success('Connexion réussie !');
+        // silent
       }
     } catch (err: any) {
       toast.error('Une erreur est survenue');

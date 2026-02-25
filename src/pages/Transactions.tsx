@@ -184,7 +184,7 @@ const Transactions = () => {
       });
     }
 
-    toast.success('Transaction modifiée — échéancier mis à jour ✓');
+    // silent
     setEditTarget(null);
   };
 
@@ -197,7 +197,7 @@ const Transactions = () => {
       setEditTarget(null);
     } else {
       deleteTransaction(editTarget.id);
-      toast.success('Transaction supprimée');
+      // silent
       setEditTarget(null);
     }
   };
@@ -206,14 +206,14 @@ const Transactions = () => {
     if (!deleteRecTarget) return;
     const monthYear = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
     softDeleteRecurringTransaction(deleteRecTarget.id, monthYear);
-    toast.success('Transaction arrêtée à partir de ce mois');
+    // silent
     setDeleteRecTarget(null);
   };
 
   const handleHardDeleteRec = () => {
     if (!deleteRecTarget) return;
     deleteTransaction(deleteRecTarget.id);
-    toast.success('Transaction supprimée définitivement');
+    // silent
     setDeleteRecTarget(null);
   };
 
@@ -240,7 +240,7 @@ const Transactions = () => {
 
   const handleBulkDelete = () => {
     selectedIds.forEach(id => deleteTransaction(id));
-    toast.success(`${selectedIds.size} transaction(s) supprimée(s)`);
+    // silent
     setSelectedIds(new Set());
     setSelectMode(false);
   };

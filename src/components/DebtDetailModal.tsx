@@ -41,7 +41,7 @@ const UpdateKmButton = ({ debt, onUpdated, formatAmount }: { debt: Debt; onUpdat
     const { error } = await supabase.from('debts').update({ current_km: parseInt(km) || 0 }).eq('id', debt.id);
     setSaving(false);
     if (error) { toast.error('Erreur'); return; }
-    toast.success('Kilométrage mis à jour');
+    // silent
     setEditing(false);
     onUpdated();
   };
@@ -171,7 +171,7 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
     const { error } = await supabase.from('debts').delete().eq('id', debt.id);
     setDeleting(false);
     if (error) { console.error('Delete debt error:', error); toast.error('Erreur'); return; }
-    toast.success('Dette supprimée');
+    // silent
     await refreshDebtSchedules();
     onUpdated();
   };
@@ -233,7 +233,7 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
       last_payment_date: row.due_date,
     }).eq('id', debt.id);
 
-    toast.success('Échéance marquée comme payée ✓');
+    // silent
     setMarkingPaid(null);
     fetchSchedule();
     await refreshDebtSchedules();
@@ -281,7 +281,7 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
       }
 
       setSchedule(updatedSchedule);
-      toast.success('Échéance modifiée — tableau recalculé ✓');
+      // silent
       await refreshDebtSchedules();
       onUpdated();
     } catch (err) {

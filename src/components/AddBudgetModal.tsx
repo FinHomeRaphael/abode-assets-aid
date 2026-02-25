@@ -31,7 +31,7 @@ const AddBudgetModal = ({ open, onClose }: Props) => {
       isRecurring,
       monthYear: isRecurring ? undefined : monthYear,
     });
-    toast.success('Budget créé ✓');
+    // silent
     onClose();
     setCategory(''); setLimit('');
   };

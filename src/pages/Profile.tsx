@@ -60,7 +60,7 @@ const Profile = () => {
   const cancelInvitation = async (id: string, email: string) => {
     await supabase.from('invitations').delete().eq('id', id);
     setPendingInvitations(prev => prev.filter(i => i.id !== id));
-    toast.success(`Invitation annulée pour ${email}`);
+    // silent
   };
 
   const resendInvitation = async (inv: any) => {
@@ -72,7 +72,7 @@ const Profile = () => {
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       }).eq('id', inv.id);
       const inviteUrl = `${window.location.origin}/signup?invitation=${newToken}`;
-      toast.success(`Invitation renvoyée à ${inv.email}`);
+      // silent
       toast.info(`🔗 ${inviteUrl}`, { duration: 15000 });
       fetchInvitations();
     } else {
@@ -94,7 +94,7 @@ const Profile = () => {
       return;
     }
     removeMember(id);
-    toast.success(`${name} retiré(e) du foyer`);
+    // silent
   };
 
   // Fetch debts count for usage display
@@ -190,7 +190,7 @@ const Profile = () => {
                 <div className="flex items-center gap-2">
                   <select
                     value={m.role}
-                    onChange={e => { updateMemberRole(m.id, e.target.value as 'admin' | 'member'); toast.success('Rôle mis à jour'); }}
+                    onChange={e => { updateMemberRole(m.id, e.target.value as 'admin' | 'member'); }}
                     className="text-xs px-2.5 py-1 rounded-lg border border-border bg-card font-medium"
                     disabled={m.id === currentUser?.id}
                   >
@@ -261,7 +261,7 @@ const Profile = () => {
                     </div>
                     <div className="flex items-center gap-3">
                       <ConvertedAmount transaction={t} />
-                      <button onClick={() => { deleteRecurring(t.id); toast.success('Récurrence désactivée'); }} className="text-xs text-destructive font-medium hover:underline">Supprimer</button>
+                      <button onClick={() => { deleteRecurring(t.id); }} className="text-xs text-destructive font-medium hover:underline">Supprimer</button>
                     </div>
                   </div>
                 );
@@ -286,7 +286,7 @@ const Profile = () => {
                     <span className="text-sm font-medium">{c.name}</span>
                     <span className="text-[10px] px-2 py-0.5 rounded-lg bg-muted text-muted-foreground font-medium">{c.type === 'expense' ? 'Dépense' : 'Revenu'}</span>
                   </div>
-                  <button onClick={() => { deleteCustomCategory(c.name); toast.success('Catégorie supprimée'); }} className="text-xs text-destructive font-medium hover:underline">Supprimer</button>
+                  <button onClick={() => { deleteCustomCategory(c.name); }} className="text-xs text-destructive font-medium hover:underline">Supprimer</button>
                 </div>
               ))}
             </div>
@@ -304,7 +304,7 @@ const Profile = () => {
                 const next = !notificationsEnabled;
                 setNotificationsEnabled(next);
                 localStorage.setItem('finehome_notifications', String(next));
-                toast.success(next ? 'Notifications activées' : 'Notifications désactivées');
+                // silent
               }}
             >
               <div className={`w-4 h-4 bg-card rounded-full absolute top-1 transition-transform ${notificationsEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
@@ -319,7 +319,7 @@ const Profile = () => {
                 setDarkMode(next);
                 document.documentElement.classList.toggle('dark', next);
                 localStorage.setItem('finehome_theme', next ? 'dark' : 'light');
-                toast.success(next ? 'Mode sombre activé' : 'Mode clair activé');
+                // silent
               }}
             >
               <div className={`w-4 h-4 bg-card rounded-full absolute top-1 transition-transform ${darkMode ? 'translate-x-5' : 'translate-x-1'}`} />
@@ -354,7 +354,7 @@ const Profile = () => {
                 {filteredCurrencies.map(c => (
                   <button
                     key={c}
-                    onClick={() => { changeCurrency(c); toast.success(`Devise changée en ${c}`); setShowCurrencyModal(false); setCurrencySearch(''); }}
+                    onClick={() => { changeCurrency(c); setShowCurrencyModal(false); setCurrencySearch(''); }}
                     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all text-left ${
                       household.currency === c ? 'bg-primary/10 text-primary font-semibold' : 'hover:bg-muted'
                     }`}

@@ -61,7 +61,7 @@ const InviteMemberModal = ({ open, onClose, onInviteSent }: Props) => {
         toast.warning(`Invitation créée mais l'email n'a pas pu être envoyé. Lien copié dans la console.`);
         console.log('🔗 Lien d\'invitation:', inviteUrl);
       } else {
-        toast.success(`Invitation envoyée par email à ${trimmed} ✉️`);
+        // silent
       }
 
       setEmail('');

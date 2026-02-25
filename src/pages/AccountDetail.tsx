@@ -58,20 +58,20 @@ const AccountDetail = () => {
       startingBalance: parseFloat(editBalance) || 0,
       startingDate: editDate,
     });
-    toast.success('Compte modifié ✓');
+    // silent
     setShowEdit(false);
   };
 
   const handleArchive = () => {
     archiveAccount(account.id);
-    toast.success('Compte archivé');
+    // silent
     navigate('/savings');
   };
 
   const handleDelete = () => {
     const success = deleteAccount(account.id);
     if (success) {
-      toast.success('Compte supprimé');
+      // silent
       navigate('/savings');
     } else {
       toast.error('Impossible de supprimer : des transactions sont liées à ce compte. Archivez-le plutôt.');
