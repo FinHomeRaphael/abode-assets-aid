@@ -67,11 +67,11 @@ const EU_MEDIAN_PATRIMONY = 205000;
 function scorePatrimony(totalAssets: number, medianRef: number): number {
   if (medianRef <= 0) return 10;
   const pct = (totalAssets / medianRef) * 100;
-  if (pct >= 200) return 20;
-  if (pct >= 120) return 16;
-  if (pct >= 80) return 12;
-  if (pct >= 50) return 8;
-  if (pct >= 20) return 4;
+  if (pct >= 200) return 10;
+  if (pct >= 120) return 8;
+  if (pct >= 80) return 6;
+  if (pct >= 50) return 4;
+  if (pct >= 20) return 2;
   return 0;
 }
 
@@ -193,9 +193,9 @@ export function useHealthScore(): HealthScoreResult {
     const baseWeights: Record<string, number> = {
       savingsRate: 25,
       emergencyFund: 25,
-      patrimony: 20,
-      debtToIncome: 18,
-      debtService: 12,
+      patrimony: 10,
+      debtToIncome: 25,
+      debtService: 15,
     };
 
     let excludedWeight = 0;
@@ -229,7 +229,7 @@ export function useHealthScore(): HealthScoreResult {
         (rawDebtToIncome / 20) * baseWeights.debtToIncome +
         (rawEmergencyFund / 20) * baseWeights.emergencyFund +
         (rawDebtService / 15) * baseWeights.debtService +
-        (rawPatrimony / 20) * baseWeights.patrimony
+        (rawPatrimony / 10) * baseWeights.patrimony
       );
     } else {
       totalScore = 50;
@@ -307,7 +307,7 @@ export function useHealthScore(): HealthScoreResult {
     }
     if (baseWeights.patrimony > 0) {
       const max = addedMaxScore(baseWeights.patrimony);
-      const sc = Math.round((rawPatrimony / 20) * max);
+      const sc = Math.round((rawPatrimony / 10) * max);
       let compLabel: string;
       if (patrimonyPct >= 200) compLabel = 'Bien au-dessus de la médiane';
       else if (patrimonyPct >= 120) compLabel = 'Au-dessus de la médiane';
