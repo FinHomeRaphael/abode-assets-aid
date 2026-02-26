@@ -300,10 +300,10 @@ const Transactions = () => {
             <p className="text-[9px] text-muted-foreground mb-0.5">Dépenses</p>
             <p className="font-mono-amount font-bold text-destructive text-xs">-{formatAmount(monthExpense)}</p>
           </div>
-          <div className="bg-primary/5 border border-primary/15 rounded-xl p-2 text-center">
-            <Wallet className="w-3 h-3 text-primary mx-auto mb-0.5" />
+          <div className={`border rounded-xl p-2 text-center ${monthSavings > 0 ? 'bg-destructive/5 border-destructive/15' : 'bg-success/5 border-success/15'}`}>
+            <Wallet className={`w-3 h-3 mx-auto mb-0.5 ${monthSavings > 0 ? 'text-destructive' : 'text-success'}`} />
             <p className="text-[9px] text-muted-foreground mb-0.5">Épargne</p>
-            <p className="font-mono-amount font-bold text-primary text-xs">{monthSavings > 0 ? `-${formatAmount(monthSavings)}` : formatAmount(0)}</p>
+            <p className={`font-mono-amount font-bold text-xs ${monthSavings > 0 ? 'text-destructive' : 'text-success'}`}>{monthSavings > 0 ? `-${formatAmount(monthSavings)}` : formatAmount(0)}</p>
           </div>
           <div className={`border rounded-xl p-2 text-center ${monthIncome - monthExpense - monthSavings >= 0 ? 'bg-success/5 border-success/15' : 'bg-destructive/5 border-destructive/15'}`}>
             <Wallet className={`w-3 h-3 mx-auto mb-0.5 ${monthIncome - monthExpense - monthSavings >= 0 ? 'text-success' : 'text-destructive'}`} />
