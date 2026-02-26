@@ -446,9 +446,9 @@ const Transactions = () => {
                         <span className="font-mono-amount text-xs font-semibold text-success">+{formatAmount(item.amount)}</span>
                       </div>
                     ))}
-                    <div className="flex items-center justify-between pt-1 border-t border-border/50">
-                      <span className="text-[11px] font-semibold">Sous-total revenus</span>
-                      <span className="font-mono-amount text-xs font-bold text-success">+{formatAmount(savingsIncomeTotal)}</span>
+                    <div className="flex items-center justify-between mt-2 px-2 py-1.5 rounded-lg bg-success/10">
+                      <span className="text-[11px] text-success">Sous-total revenus</span>
+                      <span className="font-mono-amount text-xs text-success">+{formatAmount(savingsIncomeTotal)}</span>
                     </div>
 
                     {/* Savings Expense by account */}
@@ -464,9 +464,9 @@ const Transactions = () => {
                         <span className="font-mono-amount text-xs font-semibold text-destructive">-{formatAmount(item.amount)}</span>
                       </div>
                     ))}
-                    <div className="flex items-center justify-between pt-1 border-t border-border/50">
-                      <span className="text-[11px] font-semibold">Sous-total dépenses</span>
-                      <span className="font-mono-amount text-xs font-bold text-destructive">-{formatAmount(savingsExpenseTotal)}</span>
+                    <div className="flex items-center justify-between mt-2 px-2 py-1.5 rounded-lg bg-destructive/10">
+                      <span className="text-[11px] text-destructive">Sous-total dépenses</span>
+                      <span className="font-mono-amount text-xs text-destructive">-{formatAmount(savingsExpenseTotal)}</span>
                     </div>
 
                     {/* Net total */}
