@@ -80,13 +80,14 @@ const Transactions = () => {
   };
   const isAnySavingsTx = (t: typeof transactions[0]) => isSavingsTx(t) || isSavingsTransferCounterpart(t);
 
-  // Épargne nette = tout ce qui rentre sur comptes épargne - tout ce qui en sort
-  // Entrées : income sur compte épargne (transferts entrants) + dépenses non-épargne qui sont counterpart d'un transfert épargne
-  // Sorties : expense sur compte épargne (dépenses directes + transferts sortants)
-  const savingsInFromTransfers = monthTx.filter(t => t.type === 'income' && isSavingsTx(t) && t.category === 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
-  const savingsOutFromTransfers = monthTx.filter(t => t.type === 'expense' && !isSavingsTx(t) && isSavingsTransferCounterpart(t)).reduce((s, t) => s + t.convertedAmount, 0);
-  const savingsDirectExpenses = monthTx.filter(t => t.type === 'expense' && isSavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
-  const monthSavingsNet = savingsInFromTransfers - savingsOutFromTransfers - savingsDirectExpenses;
+  // Épargne nette = revenus d'épargne - dépenses d'épargne (sans double comptage des transferts)
+  const savingsTransferIn = monthTx.filter(t => t.type === 'income' && isSavingsTx(t) && t.category === 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const savingsTransferOut = monthTx.filter(t => t.type === 'expense' && isSavingsTx(t) && t.category === 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const savingsDirectIncome = monthTx.filter(t => t.type === 'income' && isSavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const savingsDirectExpenses = monthTx.filter(t => t.type === 'expense' && isSavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const savingsIncomeTotal = savingsTransferIn + savingsDirectIncome;
+  const savingsExpenseTotal = savingsTransferOut + savingsDirectExpenses;
+  const monthSavingsNet = savingsIncomeTotal - savingsExpenseTotal;
 
   const monthIncome = filtered.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
   const monthExpense = filtered.filter(t => t.type === 'expense' && !isAnySavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
@@ -329,8 +330,8 @@ const Transactions = () => {
             <Wallet className={`w-3 h-3 mx-auto mb-0.5 ${monthSavingsNet > 0 ? 'text-success' : monthSavingsNet < 0 ? 'text-destructive' : 'text-muted-foreground'}`} />
             <p className="text-[9px] text-muted-foreground mb-0.5">Épargne</p>
             <p className={`font-mono-amount font-bold text-xs ${monthSavingsNet > 0 ? 'text-success' : monthSavingsNet < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>{monthSavingsNet > 0 ? '+' : monthSavingsNet < 0 ? '-' : ''}{formatAmount(Math.abs(monthSavingsNet))}</p>
-            <p className="font-mono-amount text-[8px] text-success">+{formatAmount(savingsInFromTransfers)}</p>
-            <p className="font-mono-amount text-[8px] text-destructive">-{formatAmount(savingsOutFromTransfers + savingsDirectExpenses)}</p>
+            <p className="font-mono-amount text-[8px] text-success">+{formatAmount(savingsIncomeTotal)}</p>
+            <p className="font-mono-amount text-[8px] text-destructive">-{formatAmount(savingsExpenseTotal)}</p>
           </div>
           <div className={`border rounded-xl p-2 text-center ${monthIncome - monthExpense - Math.max(monthSavingsNet, 0) >= 0 ? 'bg-success/5 border-success/15' : 'bg-destructive/5 border-destructive/15'}`}>
             <Wallet className={`w-3 h-3 mx-auto mb-0.5 ${monthIncome - monthExpense - Math.max(monthSavingsNet, 0) >= 0 ? 'text-success' : 'text-destructive'}`} />
