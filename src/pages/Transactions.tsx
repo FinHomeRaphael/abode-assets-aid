@@ -64,7 +64,7 @@ const Transactions = () => {
   const savingsAccountIds = new Set(accounts.filter(a => a.type === 'epargne').map(a => a.id));
   const isSavingsTx = (t: typeof transactions[0]) => !!(t.accountId && savingsAccountIds.has(t.accountId));
 
-  // Find transfer IDs linked to savings accounts (either side)
+  // Find transfer IDs where at least one side is a savings account
   const transferIdRegex = /\[?Transfert\s+#([^\]\s]+)\]?/i;
   const savingsTransferIds = new Set<string>();
   monthTx.forEach(t => {
@@ -80,10 +80,14 @@ const Transactions = () => {
   };
   const isAnySavingsTx = (t: typeof transactions[0]) => isSavingsTx(t) || isSavingsTransferCounterpart(t);
 
-  const savingsIn = filtered.filter(t => t.type === 'income' && isSavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
-  const savingsOut = filtered.filter(t => t.type === 'expense' && isSavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
-  const savingsTransferIn = filtered.filter(t => t.type === 'expense' && !isSavingsTx(t) && isSavingsTransferCounterpart(t)).reduce((s, t) => s + t.convertedAmount, 0);
-  const monthSavingsNet = savingsIn - savingsOut + savingsTransferIn; // net inflow to savings
+  // Épargne nette = tout ce qui rentre sur comptes épargne - tout ce qui en sort
+  // Entrées : income sur compte épargne (transferts entrants) + dépenses non-épargne qui sont counterpart d'un transfert épargne
+  // Sorties : expense sur compte épargne (dépenses directes + transferts sortants)
+  const savingsInFromTransfers = monthTx.filter(t => t.type === 'income' && isSavingsTx(t) && t.category === 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const savingsOutFromTransfers = monthTx.filter(t => t.type === 'expense' && !isSavingsTx(t) && isSavingsTransferCounterpart(t)).reduce((s, t) => s + t.convertedAmount, 0);
+  const savingsDirectExpenses = monthTx.filter(t => t.type === 'expense' && isSavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
+  const monthSavingsNet = savingsInFromTransfers - savingsOutFromTransfers - savingsDirectExpenses;
+
   const monthIncome = filtered.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
   const monthExpense = filtered.filter(t => t.type === 'expense' && !isAnySavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
 
