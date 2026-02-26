@@ -374,7 +374,7 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
   return (
     <>
     <Layout>
-      <PremiumGate feature="le conseiller IA" description="Obtiens des conseils financiers personnalisés grâce à l'intelligence artificielle.">
+      <PremiumGate feature="le Coach IA" description="Obtiens des conseils financiers personnalisés grâce à l'intelligence artificielle.">
       <div className="max-w-2xl mx-auto flex flex-col h-[calc(100dvh-8rem)] md:h-[calc(100dvh-8rem)] -mb-32 md:mb-0">
         {/* Header */}
         <div className="flex items-center gap-3 mb-4">
@@ -383,8 +383,8 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
             <span className="text-xl">✨</span>
           </div>
           <div className="flex-1">
-            <h1 className="text-lg font-bold">Conseiller IA</h1>
-            <p className="text-xs text-muted-foreground">Ton assistant financier personnel</p>
+            <h1 className="text-lg font-bold">Coach IA</h1>
+            <p className="text-xs text-muted-foreground">Ton coach financier personnel</p>
           </div>
           <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
             financeScope === 'personal'

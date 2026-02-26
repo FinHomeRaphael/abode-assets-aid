@@ -43,7 +43,7 @@ const fabActions = [
   { label: 'Compte épargne', emoji: '🐷', action: 'savings' },
   { label: 'Dette', emoji: '💸', action: 'debt' },
   { label: 'Compte', emoji: '🏦', action: 'account' },
-  { label: 'Conseiller IA', emoji: '✨', action: 'chat' },
+  { label: 'Coach IA', emoji: '✨', action: 'chat' },
 ];
 
 const Layout = ({ children }: LayoutProps) => {

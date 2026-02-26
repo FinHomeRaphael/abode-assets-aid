@@ -271,7 +271,7 @@ const Dashboard = () => {
         <motion.div variants={fade} className="grid grid-cols-4 gap-2">
           {[
             { icon: Calendar, label: 'Préparer', onClick: () => navigate('/start-of-month') },
-            { icon: Sparkles, label: 'Chat IA', onClick: () => isPremium ? navigate('/chat') : setPaywallFeature({ feature: 'le Chat IA', description: 'Accédez à votre conseiller financier personnel propulsé par l\'IA pour des conseils adaptés à votre situation.' }), locked: !subLoading && !isPremium },
+            { icon: Sparkles, label: 'Coach IA', onClick: () => isPremium ? navigate('/chat') : setPaywallFeature({ feature: 'le Coach IA', description: 'Accédez à votre coach financier personnel propulsé par l\'IA pour des conseils adaptés à votre situation.' }), locked: !subLoading && !isPremium },
             { icon: Camera, label: 'Scanner', onClick: () => setShowScan(true) },
             { icon: BarChart3, label: 'Rapport', onClick: () => isPremium ? setShowReport(true) : setPaywallFeature({ feature: 'le rapport mensuel', description: 'Obtenez un rapport détaillé de vos finances chaque mois avec des conseils personnalisés.' }), locked: !subLoading && !isPremium },
           ].map((item: any, i: number) => (
