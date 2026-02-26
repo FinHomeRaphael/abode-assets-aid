@@ -35,6 +35,7 @@ const Aide = () => {
         <Tabs defaultValue="general" className="w-full">
           <TabsList className="w-full flex-wrap h-auto gap-1 bg-muted/50 p-1.5 rounded-xl">
             <TabsTrigger value="general" className="text-xs gap-1"><Home className="w-3.5 h-3.5" />Général</TabsTrigger>
+            <TabsTrigger value="accueil" className="text-xs gap-1"><BarChart3 className="w-3.5 h-3.5" />Accueil</TabsTrigger>
             <TabsTrigger value="transactions" className="text-xs gap-1"><CreditCard className="w-3.5 h-3.5" />Transactions</TabsTrigger>
             <TabsTrigger value="budgets" className="text-xs gap-1"><Target className="w-3.5 h-3.5" />Budgets</TabsTrigger>
             <TabsTrigger value="comptes" className="text-xs gap-1"><PiggyBank className="w-3.5 h-3.5" />Comptes</TabsTrigger>
@@ -60,6 +61,44 @@ const Aide = () => {
             </Section>
             <Section emoji="💱" title="Multi-devises">
               <p>L'application supporte plusieurs devises (CHF, EUR, USD…). Chaque compte et transaction peut avoir sa propre devise, et les montants sont automatiquement convertis dans la devise de référence de votre foyer.</p>
+            </Section>
+          </TabsContent>
+
+          {/* ACCUEIL / DASHBOARD */}
+          <TabsContent value="accueil" className="mt-4 space-y-4">
+            <Section emoji="🏠" title="Page d'accueil">
+              <p>La page d'accueil (Dashboard) est votre <strong>tableau de bord</strong>. Elle vous donne un aperçu rapide et complet de votre situation financière du mois en cours.</p>
+            </Section>
+            <Section emoji="💰" title="Solde du mois">
+              <p>En haut de la page, la carte principale affiche votre <strong>solde du mois</strong> :</p>
+              <Step n={1}><strong>Revenus</strong> : total de vos entrées d'argent (hors transferts et comptes épargne).</Step>
+              <Step n={2}><strong>Dépenses</strong> : total de vos sorties d'argent (hors transferts et comptes épargne).</Step>
+              <Step n={3}><strong>Épargne</strong> : montant mis de côté ce mois-ci via vos objectifs d'épargne.</Step>
+              <p>Le solde est calculé ainsi : <strong>Revenus − Dépenses − Épargne</strong>. Un solde positif signifie qu'il vous reste de l'argent disponible.</p>
+            </Section>
+            <Section emoji="💡" title="Conseils intelligents">
+              <p>Juste en dessous du solde, un <strong>carrousel de conseils</strong> analyse automatiquement vos données et vous donne des recommandations :</p>
+              <Step n={1}><strong>Alertes budget</strong> : si un budget est dépassé ou proche de la limite.</Step>
+              <Step n={2}><strong>Tendance dépenses</strong> : comparaison avec le mois précédent.</Step>
+              <Step n={3}><strong>Astuces épargne</strong> : encouragements et suggestions personnalisées.</Step>
+            </Section>
+            <Section emoji="❤️" title="Score de santé financière">
+              <p>Le widget <strong>Santé Financière</strong> affiche votre score sur 100, calculé à partir de votre taux d'épargne, respect des budgets, endettement et fonds d'urgence. Cliquez dessus pour voir le détail.</p>
+            </Section>
+            <Section emoji="⚡" title="Actions rapides">
+              <p>Les <strong>4 boutons d'action rapide</strong> vous donnent un accès direct aux fonctionnalités clés :</p>
+              <Step n={1}><strong>Préparer</strong> : planifiez votre début de mois (revenus, charges fixes).</Step>
+              <Step n={2}><strong>Chat IA</strong> : posez vos questions financières au conseiller IA (Premium).</Step>
+              <Step n={3}><strong>Scanner</strong> : photographiez un ticket de caisse pour l'enregistrer automatiquement.</Step>
+              <Step n={4}><strong>Rapport</strong> : générez un rapport mensuel détaillé de vos finances (Premium).</Step>
+            </Section>
+            <Section emoji="📋" title="Aperçu des données">
+              <p>Le bas de la page affiche un résumé de vos données principales :</p>
+              <Step n={1}><strong>Transactions récentes</strong> : vos 5 dernières opérations avec montant et catégorie.</Step>
+              <Step n={2}><strong>Budgets</strong> : progression de vos budgets avec barres de couleur (vert/orange/rouge).</Step>
+              <Step n={3}><strong>Épargne</strong> : avancement de vos objectifs d'épargne.</Step>
+              <Step n={4}><strong>Dettes</strong> : prochaines échéances et montants restants (Premium).</Step>
+              <p>Chaque section dispose d'un lien <strong>« Voir »</strong> pour accéder à la page complète.</p>
             </Section>
           </TabsContent>
 
