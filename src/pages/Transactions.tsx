@@ -333,11 +333,11 @@ const Transactions = () => {
             <p className="font-mono-amount text-[8px] text-success">+{formatAmount(savingsIncomeTotal)}</p>
             <p className="font-mono-amount text-[8px] text-destructive">-{formatAmount(savingsExpenseTotal)}</p>
           </div>
-          <div className={`border rounded-xl p-2 text-center ${monthIncome - monthExpense - Math.max(monthSavingsNet, 0) >= 0 ? 'bg-success/5 border-success/15' : 'bg-destructive/5 border-destructive/15'}`}>
-            <Wallet className={`w-3 h-3 mx-auto mb-0.5 ${monthIncome - monthExpense - Math.max(monthSavingsNet, 0) >= 0 ? 'text-success' : 'text-destructive'}`} />
+          <div className={`border rounded-xl p-2 text-center ${monthIncome - monthExpense + Math.min(monthSavingsNet, 0) >= 0 ? 'bg-success/5 border-success/15' : 'bg-destructive/5 border-destructive/15'}`}>
+            <Wallet className={`w-3 h-3 mx-auto mb-0.5 ${monthIncome - monthExpense + Math.min(monthSavingsNet, 0) >= 0 ? 'text-success' : 'text-destructive'}`} />
             <p className="text-[9px] text-muted-foreground mb-0.5">Solde</p>
-            <p className={`font-mono-amount font-bold text-xs ${monthIncome - monthExpense - Math.max(monthSavingsNet, 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
-              {monthIncome - monthExpense - Math.max(monthSavingsNet, 0) >= 0 ? '+' : ''}{formatAmount(monthIncome - monthExpense - Math.max(monthSavingsNet, 0))}
+            <p className={`font-mono-amount font-bold text-xs ${monthIncome - monthExpense + Math.min(monthSavingsNet, 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
+              {monthIncome - monthExpense + Math.min(monthSavingsNet, 0) >= 0 ? '+' : ''}{formatAmount(monthIncome - monthExpense + Math.min(monthSavingsNet, 0))}
             </p>
           </div>
         </div>
