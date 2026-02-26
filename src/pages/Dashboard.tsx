@@ -243,7 +243,7 @@ const Dashboard = () => {
           {/* Health Score Widget */}
           <motion.div
             variants={fade}
-            className="bg-card border border-border rounded-xl p-4 cursor-pointer hover:bg-muted/30 transition-colors"
+            className="bg-card border border-border rounded-xl p-4 cursor-pointer hover:bg-muted/30 transition-colors md:flex md:flex-col"
             onClick={() => navigate('/health-score')}
           >
             <div className="flex items-center justify-between mb-2">
@@ -253,7 +253,7 @@ const Dashboard = () => {
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </div>
-            <div className="flex justify-center">
+            <div className="flex justify-center md:flex-1 md:items-center">
               <HealthScoreGauge
                 score={healthScore.totalScore}
                 label={healthScore.label}
@@ -265,14 +265,14 @@ const Dashboard = () => {
           </motion.div>
 
           {/* Quick Actions */}
-          <motion.div variants={fade} className="grid grid-cols-2 md:grid-cols-2 gap-2 content-start">
+          <motion.div variants={fade} className="grid grid-cols-2 gap-2 md:auto-rows-fr">
             {[
               { icon: Calendar, label: 'Préparer', onClick: () => navigate('/start-of-month') },
               { icon: Sparkles, label: 'Coach IA', onClick: () => isPremium ? navigate('/chat') : setPaywallFeature({ feature: 'le Coach IA', description: 'Accédez à votre coach financier personnel propulsé par l\'IA pour des conseils adaptés à votre situation.' }), locked: !subLoading && !isPremium },
               { icon: Camera, label: 'Scanner', onClick: () => setShowScan(true) },
               { icon: BarChart3, label: 'Rapport', onClick: () => isPremium ? setShowReport(true) : setPaywallFeature({ feature: 'le rapport mensuel', description: 'Obtenez un rapport détaillé de vos finances chaque mois avec des conseils personnalisés.' }), locked: !subLoading && !isPremium },
             ].map((item: any, i: number) => (
-              <button key={i} onClick={item.onClick} className="bg-card border border-border rounded-xl p-3 flex flex-col items-center gap-2 hover:bg-muted/50 transition-colors active:scale-95 relative">
+              <button key={i} onClick={item.onClick} className="bg-card border border-border rounded-xl p-3 flex flex-col items-center justify-center gap-2 hover:bg-muted/50 transition-colors active:scale-95 relative">
                 {item.locked && <Lock className="w-3 h-3 text-amber-500 absolute top-1.5 right-1.5" />}
                 <item.icon className="w-5 h-5 text-muted-foreground" />
                 <span className="text-[11px] font-medium">{item.label}</span>
