@@ -297,7 +297,7 @@ const StartOfMonth = () => {
           </div>
           <div className="p-4 space-y-3">
             {savingsGoals.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-3">Aucun objectif d'enveloppe créé</p>
+              <p className="text-sm text-muted-foreground text-center py-3">Aucun objectif d'épargne créé</p>
             ) : step3Done ? (
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-center py-3">
                 <p className="text-sm font-medium text-primary">

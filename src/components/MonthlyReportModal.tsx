@@ -416,7 +416,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
             {/* Savings goals */}
             {goalsData.length > 0 && (
               <div>
-                <SectionTitle icon={PiggyBank} title="Objectifs d'enveloppe" />
+                <SectionTitle icon={PiggyBank} title="Objectifs d'épargne" />
                 <div className="space-y-2">
                   {goalsData.map(g => {
                     const pct = g.target > 0 ? Math.min((g.saved / g.target) * 100, 100) : 0;
