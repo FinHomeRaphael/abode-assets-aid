@@ -14,7 +14,7 @@ import { Debt, getDebtEmoji, calculateNextPaymentDate } from '@/types/debt';
 import { toast } from 'sonner';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
-import { TrendingUp, TrendingDown, Target, Wallet, PiggyBank, CreditCard, Calendar, Sparkles, Camera, BarChart3, ArrowRight, ChevronRight, Lock, HeartPulse } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Wallet, PiggyBank, CreditCard, Calendar, Sparkles, Camera, BarChart3, ArrowRight, ChevronRight, ChevronDown, Lock, HeartPulse } from 'lucide-react';
 import HealthScoreGauge from '@/components/HealthScoreGauge';
 import { useHealthScore, useSaveHealthScore, useHealthScoreHistory } from '@/hooks/useHealthScore';
 
@@ -65,6 +65,7 @@ const Dashboard = () => {
   const { isPremium, loading: subLoading } = useSubscription();
   const [debts, setDebts] = useState<Debt[]>([]);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [balanceExpanded, setBalanceExpanded] = useState(false);
 
   React.useEffect(() => {
     if (!currentUser?.id) return;
@@ -150,7 +151,7 @@ const Dashboard = () => {
   const monthSavingsNet = epargneIn - epargneOut;
 
   const totalIncome = monthTx.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
-  const totalExpense = monthTx.filter(t => t.type === 'expense' && !isAnySavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
+  const totalExpense = monthTx.filter(t => t.type === 'expense' && !isAnySavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
   const monthSavings = monthSavingsNet;
   const totalSavings = getTotalSavings();
   const balance = totalIncome - totalExpense + Math.min(monthSavingsNet, 0);
@@ -188,15 +189,58 @@ const Dashboard = () => {
 
         {/* Balance card */}
         <motion.div variants={fade} className="bg-gradient-to-br from-primary/10 via-card to-card border border-primary/15 rounded-2xl p-5">
-          <p className="text-muted-foreground text-xs mb-1">Solde du mois</p>
-          <div className="flex items-center gap-2">
-            <p className={`text-3xl font-semibold font-mono-amount tracking-tight ${balance >= 0 ? 'text-foreground' : 'text-destructive'}`}>
-              {balance >= 0 ? '+' : '-'}{formatAmount(Math.abs(balance))}
-            </p>
-            {monthSavings < 0 && (
-              <span className="text-amber-500 text-lg" title="Épargne négative">⚠️</span>
+          <button onClick={() => setBalanceExpanded(!balanceExpanded)} className="w-full text-left">
+            <div className="flex items-center justify-between">
+              <p className="text-muted-foreground text-xs mb-1">Solde du mois</p>
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${balanceExpanded ? 'rotate-180' : ''}`} />
+            </div>
+            <div className="flex items-center gap-2">
+              <p className={`text-3xl font-semibold font-mono-amount tracking-tight ${balance >= 0 ? 'text-foreground' : 'text-destructive'}`}>
+                {balance >= 0 ? '+' : '-'}{formatAmount(Math.abs(balance))}
+              </p>
+              {monthSavings < 0 && (
+                <span className="text-amber-500 text-lg" title="Épargne négative">⚠️</span>
+              )}
+            </div>
+          </button>
+          <AnimatePresence>
+            {balanceExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="mt-3 pt-3 border-t border-border/30 space-y-1.5">
+                  <div className="flex items-center justify-between py-1">
+                    <span className="text-xs flex items-center gap-1.5">💰 Revenus</span>
+                    <span className="font-mono-amount text-xs font-semibold text-success">+{formatAmount(totalIncome)}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1">
+                    <span className="text-xs flex items-center gap-1.5">💸 Dépenses</span>
+                    <span className="font-mono-amount text-xs font-semibold text-destructive">-{formatAmount(totalExpense)}</span>
+                  </div>
+                  {monthSavingsNet < 0 ? (
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-xs flex items-center gap-1.5">🏦 Épargne nette</span>
+                      <span className="font-mono-amount text-xs font-semibold text-destructive">-{formatAmount(Math.abs(monthSavingsNet))}</span>
+                    </div>
+                  ) : monthSavingsNet > 0 ? (
+                    <p className="text-[10px] text-muted-foreground italic py-1">
+                      L'épargne positive (+{formatAmount(monthSavingsNet)}) n'est pas déduite du solde car elle représente un transfert vers vos comptes épargne, pas une dépense réelle.
+                    </p>
+                  ) : null}
+                  <div className="flex items-center justify-between pt-2 mt-1 border-t-2 border-border">
+                    <span className="text-xs font-bold">Solde</span>
+                    <span className={`font-mono-amount text-xs font-bold ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      {balance >= 0 ? '+' : ''}{formatAmount(balance)}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
             )}
-          </div>
+          </AnimatePresence>
           {monthSavings < 0 && (
             <button
               onClick={() => navigate('/transactions')}
