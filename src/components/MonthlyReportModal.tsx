@@ -6,6 +6,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import MonthSelector from './MonthSelector';
 import { supabase } from '@/integrations/supabase/client';
+import { ACCOUNT_TYPES } from '@/types/finance';
 import { TrendingUp, TrendingDown, Target, Wallet, PiggyBank, CreditCard, Sparkles, X, ArrowUpRight, ArrowDownRight, ChevronDown, Receipt, ArrowLeftRight, BarChart3 } from 'lucide-react';
 
 interface Props {
@@ -356,7 +357,27 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   const balanceDiff = totalAccountsBalance - prevTotalAccountsBalance;
   const balanceDiffPct = prevTotalAccountsBalance !== 0 ? (balanceDiff / Math.abs(prevTotalAccountsBalance)) * 100 : null;
 
-  // Separate savings and non-savings accounts
+  // Group accounts by type
+  const accountsByType = useMemo(() => {
+    const groups: Record<string, typeof activeAccounts> = {};
+    activeAccounts.forEach(a => {
+      if (!groups[a.type]) groups[a.type] = [];
+      groups[a.type].push(a);
+    });
+    return groups;
+  }, [activeAccounts]);
+
+  // Import ACCOUNT_TYPES for labels
+  const accountTypeGroups = useMemo(() => {
+    return Object.entries(accountsByType).map(([type, accs]) => {
+      const typeDef = ACCOUNT_TYPES.find(t => t.value === type);
+      const label = typeDef ? `${typeDef.emoji} ${typeDef.label}` : type;
+      const total = accs.reduce((s, a) => s + getAccountBalanceAtMonth(a.id), 0);
+      return { type, label, total, accounts: accs };
+    });
+  }, [accountsByType, getAccountBalanceAtMonth]);
+
+  // Keep totals for legacy usage
   const savingsAccounts = activeAccounts.filter(a => a.type === 'epargne');
   const currentAccounts = activeAccounts.filter(a => a.type !== 'epargne');
   const totalSavingsBalance = savingsAccounts.reduce((s, a) => s + getAccountBalanceAtMonth(a.id), 0);
@@ -445,24 +466,17 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
 
                   {/* Collapsible account groups */}
                   <div className="grid grid-cols-1 gap-2 mt-4">
-                    {/* Comptes courants */}
-                    <AccountGroup
-                      label="Comptes courants"
-                      total={totalCurrentBalance}
-                      accounts={currentAccounts}
-                      getBalance={getAccountBalanceAtMonth}
-                      getPrevBalance={getAccountBalanceAtPrevMonth}
-                      formatAmount={formatAmount}
-                    />
-                    {/* Comptes épargne */}
-                    <AccountGroup
-                      label="Comptes épargne"
-                      total={totalSavingsBalance}
-                      accounts={savingsAccounts}
-                      getBalance={getAccountBalanceAtMonth}
-                      getPrevBalance={getAccountBalanceAtPrevMonth}
-                      formatAmount={formatAmount}
-                    />
+                    {accountTypeGroups.map(group => (
+                      <AccountGroup
+                        key={group.type}
+                        label={group.label}
+                        total={group.total}
+                        accounts={group.accounts}
+                        getBalance={getAccountBalanceAtMonth}
+                        getPrevBalance={getAccountBalanceAtPrevMonth}
+                        formatAmount={formatAmount}
+                      />
+                    ))}
                   </div>
                 </div>
               </motion.div>
