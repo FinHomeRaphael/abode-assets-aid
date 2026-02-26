@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatDate, formatDateLong, formatLocalDate } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CURRENCIES, CATEGORY_EMOJIS } from '@/types/finance';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CURRENCIES, CATEGORY_EMOJIS, ACCOUNT_TYPES } from '@/types/finance';
 import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import AddTransactionModal from '@/components/AddTransactionModal';
@@ -16,13 +16,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
-import { TrendingUp, TrendingDown, Wallet, Search, Plus, ArrowLeftRight, Download, CheckSquare, X, Trash2, Eye } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Search, Plus, ArrowLeftRight, Download, CheckSquare, X, Trash2, Eye, ChevronDown } from 'lucide-react';
 import { recalculateScheduleFromRow } from '@/utils/recalculateSchedule';
 import { getPeriodsPerYear } from '@/types/debt';
 import { useNavigate, Link } from 'react-router-dom';
 
 const Transactions = () => {
-  const { scopedTransactions: transactions, getMemberById, household, householdId, getTransactionsForMonth, deleteTransaction, updateTransaction, softDeleteRecurringTransaction, scopedAccounts: accounts, financeScope } = useApp();
+  const { scopedTransactions: transactions, getMemberById, household, householdId, getTransactionsForMonth, deleteTransaction, updateTransaction, softDeleteRecurringTransaction, scopedAccounts: accounts, financeScope, customAccountTypes } = useApp();
   const { formatAmount, currency } = useCurrency();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
@@ -49,6 +49,7 @@ const Transactions = () => {
 
   const [deleteRecTarget, setDeleteRecTarget] = useState<typeof transactions[0] | null>(null);
   const [viewDebtTarget, setViewDebtTarget] = useState<typeof transactions[0] | null>(null);
+  const [expandedCard, setExpandedCard] = useState<'income' | 'expense' | 'savings' | null>(null);
 
   const monthTx = useMemo(() => getTransactionsForMonth(currentMonth), [currentMonth, getTransactionsForMonth]);
   const categories = [...new Set(monthTx.map(t => t.category))].sort();
@@ -91,6 +92,49 @@ const Transactions = () => {
 
   const monthIncome = filtered.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
   const monthExpense = filtered.filter(t => t.type === 'expense' && !isAnySavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
+
+  const allAccountTypes = [...ACCOUNT_TYPES, ...customAccountTypes.map(t => ({ value: t.value, label: t.label, emoji: t.emoji }))];
+
+  const getAccountLabel = (accountId: string | null | undefined) => {
+    if (!accountId) return { name: 'Sans compte', emoji: '📌' };
+    const acc = accounts.find(a => a.id === accountId);
+    if (!acc) return { name: 'Compte inconnu', emoji: '❓' };
+    const typeInfo = allAccountTypes.find(t => t.value === acc.type);
+    return { name: acc.name, emoji: typeInfo?.emoji || '📁' };
+  };
+
+  const breakdownByAccount = useMemo(() => {
+    const incomeByAccount: Record<string, number> = {};
+    const expenseByAccount: Record<string, number> = {};
+    const savingsByAccount: Record<string, number> = {};
+
+    // Income: same filter as monthIncome
+    filtered.filter(t => t.type === 'income' && t.category !== 'Transfert').forEach(t => {
+      const key = t.accountId || '__none__';
+      incomeByAccount[key] = (incomeByAccount[key] || 0) + t.convertedAmount;
+    });
+
+    // Expenses: same filter as monthExpense
+    filtered.filter(t => t.type === 'expense' && !isAnySavingsTx(t)).forEach(t => {
+      const key = t.accountId || '__none__';
+      expenseByAccount[key] = (expenseByAccount[key] || 0) + t.convertedAmount;
+    });
+
+    // Savings: all transactions on savings accounts
+    monthTx.filter(t => isSavingsTx(t)).forEach(t => {
+      const key = t.accountId || '__none__';
+      const sign = t.type === 'income' ? 1 : -1;
+      savingsByAccount[key] = (savingsByAccount[key] || 0) + sign * t.convertedAmount;
+    });
+
+    const toSorted = (map: Record<string, number>) =>
+      Object.entries(map)
+        .map(([id, amount]) => ({ id, amount, ...getAccountLabel(id === '__none__' ? null : id) }))
+        .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+
+    return { income: toSorted(incomeByAccount), expense: toSorted(expenseByAccount), savings: toSorted(savingsByAccount) };
+  }, [filtered, monthTx, accounts, allAccountTypes]);
+
 
   const openEditModal = (t: typeof transactions[0]) => {
     setEditTarget(t);
@@ -316,23 +360,26 @@ const Transactions = () => {
 
         {/* Month totals */}
         <div className="grid grid-cols-4 gap-1.5">
-          <div className="bg-success/5 border border-success/15 rounded-xl p-2 text-center">
+          <button onClick={() => setExpandedCard(expandedCard === 'income' ? null : 'income')} className="bg-success/5 border border-success/15 rounded-xl p-2 text-center transition-colors hover:bg-success/10 relative">
             <TrendingUp className="w-3 h-3 text-success mx-auto mb-0.5" />
             <p className="text-[9px] text-muted-foreground mb-0.5">Revenus</p>
             <p className="font-mono-amount font-bold text-success text-xs">+{formatAmount(monthIncome)}</p>
-          </div>
-          <div className="bg-destructive/5 border border-destructive/15 rounded-xl p-2 text-center">
+            <ChevronDown className={`w-3 h-3 text-success mx-auto mt-0.5 transition-transform ${expandedCard === 'income' ? 'rotate-180' : ''}`} />
+          </button>
+          <button onClick={() => setExpandedCard(expandedCard === 'expense' ? null : 'expense')} className="bg-destructive/5 border border-destructive/15 rounded-xl p-2 text-center transition-colors hover:bg-destructive/10 relative">
             <TrendingDown className="w-3 h-3 text-destructive mx-auto mb-0.5" />
             <p className="text-[9px] text-muted-foreground mb-0.5">Dépenses</p>
             <p className="font-mono-amount font-bold text-destructive text-xs">-{formatAmount(monthExpense)}</p>
-          </div>
-          <div className={`border rounded-xl p-2 text-center ${monthSavingsNet > 0 ? 'bg-success/5 border-success/15' : monthSavingsNet < 0 ? 'bg-destructive/5 border-destructive/15' : 'bg-secondary/5 border-border/15'}`}>
+            <ChevronDown className={`w-3 h-3 text-destructive mx-auto mt-0.5 transition-transform ${expandedCard === 'expense' ? 'rotate-180' : ''}`} />
+          </button>
+          <button onClick={() => setExpandedCard(expandedCard === 'savings' ? null : 'savings')} className={`border rounded-xl p-2 text-center transition-colors hover:bg-muted/30 ${monthSavingsNet > 0 ? 'bg-success/5 border-success/15' : monthSavingsNet < 0 ? 'bg-destructive/5 border-destructive/15' : 'bg-secondary/5 border-border/15'}`}>
             <Wallet className={`w-3 h-3 mx-auto mb-0.5 ${monthSavingsNet > 0 ? 'text-success' : monthSavingsNet < 0 ? 'text-destructive' : 'text-muted-foreground'}`} />
             <p className="text-[9px] text-muted-foreground mb-0.5">Épargne</p>
             <p className={`font-mono-amount font-bold text-xs ${monthSavingsNet > 0 ? 'text-success' : monthSavingsNet < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>{monthSavingsNet > 0 ? '+' : monthSavingsNet < 0 ? '-' : ''}{formatAmount(Math.abs(monthSavingsNet))}</p>
             <p className="font-mono-amount text-[8px] text-success">+{formatAmount(savingsIncomeTotal)}</p>
             <p className="font-mono-amount text-[8px] text-destructive">-{formatAmount(savingsExpenseTotal)}</p>
-          </div>
+            <ChevronDown className={`w-3 h-3 mx-auto mt-0.5 transition-transform ${expandedCard === 'savings' ? 'rotate-180' : ''} ${monthSavingsNet > 0 ? 'text-success' : monthSavingsNet < 0 ? 'text-destructive' : 'text-muted-foreground'}`} />
+          </button>
           <div className={`border rounded-xl p-2 text-center ${monthIncome - monthExpense + Math.min(monthSavingsNet, 0) >= 0 ? 'bg-success/5 border-success/15' : 'bg-destructive/5 border-destructive/15'}`}>
             <Wallet className={`w-3 h-3 mx-auto mb-0.5 ${monthIncome - monthExpense + Math.min(monthSavingsNet, 0) >= 0 ? 'text-success' : 'text-destructive'}`} />
             <p className="text-[9px] text-muted-foreground mb-0.5">Solde</p>
@@ -341,6 +388,55 @@ const Transactions = () => {
             </p>
           </div>
         </div>
+
+        {/* Breakdown by account */}
+        <AnimatePresence>
+          {expandedCard && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="bg-card border border-border rounded-xl p-3 space-y-1.5">
+                <p className="text-xs font-semibold mb-2">
+                  {expandedCard === 'income' ? '💰 Revenus par compte' : expandedCard === 'expense' ? '💸 Dépenses par compte' : '🐖 Épargne par compte'}
+                </p>
+                {(expandedCard === 'income' ? breakdownByAccount.income : expandedCard === 'expense' ? breakdownByAccount.expense : breakdownByAccount.savings).map(item => (
+                  <div key={item.id} className="flex items-center justify-between py-1 border-b border-border/30 last:border-0">
+                    <span className="text-xs flex items-center gap-1.5">
+                      <span>{item.emoji}</span>
+                      <span className="truncate max-w-[150px]">{item.name}</span>
+                    </span>
+                    <span className={`font-mono-amount text-xs font-semibold ${
+                      expandedCard === 'income' ? 'text-success' :
+                      expandedCard === 'expense' ? 'text-destructive' :
+                      item.amount >= 0 ? 'text-success' : 'text-destructive'
+                    }`}>
+                      {expandedCard === 'income' ? '+' : expandedCard === 'expense' ? '-' : item.amount >= 0 ? '+' : ''}{formatAmount(Math.abs(item.amount))}
+                    </span>
+                  </div>
+                ))}
+                {(expandedCard === 'income' ? breakdownByAccount.income : expandedCard === 'expense' ? breakdownByAccount.expense : breakdownByAccount.savings).length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-2">Aucune donnée</p>
+                )}
+                <div className="flex items-center justify-between pt-1.5 border-t border-border">
+                  <span className="text-xs font-bold">Total</span>
+                  <span className={`font-mono-amount text-xs font-bold ${
+                    expandedCard === 'income' ? 'text-success' :
+                    expandedCard === 'expense' ? 'text-destructive' :
+                    monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'
+                  }`}>
+                    {expandedCard === 'income' ? `+${formatAmount(monthIncome)}` :
+                     expandedCard === 'expense' ? `-${formatAmount(monthExpense)}` :
+                     `${monthSavingsNet >= 0 ? '+' : ''}${formatAmount(monthSavingsNet)}`}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {monthIncome - monthExpense + Math.min(monthSavingsNet, 0) < 0 && (
           <div className="flex items-start gap-2 bg-destructive/5 border border-destructive/15 rounded-xl px-3 py-2.5">
