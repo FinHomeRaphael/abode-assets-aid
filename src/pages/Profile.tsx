@@ -7,6 +7,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { CURRENCIES, CURRENCY_NAMES, CURRENCY_SYMBOLS } from '@/types/finance';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
+import BackHeader from '@/components/BackHeader';
 import ConvertedAmount from '@/components/ConvertedAmount';
 import InviteMemberModal from '@/components/InviteMemberModal';
 import { supabase } from '@/integrations/supabase/client';
@@ -109,7 +110,7 @@ const Profile = () => {
   return (
     <Layout>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-2xl mx-auto space-y-4">
-        <h1 className="text-xl font-bold">Profil & Foyer</h1>
+        <BackHeader title="Profil & Foyer" />
 
         {/* User card */}
         <div className="card-elevated p-5 flex items-center gap-4">

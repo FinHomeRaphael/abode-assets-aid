@@ -4,6 +4,7 @@ import { useApp } from '@/context/AppContext';
 import { useCurrency } from '@/hooks/useCurrency';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
+import BackHeader from '@/components/BackHeader';
 
 const STORAGE_KEY_PREFIX = 'finehome_start_month_';
 
@@ -191,8 +192,8 @@ const StartOfMonth = () => {
       <motion.div variants={stagger} initial="hidden" animate="show" className="max-w-2xl mx-auto space-y-5">
         {/* Header */}
         <motion.div variants={fadeUp}>
-          <h1 className="text-xl font-bold mb-1">🗓️ Début de mois</h1>
-          <p className="text-sm text-muted-foreground capitalize">{monthLabel}</p>
+          <BackHeader title="🗓️ Début de mois" />
+          <p className="text-sm text-muted-foreground capitalize -mt-2">{monthLabel}</p>
         </motion.div>
 
         {/* Progress bar */}
