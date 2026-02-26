@@ -7,6 +7,7 @@ import { formatDateLong } from '@/utils/format';
 import { ACCOUNT_TYPES, CURRENCIES, CURRENCY_SYMBOLS } from '@/types/finance';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
+import BackHeader from '@/components/BackHeader';
 
 const AccountDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -82,7 +83,7 @@ const AccountDetail = () => {
     <Layout>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/savings')} className="text-muted-foreground hover:text-foreground text-lg">←</button>
+          <BackHeader fallback="/savings" />
           <h1 className="text-xl font-bold flex-1">{typeInfo?.emoji} {account.name}</h1>
           <button onClick={openEdit} className="h-9 px-3 rounded-xl border border-border text-sm hover:bg-muted transition-colors">Modifier</button>
         </div>

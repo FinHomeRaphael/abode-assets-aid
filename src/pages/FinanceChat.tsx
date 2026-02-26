@@ -5,6 +5,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import Layout from '@/components/Layout';
+import BackHeader from '@/components/BackHeader';
 import { useSubscription } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
 import { PremiumGate } from '@/components/PremiumPaywall';
@@ -377,6 +378,7 @@ Nombre total de transactions ce mois: ${monthTx.length}`;
       <div className="max-w-2xl mx-auto flex flex-col h-[calc(100dvh-8rem)] md:h-[calc(100dvh-8rem)] -mb-32 md:mb-0">
         {/* Header */}
         <div className="flex items-center gap-3 mb-4">
+          <BackHeader />
           <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
             <span className="text-xl">✨</span>
           </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import Layout from '@/components/Layout';
+import BackHeader from '@/components/BackHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Home, CreditCard, Target, PiggyBank, Landmark, Lightbulb, BarChart3, MessageSquare, Users, Settings } from 'lucide-react';
@@ -28,10 +29,8 @@ const Aide = () => {
   return (
     <Layout>
       <div className="space-y-4">
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Centre d'aide</h1>
-          <p className="text-sm text-muted-foreground mt-1">Tout ce qu'il faut savoir pour bien utiliser l'application.</p>
-        </div>
+        <BackHeader title="Centre d'aide" />
+        <p className="text-sm text-muted-foreground -mt-2">Tout ce qu'il faut savoir pour bien utiliser l'application.</p>
 
         <Tabs defaultValue="general" className="w-full">
           <TabsList className="w-full flex-wrap h-auto gap-1 bg-muted/50 p-1.5 rounded-xl">

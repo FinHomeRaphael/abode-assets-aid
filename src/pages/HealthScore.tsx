@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import Layout from '@/components/Layout';
+import BackHeader from '@/components/BackHeader';
 import HealthScoreGauge from '@/components/HealthScoreGauge';
 import HealthScoreDetail from '@/components/HealthScoreDetail';
 import HealthScoreHistory from '@/components/HealthScoreHistory';
@@ -21,8 +22,8 @@ const HealthScorePage: React.FC = () => {
     <Layout>
       <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-5">
         <motion.div variants={fade}>
-          <h1 className="text-lg font-semibold">🏥 Santé Financière</h1>
-          <p className="text-xs text-muted-foreground">Ton score global basé sur tes finances</p>
+          <BackHeader title="🏥 Santé Financière" />
+          <p className="text-xs text-muted-foreground -mt-2 mb-4">Ton score global basé sur tes finances</p>
         </motion.div>
 
         <motion.div variants={fade} className="bg-card border border-border rounded-2xl p-6 flex justify-center">
