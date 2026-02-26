@@ -106,9 +106,9 @@ const Layout = ({ children }: LayoutProps) => {
             <button onClick={() => setShowAddModal(true)} className="h-8 px-2.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors flex items-center gap-1">
               <Plus className="w-3.5 h-3.5" /> Ajouter
             </button>
-            <a href="https://abode-assets-aid.lovable.app/tutoriel" target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors" title="Aide & Tutoriel">
+            <button onClick={() => navigate('/aide')} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors" title="Aide & Tutoriel">
               <HelpCircle className="w-4 h-4" />
-            </a>
+            </button>
             <button onClick={() => navigate('/profile')} className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground hover:bg-muted/80 transition-colors">
               {currentUser ? getInitials(currentUser.name) : '?'}
             </button>

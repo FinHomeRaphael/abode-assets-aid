@@ -20,6 +20,7 @@ import SignupPage from "./pages/SignupPage";
 import NotFound from "./pages/NotFound";
 import Insights from "./pages/Insights";
 import HealthScore from "./pages/HealthScore";
+import Aide from "./pages/Aide";
 import InvitationChoiceModal from "./components/InvitationChoiceModal";
 
 const queryClient = new QueryClient({
@@ -154,6 +155,7 @@ const AppRoutes = () => (
       <Route path="/account/:id" element={<ProtectedRoute><AccountDetail /></ProtectedRoute>} />
       <Route path="/start-of-month" element={<ProtectedRoute><StartOfMonth /></ProtectedRoute>} />
       <Route path="/chat" element={<ProtectedRoute><FinanceChat /></ProtectedRoute>} />
+      <Route path="/aide" element={<ProtectedRoute><Aide /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
