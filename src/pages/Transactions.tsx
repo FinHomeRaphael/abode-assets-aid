@@ -415,12 +415,16 @@ const Transactions = () => {
                       <span className="text-xs flex items-center gap-1.5">💸 Dépenses</span>
                       <span className="font-mono-amount text-xs font-semibold text-destructive">-{formatAmount(monthExpense)}</span>
                     </div>
-                    {monthSavingsNet < 0 && (
+                    {monthSavingsNet < 0 ? (
                       <div className="flex items-center justify-between py-1 border-b border-border/30">
                         <span className="text-xs flex items-center gap-1.5">🏦 Épargne nette</span>
                         <span className="font-mono-amount text-xs font-semibold text-destructive">{formatAmount(monthSavingsNet)}</span>
                       </div>
-                    )}
+                    ) : monthSavingsNet > 0 ? (
+                      <p className="text-[10px] text-muted-foreground italic py-1 border-b border-border/30">
+                        L'épargne positive ({formatAmount(monthSavingsNet)}) n'est pas déduite du solde car elle représente un transfert vers vos comptes épargne, pas une dépense réelle.
+                      </p>
+                    ) : null}
                     <div className={`flex items-center justify-between pt-2 mt-1 border-t-2 border-border`}>
                       <span className="text-xs font-bold">Solde</span>
                       <span className={`font-mono-amount text-xs font-bold ${monthIncome - monthExpense + Math.min(monthSavingsNet, 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
