@@ -153,13 +153,13 @@ const AccountGroup = ({ label, total, accounts: accs, getBalance, getPrevBalance
                 const diff = bal - getPrevBalance(acc.id);
                 return (
                   <div key={acc.id} className="flex items-center justify-between py-1">
-                    <span className="text-xs text-muted-foreground">{acc.name}</span>
-                    <div className="text-right">
+                    <span className="text-xs text-muted-foreground italic">{acc.name}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`font-mono-amount text-[9px] ${diff >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {diff >= 0 ? '+' : '-'}{fmt(Math.abs(diff), acc.currency)}
+                      </span>
                       <span className={`font-mono-amount text-xs font-semibold ${bal >= 0 ? 'text-foreground' : 'text-destructive'}`}>
                         {fmt(bal, acc.currency)}
-                      </span>
-                      <span className={`font-mono-amount text-[9px] ml-1.5 ${diff >= 0 ? 'text-success' : 'text-destructive'}`}>
-                        {diff >= 0 ? '+' : ''}{fmt(diff, acc.currency)}
                       </span>
                     </div>
                   </div>
