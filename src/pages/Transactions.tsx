@@ -62,9 +62,12 @@ const Transactions = () => {
   });
 
   const savingsAccountIds = new Set(accounts.filter(a => a.type === 'epargne').map(a => a.id));
+  const isSavingsTx = (t: typeof transactions[0]) => !!(t.accountId && savingsAccountIds.has(t.accountId));
+  const savingsIn = filtered.filter(t => t.type === 'income' && isSavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
+  const savingsOut = filtered.filter(t => t.type === 'expense' && isSavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
+  const monthSavingsNet = savingsIn - savingsOut; // positive = net inflow to savings
   const monthIncome = filtered.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
-  const monthSavings = filtered.filter(t => t.type === 'expense' && t.accountId && savingsAccountIds.has(t.accountId)).reduce((s, t) => s + t.convertedAmount, 0);
-  const monthExpense = filtered.filter(t => t.type === 'expense' && !(t.accountId && savingsAccountIds.has(t.accountId))).reduce((s, t) => s + t.convertedAmount, 0);
+  const monthExpense = filtered.filter(t => t.type === 'expense' && !isSavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
 
   const openEditModal = (t: typeof transactions[0]) => {
     setEditTarget(t);
@@ -300,16 +303,16 @@ const Transactions = () => {
             <p className="text-[9px] text-muted-foreground mb-0.5">Dépenses</p>
             <p className="font-mono-amount font-bold text-destructive text-xs">-{formatAmount(monthExpense)}</p>
           </div>
-          <div className={`border rounded-xl p-2 text-center ${monthSavings > 0 ? 'bg-destructive/5 border-destructive/15' : 'bg-success/5 border-success/15'}`}>
-            <Wallet className={`w-3 h-3 mx-auto mb-0.5 ${monthSavings > 0 ? 'text-destructive' : 'text-success'}`} />
+          <div className={`border rounded-xl p-2 text-center ${monthSavingsNet > 0 ? 'bg-success/5 border-success/15' : monthSavingsNet < 0 ? 'bg-destructive/5 border-destructive/15' : 'bg-secondary/5 border-border/15'}`}>
+            <Wallet className={`w-3 h-3 mx-auto mb-0.5 ${monthSavingsNet > 0 ? 'text-success' : monthSavingsNet < 0 ? 'text-destructive' : 'text-muted-foreground'}`} />
             <p className="text-[9px] text-muted-foreground mb-0.5">Épargne</p>
-            <p className={`font-mono-amount font-bold text-xs ${monthSavings > 0 ? 'text-destructive' : 'text-success'}`}>{monthSavings > 0 ? `-${formatAmount(monthSavings)}` : formatAmount(0)}</p>
+            <p className={`font-mono-amount font-bold text-xs ${monthSavingsNet > 0 ? 'text-success' : monthSavingsNet < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>{monthSavingsNet > 0 ? '+' : ''}{formatAmount(monthSavingsNet)}</p>
           </div>
-          <div className={`border rounded-xl p-2 text-center ${monthIncome - monthExpense - monthSavings >= 0 ? 'bg-success/5 border-success/15' : 'bg-destructive/5 border-destructive/15'}`}>
-            <Wallet className={`w-3 h-3 mx-auto mb-0.5 ${monthIncome - monthExpense - monthSavings >= 0 ? 'text-success' : 'text-destructive'}`} />
+          <div className={`border rounded-xl p-2 text-center ${monthIncome - monthExpense - Math.max(monthSavingsNet, 0) >= 0 ? 'bg-success/5 border-success/15' : 'bg-destructive/5 border-destructive/15'}`}>
+            <Wallet className={`w-3 h-3 mx-auto mb-0.5 ${monthIncome - monthExpense - Math.max(monthSavingsNet, 0) >= 0 ? 'text-success' : 'text-destructive'}`} />
             <p className="text-[9px] text-muted-foreground mb-0.5">Solde</p>
-            <p className={`font-mono-amount font-bold text-xs ${monthIncome - monthExpense - monthSavings >= 0 ? 'text-success' : 'text-destructive'}`}>
-              {monthIncome - monthExpense - monthSavings >= 0 ? '+' : ''}{formatAmount(monthIncome - monthExpense - monthSavings)}
+            <p className={`font-mono-amount font-bold text-xs ${monthIncome - monthExpense - Math.max(monthSavingsNet, 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
+              {monthIncome - monthExpense - Math.max(monthSavingsNet, 0) >= 0 ? '+' : ''}{formatAmount(monthIncome - monthExpense - Math.max(monthSavingsNet, 0))}
             </p>
           </div>
         </div>
