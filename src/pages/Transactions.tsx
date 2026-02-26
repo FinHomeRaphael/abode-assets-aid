@@ -63,11 +63,28 @@ const Transactions = () => {
 
   const savingsAccountIds = new Set(accounts.filter(a => a.type === 'epargne').map(a => a.id));
   const isSavingsTx = (t: typeof transactions[0]) => !!(t.accountId && savingsAccountIds.has(t.accountId));
+
+  // Find transfer IDs linked to savings accounts (either side)
+  const savingsTransferIds = new Set<string>();
+  filtered.forEach(t => {
+    if (isSavingsTx(t) && t.category === 'Transfert' && t.notes) {
+      const match = t.notes.match(/\[Transfert #(.+?)\]/);
+      if (match) savingsTransferIds.add(match[1]);
+    }
+  });
+  const isSavingsTransferCounterpart = (t: typeof transactions[0]) => {
+    if (t.category !== 'Transfert' || !t.notes) return false;
+    const match = t.notes.match(/\[Transfert #(.+?)\]/);
+    return match ? savingsTransferIds.has(match[1]) : false;
+  };
+  const isAnySavingsTx = (t: typeof transactions[0]) => isSavingsTx(t) || isSavingsTransferCounterpart(t);
+
   const savingsIn = filtered.filter(t => t.type === 'income' && isSavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
   const savingsOut = filtered.filter(t => t.type === 'expense' && isSavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
-  const monthSavingsNet = savingsIn - savingsOut; // positive = net inflow to savings
+  const savingsTransferIn = filtered.filter(t => t.type === 'expense' && !isSavingsTx(t) && isSavingsTransferCounterpart(t)).reduce((s, t) => s + t.convertedAmount, 0);
+  const monthSavingsNet = savingsIn - savingsOut + savingsTransferIn; // net inflow to savings
   const monthIncome = filtered.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
-  const monthExpense = filtered.filter(t => t.type === 'expense' && !isSavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
+  const monthExpense = filtered.filter(t => t.type === 'expense' && !isAnySavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
 
   const openEditModal = (t: typeof transactions[0]) => {
     setEditTarget(t);
