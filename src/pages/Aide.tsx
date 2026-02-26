@@ -83,7 +83,7 @@ const Aide = () => {
               <Step n={3}><strong>Astuces épargne</strong> : encouragements et suggestions personnalisées.</Step>
             </Section>
             <Section emoji="❤️" title="Score de santé financière">
-              <p>Le widget <strong>Santé Financière</strong> affiche votre score sur 100, calculé à partir de votre taux d'épargne, respect des budgets, endettement et fonds d'urgence. Cliquez dessus pour voir le détail.</p>
+              <p>Le widget <strong>Santé Financière</strong> affiche votre score sur 100, calculé à partir de 5 critères : taux d'épargne, fonds d'urgence, patrimoine, ratio dettes/patrimoine et taux d'endettement. Cliquez dessus pour voir le détail.</p>
             </Section>
             <Section emoji="⚡" title="Actions rapides">
               <p>Les <strong>4 boutons d'action rapide</strong> vous donnent un accès direct aux fonctionnalités clés :</p>
@@ -195,11 +195,13 @@ const Aide = () => {
               <Step n={3}><strong>Tendances</strong> et comparaisons avec les mois précédents.</Step>
             </Section>
             <Section emoji="🏥" title="Score de santé financière">
-              <p>Votre <strong>Health Score</strong> est calculé automatiquement sur 100 points, basé sur :</p>
-              <Step n={1}><strong>Taux d'épargne</strong> : combien vous épargnez par rapport à vos revenus.</Step>
-              <Step n={2}><strong>Respect des budgets</strong> : pourcentage de budgets non dépassés.</Step>
-              <Step n={3}><strong>Ratio d'endettement</strong> : poids des dettes vs revenus.</Step>
-              <Step n={4}><strong>Fonds d'urgence</strong> : avez-vous assez d'épargne pour couvrir plusieurs mois.</Step>
+              <p>Votre <strong>Health Score</strong> est calculé automatiquement sur 100 points, basé sur <strong>5 critères</strong> avec redistribution automatique des poids (si vous n'avez pas de dettes, les points sont redistribués) :</p>
+              <Step n={1}><strong>Taux d'épargne (25 pts)</strong> : pourcentage de vos revenus épargnés ce mois-ci. Score maximal à partir de 20%.</Step>
+              <Step n={2}><strong>Fonds d'urgence (25 pts)</strong> : nombre de mois de dépenses couverts par votre épargne totale. 50% du score à 3 mois, 100% à 6 mois.</Step>
+              <Step n={3}><strong>Ratio dettes/patrimoine (25 pts)</strong> : vos dettes restantes par rapport à votre patrimoine total. Score maximal si ≤ 70%, 0 à ≥ 90%.</Step>
+              <Step n={4}><strong>Taux d'endettement (15 pts)</strong> : mensualités de dettes par rapport à vos revenus mensuels. Score maximal jusqu'à 30%.</Step>
+              <Step n={5}><strong>Patrimoine total (10 pts)</strong> : comparaison avec la médiane européenne (~205 000 €). Inclut vos comptes bancaires + valeurs immobilières, véhicules et autres biens.</Step>
+              <p>Chaque critère est <strong>cliquable</strong> pour voir le détail du calcul (formules, montants réels) et un conseil personnalisé.</p>
             </Section>
             <Section emoji="✨" title="Conseiller IA">
               <p>Le <strong>Conseiller IA</strong> analyse vos données financières et vous donne des conseils personnalisés. Accédez-y via le bouton <strong>+</strong> → <strong>Conseiller IA</strong> ou depuis la page Insights.</p>
