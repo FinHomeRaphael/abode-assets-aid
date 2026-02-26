@@ -328,7 +328,7 @@ const Transactions = () => {
           <div className={`border rounded-xl p-2 text-center ${monthSavingsNet > 0 ? 'bg-success/5 border-success/15' : monthSavingsNet < 0 ? 'bg-destructive/5 border-destructive/15' : 'bg-secondary/5 border-border/15'}`}>
             <Wallet className={`w-3 h-3 mx-auto mb-0.5 ${monthSavingsNet > 0 ? 'text-success' : monthSavingsNet < 0 ? 'text-destructive' : 'text-muted-foreground'}`} />
             <p className="text-[9px] text-muted-foreground mb-0.5">Épargne</p>
-            <p className={`font-mono-amount font-bold text-xs ${monthSavingsNet > 0 ? 'text-success' : monthSavingsNet < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>{monthSavingsNet > 0 ? '+' : ''}{formatAmount(monthSavingsNet)}</p>
+            <p className={`font-mono-amount font-bold text-xs ${monthSavingsNet > 0 ? 'text-success' : monthSavingsNet < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>{monthSavingsNet > 0 ? '+' : monthSavingsNet < 0 ? '-' : ''}{formatAmount(Math.abs(monthSavingsNet))}</p>
           </div>
           <div className={`border rounded-xl p-2 text-center ${monthIncome - monthExpense - Math.max(monthSavingsNet, 0) >= 0 ? 'bg-success/5 border-success/15' : 'bg-destructive/5 border-destructive/15'}`}>
             <Wallet className={`w-3 h-3 mx-auto mb-0.5 ${monthIncome - monthExpense - Math.max(monthSavingsNet, 0) >= 0 ? 'text-success' : 'text-destructive'}`} />
