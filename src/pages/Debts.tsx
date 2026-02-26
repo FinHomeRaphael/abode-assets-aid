@@ -8,7 +8,7 @@ import { fr } from 'date-fns/locale';
 import { supabase } from '@/integrations/supabase/client';
 import { useApp } from '@/context/AppContext';
 import { Debt, DEBT_TYPES, getDebtEmoji, getPeriodsPerYear, calculateNextPaymentDate, PaymentFrequency } from '@/types/debt';
-import { useExchangeRates } from '@/hooks/useExchangeRates';
+import { DEFAULT_EXCHANGE_RATES } from '@/types/finance';
 
 const getFrequencySuffix = (freq: string) => {
   switch (freq) { case 'quarterly': return '/trim.'; case 'semi-annual': return '/sem.'; case 'annual': return '/an'; default: return '/mois'; }
@@ -44,7 +44,12 @@ interface UpcomingPayment {
 const Debts = () => {
   const { householdId, session, household, financeScope, refreshDebtSchedules } = useApp();
   const { formatAmount, currency: mainCurrency } = useCurrency();
-  const { convert } = useExchangeRates(mainCurrency);
+  const convert = useCallback((amount: number, fromCurrency: string) => {
+    if (fromCurrency === mainCurrency) return amount;
+    const fromToEur = DEFAULT_EXCHANGE_RATES[fromCurrency] || 1;
+    const mainToEur = DEFAULT_EXCHANGE_RATES[mainCurrency] || 1;
+    return amount * (fromToEur / mainToEur);
+  }, [mainCurrency]);
   const { canAdd } = useSubscription(householdId, session?.user?.id);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [loading, setLoading] = useState(true);
