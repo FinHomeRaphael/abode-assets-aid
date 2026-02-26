@@ -424,9 +424,9 @@ const Transactions = () => {
                     {(expandedCard === 'income' ? breakdownByAccount.income : breakdownByAccount.expense).length === 0 && (
                       <p className="text-xs text-muted-foreground text-center py-2">Aucune donnée</p>
                     )}
-                    <div className="flex items-center justify-between pt-1.5 border-t border-border">
-                      <span className="text-xs font-bold">Total</span>
-                      <span className={`font-mono-amount text-xs font-bold ${expandedCard === 'income' ? 'text-success' : 'text-destructive'}`}>
+                    <div className={`flex items-center justify-between mt-2 px-2 py-1.5 rounded-lg ${expandedCard === 'income' ? 'bg-success/10' : 'bg-destructive/10'}`}>
+                      <span className={`text-[11px] ${expandedCard === 'income' ? 'text-success' : 'text-destructive'}`}>Total</span>
+                      <span className={`font-mono-amount text-xs ${expandedCard === 'income' ? 'text-success' : 'text-destructive'}`}>
                         {expandedCard === 'income' ? `+${formatAmount(monthIncome)}` : `-${formatAmount(monthExpense)}`}
                       </span>
                     </div>
