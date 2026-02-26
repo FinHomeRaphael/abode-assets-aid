@@ -10,7 +10,7 @@ import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
-import { Wallet, X } from 'lucide-react';
+import { Wallet, X, Plus } from 'lucide-react';
 
 const SectionTitle = ({ icon: Icon, title, actions }: { icon: React.ElementType; title: string; actions?: { label: string; onClick: () => void }[] }) => (
   <div className="flex items-center justify-between mb-2">
@@ -33,6 +33,7 @@ const Savings = () => {
     getMonthSavings, getTotalSavings,
     household,
     scopedAccounts: accounts, getActiveAccounts, getAccountBalance, addAccount, householdId, currentUser,
+    customAccountTypes, addCustomAccountType,
   } = useApp();
   const { formatAmount } = useCurrency();
   const { canAdd } = useSubscription(householdId, currentUser?.id);
@@ -54,16 +55,37 @@ const Savings = () => {
   const [accBalance, setAccBalance] = useState('');
   const [accDate, setAccDate] = useState(formatLocalDate(new Date()));
 
+  // Custom account type creation
+  const [showCreateType, setShowCreateType] = useState(false);
+  const [newTypeName, setNewTypeName] = useState('');
+  const [newTypeEmoji, setNewTypeEmoji] = useState('🏦');
+
+  const allAccountTypes = [...ACCOUNT_TYPES, ...customAccountTypes.map(t => ({ value: t.value, label: t.label, emoji: t.emoji }))];
+
   const monthSavings = getMonthSavings(currentMonth);
   const totalSavings = getTotalSavings();
   const activeAccounts = getActiveAccounts();
   const totalAccountsBalance = activeAccounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
-  const epargneAccounts = activeAccounts.filter(a => a.type === 'epargne');
 
   const handleCreateAccount = () => {
     if (!accName.trim()) { toast.error('Donnez un nom au compte'); return; }
     addAccount({ name: accName.trim(), type: accType, currency: accCurrency, startingBalance: parseFloat(accBalance) || 0, startingDate: accDate });
     setShowCreateAccount(false); setAccName(''); setAccBalance(''); setAccDate(formatLocalDate(new Date())); setAccCurrency(household.currency);
+  };
+
+  const handleCreateType = () => {
+    const name = newTypeName.trim();
+    if (!name) { toast.error('Donnez un nom au type'); return; }
+    if (allAccountTypes.some(t => t.label.toLowerCase() === name.toLowerCase() || t.value.toLowerCase() === name.toLowerCase())) {
+      toast.error('Ce type existe déjà'); return;
+    }
+    const value = name.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    addCustomAccountType({ value, label: name, emoji: newTypeEmoji });
+    setAccType(value);
+    setShowCreateType(false);
+    setNewTypeName('');
+    setNewTypeEmoji('🏦');
+    toast.success('Type de compte créé');
   };
 
   const modalOverlay = "fixed inset-0 z-50 bg-foreground/30 backdrop-blur-md flex items-center justify-center p-4";
@@ -124,7 +146,7 @@ const Savings = () => {
             <div className="grid sm:grid-cols-2 gap-2">
               {activeAccounts.map(acc => {
                 const bal = getAccountBalance(acc.id);
-                const typeInfo = ACCOUNT_TYPES.find(t => t.value === acc.type);
+                const typeInfo = allAccountTypes.find(t => t.value === acc.type);
                 return (
                   <div key={acc.id} onClick={() => navigate(`/account/${acc.id}`)} className="bg-card border border-border rounded-xl p-3.5 cursor-pointer hover:bg-muted/50 transition-colors active:scale-[0.98]">
                     <div className="flex items-center justify-between mb-1">
@@ -134,7 +156,7 @@ const Savings = () => {
                     <p className={`font-mono-amount font-bold ${bal >= 0 ? 'text-primary' : 'text-destructive'}`}>
                       {formatAmount(bal, acc.currency)}
                     </p>
-                    <p className="text-[9px] text-muted-foreground mt-1">{typeInfo?.label}</p>
+                    <p className="text-[9px] text-muted-foreground mt-1">{typeInfo?.label || acc.type}</p>
                   </div>
                 );
               })}
@@ -158,10 +180,55 @@ const Savings = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1">Type</label>
-                    <select value={accType} onChange={e => setAccType(e.target.value as AccountType)} className={inputClass}>
-                      {ACCOUNT_TYPES.map(t => <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>)}
-                    </select>
+                    <div className="flex gap-2">
+                      <select value={accType} onChange={e => setAccType(e.target.value as AccountType)} className={`${inputClass} flex-1`}>
+                        {allAccountTypes.map(t => <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>)}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setShowCreateType(true)}
+                        className="px-2.5 rounded-xl border border-border/30 bg-secondary/20 hover:bg-muted transition-colors flex items-center gap-1 text-xs text-muted-foreground shrink-0"
+                        title="Créer un type personnalisé"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Inline custom type creation */}
+                  <AnimatePresence>
+                    {showCreateType && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="bg-secondary/30 rounded-xl p-3 space-y-2 border border-border/30">
+                          <p className="text-xs font-medium">Nouveau type de compte</p>
+                          <div className="flex gap-2">
+                            <input
+                              value={newTypeEmoji}
+                              onChange={e => setNewTypeEmoji(e.target.value)}
+                              className="w-12 px-2 py-2 rounded-lg border border-border/30 bg-background text-center text-sm"
+                              maxLength={4}
+                            />
+                            <input
+                              value={newTypeName}
+                              onChange={e => setNewTypeName(e.target.value)}
+                              placeholder="Ex: Compte joint"
+                              className={`${inputClass} flex-1`}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={() => { setShowCreateType(false); setNewTypeName(''); setNewTypeEmoji('🏦'); }} className="flex-1 py-2 rounded-lg border border-border/30 text-xs font-medium hover:bg-secondary/30 transition-colors">Annuler</button>
+                            <button onClick={handleCreateType} className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">Créer</button>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   <div>
                     <label className="block text-xs font-medium mb-1">Devise</label>
                     <select value={accCurrency} onChange={e => setAccCurrency(e.target.value)} className={inputClass}>
