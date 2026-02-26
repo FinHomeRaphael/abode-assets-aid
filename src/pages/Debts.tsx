@@ -182,9 +182,17 @@ const Debts = () => {
 
   const getRealRemaining = (d: Debt) => debtRemainingMap.get(d.id) ?? d.remainingAmount;
 
-  const totalRemaining = useMemo(() => debts.reduce((s, d) => s + convert(getRealRemaining(d), d.currency), 0), [debts, debtRemainingMap, convert]);
-  const totalInitial = useMemo(() => debts.reduce((s, d) => s + convert(d.initialAmount, d.currency), 0), [debts, convert]);
-  const totalPayment = useMemo(() => debts.reduce((s, d) => {
+  // Filter debts that match current scope (safety: debts should already be filtered, but ensure upcoming payments match)
+  const scopeFilteredDebts = useMemo(() => {
+    if (financeScope === 'personal') {
+      return debts.filter(d => d.scope === 'personal' && d.createdBy === session?.user?.id);
+    }
+    return debts.filter(d => d.scope === 'household');
+  }, [debts, financeScope, session?.user?.id]);
+
+  const totalRemaining = useMemo(() => scopeFilteredDebts.reduce((s, d) => s + convert(getRealRemaining(d), d.currency), 0), [scopeFilteredDebts, debtRemainingMap, convert]);
+  const totalInitial = useMemo(() => scopeFilteredDebts.reduce((s, d) => s + convert(d.initialAmount, d.currency), 0), [scopeFilteredDebts, convert]);
+  const totalPayment = useMemo(() => scopeFilteredDebts.reduce((s, d) => {
     // Revolving: use minimum payment
     if (d.consumerType === 'revolving') return s + convert(d.minimumPayment || 0, d.currency);
     // Other without schedule: skip
@@ -200,8 +208,8 @@ const Debts = () => {
       return s + convert(interest + amort + maint, d.currency);
     }
     return s + convert(d.paymentAmount, d.currency);
-  }, 0), [debts, debtNextPaymentMap, debtRemainingMap, convert]);
-  const totalRepaid = useMemo(() => debts.reduce((s, d) => s + convert(d.initialAmount - getRealRemaining(d), d.currency), 0), [debts, debtRemainingMap, convert]);
+  }, 0), [scopeFilteredDebts, debtNextPaymentMap, debtRemainingMap, convert]);
+  const totalRepaid = useMemo(() => scopeFilteredDebts.reduce((s, d) => s + convert(d.initialAmount - getRealRemaining(d), d.currency), 0), [scopeFilteredDebts, debtRemainingMap, convert]);
 
   const selectedDebt = useMemo(() => debts.find(d => d.id === selectedDebtId) || null, [debts, selectedDebtId]);
 
