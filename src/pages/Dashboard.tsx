@@ -122,14 +122,38 @@ const Dashboard = () => {
   const monthTx = useMemo(() => getTransactionsForMonth(now), [getTransactionsForMonth]);
 
   const epargneAccountIds = new Set(accounts.filter(a => a.type === 'epargne').map(a => a.id));
-  const epargneIn = monthTx.filter(t => t.type === 'income' && t.accountId && epargneAccountIds.has(t.accountId)).reduce((s, t) => s + t.convertedAmount, 0);
-  const epargneOut = monthTx.filter(t => t.type === 'expense' && t.accountId && epargneAccountIds.has(t.accountId)).reduce((s, t) => s + t.convertedAmount, 0);
+  const isEpargneTx = (t: typeof monthTx[0]) => !!(t.accountId && epargneAccountIds.has(t.accountId));
 
-  const totalIncome = monthTx.filter(t => t.type === 'income' && t.category !== 'Transfert' && !(t.accountId && epargneAccountIds.has(t.accountId))).reduce((s, t) => s + t.convertedAmount, 0);
-  const totalExpense = monthTx.filter(t => t.type === 'expense' && t.category !== 'Transfert' && !(t.accountId && epargneAccountIds.has(t.accountId))).reduce((s, t) => s + t.convertedAmount, 0);
-  const monthSavings = getMonthSavings(now);
+  // Identify transfer IDs linked to savings accounts
+  const transferIdRegex = /\[?Transfert\s+#([^\]\s]+)\]?/i;
+  const savingsTransferIds = new Set<string>();
+  monthTx.forEach(t => {
+    if (isEpargneTx(t) && t.category === 'Transfert' && t.notes) {
+      const match = t.notes.match(transferIdRegex);
+      if (match) savingsTransferIds.add(match[1]);
+    }
+  });
+  const isSavingsTransferCounterpart = (t: typeof monthTx[0]) => {
+    if (t.category !== 'Transfert' || !t.notes) return false;
+    const match = t.notes.match(transferIdRegex);
+    return match ? savingsTransferIds.has(match[1]) : false;
+  };
+  const isAnySavingsTx = (t: typeof monthTx[0]) => isEpargneTx(t) || isSavingsTransferCounterpart(t);
+
+  // Épargne: transferts entrants + revenus directs - transferts sortants - dépenses directes
+  const epargneTransferIn = monthTx.filter(t => t.type === 'income' && isEpargneTx(t) && t.category === 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const epargneTransferOut = monthTx.filter(t => t.type === 'expense' && isEpargneTx(t) && t.category === 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const epargneDirectIn = monthTx.filter(t => t.type === 'income' && isEpargneTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const epargneDirectOut = monthTx.filter(t => t.type === 'expense' && isEpargneTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const epargneIn = epargneTransferIn + epargneDirectIn;
+  const epargneOut = epargneTransferOut + epargneDirectOut;
+  const monthSavingsNet = epargneIn - epargneOut;
+
+  const totalIncome = monthTx.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const totalExpense = monthTx.filter(t => t.type === 'expense' && !isAnySavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
+  const monthSavings = monthSavingsNet;
   const totalSavings = getTotalSavings();
-  const balance = totalIncome - totalExpense - (monthSavings > 0 ? monthSavings : 0);
+  const balance = totalIncome - totalExpense + Math.min(monthSavingsNet, 0);
 
   const prevMonth = new Date(now);
   prevMonth.setMonth(prevMonth.getMonth() - 1);
