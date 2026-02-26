@@ -12,7 +12,7 @@ import BackHeader from '@/components/BackHeader';
 const AccountDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { scopedAccounts: accounts, getAccountBalance, getAccountTransactions, updateAccount, archiveAccount, deleteAccount, getMemberById } = useApp();
+  const { scopedAccounts: accounts, getAccountBalance, getAccountTransactions, updateAccount, archiveAccount, deleteAccount, getMemberById, customAccountTypes } = useApp();
   const { formatAmount } = useCurrency();
 
   const account = accounts.find(a => a.id === id);
@@ -39,7 +39,8 @@ const AccountDetail = () => {
 
   const balance = getAccountBalance(account.id);
   const transactions = getAccountTransactions(account.id);
-  const typeInfo = ACCOUNT_TYPES.find(t => t.value === account.type);
+  const allAccountTypes = [...ACCOUNT_TYPES, ...customAccountTypes.map(t => ({ value: t.value, label: t.label, emoji: t.emoji }))];
+  const typeInfo = allAccountTypes.find(t => t.value === account.type);
 
   const openEdit = () => {
     setEditName(account.name);
@@ -167,7 +168,7 @@ const AccountDetail = () => {
                   <div>
                     <label className="block text-sm font-medium mb-1.5">Type</label>
                     <select value={editType} onChange={e => setEditType(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring">
-                      {ACCOUNT_TYPES.map(t => <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>)}
+                      {allAccountTypes.map(t => <option key={t.value} value={t.value}>{t.emoji} {t.label}</option>)}
                     </select>
                   </div>
                   <div>

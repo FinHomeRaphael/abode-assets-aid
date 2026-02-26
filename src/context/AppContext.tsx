@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, ReactNode } from 'react';
-import { Transaction, Budget, Member, Household, SavingsGoal, SavingsDeposit, CustomCategory, Account, AccountType, DEFAULT_EXCHANGE_RATES, FinanceScope } from '@/types/finance';
+import { Transaction, Budget, Member, Household, SavingsGoal, SavingsDeposit, CustomCategory, CustomAccountType, Account, AccountType, DEFAULT_EXCHANGE_RATES, FinanceScope } from '@/types/finance';
 import { Debt, getPeriodsPerYear, calculateNextPaymentDate, getDebtEmoji, calculatePaymentBreakdown } from '@/types/debt';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -52,6 +52,7 @@ interface AppContextType {
   savingsGoals: SavingsGoal[];
   savingsDeposits: SavingsDeposit[];
   customCategories: CustomCategory[];
+  customAccountTypes: CustomAccountType[];
   accounts: Account[];
   scopedAccounts: Account[];
 
@@ -92,6 +93,8 @@ interface AppContextType {
 
   addCustomCategory: (c: CustomCategory) => void;
   deleteCustomCategory: (name: string) => void;
+  addCustomAccountType: (t: CustomAccountType) => void;
+  deleteCustomAccountType: (value: string) => void;
   getTransactionsForMonth: (refDate: Date) => Transaction[];
   changeCurrency: (currency: string) => void;
   refreshOverrides: () => Promise<void>;
@@ -126,6 +129,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>([]);
   const [savingsDeposits, setSavingsDeposits] = useState<SavingsDeposit[]>([]);
   const [customCategories, setCustomCategories] = useState<CustomCategory[]>([]);
+  const [customAccountTypes, setCustomAccountTypes] = useState<CustomAccountType[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [debts, setDebts] = useState<Debt[]>([]);
   const [debtPaymentOverrides, setDebtPaymentOverrides] = useState<{ debt_id: string; payment_date: string; custom_interest: number; custom_principal: number }[]>([]);
@@ -399,10 +403,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .eq('is_default', false);
 
       if (catData) {
-        setCustomCategories(catData.map((c: any) => ({
+        setCustomCategories(catData.filter((c: any) => c.type === 'expense' || c.type === 'income').map((c: any) => ({
           name: c.name,
           emoji: c.emoji,
           type: c.type as 'expense' | 'income',
+        })));
+        setCustomAccountTypes(catData.filter((c: any) => c.type === 'account').map((c: any) => ({
+          value: c.name,
+          label: c.name,
+          emoji: c.emoji,
         })));
       }
     } catch (err) {
@@ -424,6 +433,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSavingsGoals([]);
       setSavingsDeposits([]);
       setCustomCategories([]);
+      setCustomAccountTypes([]);
       setAccounts([]);
       setDebts([]);
       setDebtSchedules([]);
@@ -854,7 +864,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  // ===== Transaction Month View (with virtual recurring) =====
+  // ===== Custom Account Type Actions =====
+  const addCustomAccountType = (t: CustomAccountType) => {
+    setCustomAccountTypes(prev => [...prev, t]);
+    supabase.from('categories').insert({
+      household_id: householdId,
+      name: t.value,
+      emoji: t.emoji,
+      type: 'account',
+      is_default: false,
+    }).then(({ error }) => { if (error) console.error('Insert account type error:', error); });
+  };
+
+  const deleteCustomAccountType = (value: string) => {
+    setCustomAccountTypes(prev => prev.filter(t => t.value !== value));
+    supabase.from('categories').delete().eq('household_id', householdId).eq('name', value).eq('type', 'account').eq('is_default', false).then(({ error }) => {
+      if (error) console.error('Delete account type error:', error);
+    });
+  };
+
   const getTransactionsForMonth = useCallback((refDate: Date) => {
     const range = getMonthRange(refDate);
     const year = refDate.getFullYear();
@@ -1219,7 +1247,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AppContext.Provider value={{
       isLoggedIn, loading, session, householdId, currentUser, household,
-      transactions, budgets, savingsGoals, savingsDeposits, customCategories, accounts,
+      transactions, budgets, savingsGoals, savingsDeposits, customCategories, customAccountTypes, accounts,
       financeScope, setFinanceScope: handleSetFinanceScope,
       scopedTransactions, scopedBudgets, scopedSavingsGoals, scopedAccounts,
       logout,
@@ -1231,6 +1259,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addSavingsDeposit, deleteSavingsDeposit,
       getGoalSaved, getGoalDeposits, getMonthSavings, getTotalSavings,
       addCustomCategory, deleteCustomCategory,
+      addCustomAccountType, deleteCustomAccountType,
       getTransactionsForMonth, changeCurrency, refreshOverrides, refreshDebtSchedules,
       addMember, removeMember, updateMemberRole,
       resetDemo,

@@ -76,7 +76,7 @@ export interface CustomCategory {
   type: 'expense' | 'income';
 }
 
-export type AccountType = 'courant' | 'epargne' | 'pilier3a' | 'carte_credit' | 'cash' | 'prepaye' | 'pilier2' | 'terme' | 'autre';
+export type AccountType = string;
 
 export interface Account {
   id: string;
@@ -92,7 +92,7 @@ export interface Account {
   createdBy?: string;
 }
 
-export const ACCOUNT_TYPES: { value: AccountType; label: string; emoji: string }[] = [
+export const ACCOUNT_TYPES: { value: string; label: string; emoji: string }[] = [
   { value: 'courant', label: 'Compte courant', emoji: '🏦' },
   { value: 'epargne', label: 'Compte épargne', emoji: '🐖' },
   { value: 'pilier3a', label: '3e pilier A', emoji: '🏔️' },
@@ -100,9 +100,16 @@ export const ACCOUNT_TYPES: { value: AccountType; label: string; emoji: string }
   { value: 'cash', label: 'Compte cash', emoji: '💵' },
   { value: 'prepaye', label: 'Compte prépayé', emoji: '📱' },
   { value: 'pilier2', label: '2e pilier (LPP)', emoji: '🏛️' },
+  { value: 'vacances', label: 'Compte vacances', emoji: '🏖️' },
   { value: 'terme', label: 'Compte à terme', emoji: '⏳' },
   { value: 'autre', label: 'Autres', emoji: '📁' },
 ];
+
+export interface CustomAccountType {
+  value: string;
+  label: string;
+  emoji: string;
+}
 
 export interface Household {
   name: string;
