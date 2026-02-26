@@ -119,6 +119,60 @@ const CollapsibleSection = ({ title, icon, children, defaultOpen = false }: { ti
   );
 };
 
+const AccountGroup = ({ label, total, accounts: accs, getBalance, getPrevBalance, formatAmount: fmt }: {
+  label: string;
+  total: number;
+  accounts: { id: string; name: string; currency: string }[];
+  getBalance: (id: string) => number;
+  getPrevBalance: (id: string) => number;
+  formatAmount: (amount: number, currency?: string) => string;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  if (accs.length === 0) return null;
+  return (
+    <div className="bg-card/70 backdrop-blur-sm rounded-lg border border-border/30 overflow-hidden">
+      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-muted/20 transition-colors">
+        <p className="text-[11px] text-muted-foreground font-medium">{label}</p>
+        <div className="flex items-center gap-2">
+          <p className={`font-mono-amount font-bold text-sm ${total >= 0 ? 'text-foreground' : 'text-destructive'}`}>{fmt(total)}</p>
+          <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-3 pb-2.5 space-y-1 border-t border-border/20 pt-2">
+              {accs.map(acc => {
+                const bal = getBalance(acc.id);
+                const diff = bal - getPrevBalance(acc.id);
+                return (
+                  <div key={acc.id} className="flex items-center justify-between py-1">
+                    <span className="text-xs text-muted-foreground">{acc.name}</span>
+                    <div className="text-right">
+                      <span className={`font-mono-amount text-xs font-semibold ${bal >= 0 ? 'text-foreground' : 'text-destructive'}`}>
+                        {fmt(bal, acc.currency)}
+                      </span>
+                      <span className={`font-mono-amount text-[9px] ml-1.5 ${diff >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {diff >= 0 ? '+' : ''}{fmt(diff, acc.currency)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const MonthlyReportModal = ({ open, onClose }: Props) => {
   const { getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getMonthSavings, scopedSavingsGoals: savingsGoals, getGoalSaved, getActiveAccounts, scopedAccounts: accounts, scopedTransactions: allTransactions, householdId, financeScope, session } = useApp();
   const { formatAmount, currency } = useCurrency();
@@ -389,36 +443,26 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                     {balanceDiffPct !== null && <DiffBadge value={balanceDiffPct} suffix="%" />}
                   </div>
 
-                  {/* Summary row */}
-                  <div className="grid grid-cols-2 gap-2 mt-4">
-                    <div className="bg-card/70 backdrop-blur-sm rounded-lg px-3 py-2 border border-border/30 text-center">
-                      <p className="text-[9px] text-muted-foreground mb-0.5">Comptes courants</p>
-                      <p className={`font-mono-amount font-bold text-sm ${totalCurrentBalance >= 0 ? 'text-foreground' : 'text-destructive'}`}>{formatAmount(totalCurrentBalance)}</p>
-                    </div>
-                    <div className="bg-card/70 backdrop-blur-sm rounded-lg px-3 py-2 border border-border/30 text-center">
-                      <p className="text-[9px] text-muted-foreground mb-0.5">Comptes épargne</p>
-                      <p className={`font-mono-amount font-bold text-sm ${totalSavingsBalance >= 0 ? 'text-foreground' : 'text-destructive'}`}>{formatAmount(totalSavingsBalance)}</p>
-                    </div>
-                  </div>
-
-                  {/* All accounts */}
-                  <div className="flex flex-wrap justify-center gap-1.5 mt-3">
-                    {activeAccounts.map(acc => {
-                      const bal = getAccountBalanceAtMonth(acc.id);
-                      const prevBal = getAccountBalanceAtPrevMonth(acc.id);
-                      const diff = bal - prevBal;
-                      return (
-                        <div key={acc.id} className="bg-card/50 backdrop-blur-sm rounded-lg px-2.5 py-1.5 border border-border/20">
-                          <p className="text-[9px] text-muted-foreground leading-none mb-0.5">{acc.name}</p>
-                          <p className={`font-mono-amount font-semibold text-[11px] leading-none ${bal >= 0 ? 'text-foreground' : 'text-destructive'}`}>
-                            {formatAmount(bal, acc.currency)}
-                          </p>
-                          <p className={`font-mono-amount text-[9px] ${diff >= 0 ? 'text-success' : 'text-destructive'}`}>
-                            {diff >= 0 ? '+' : ''}{formatAmount(diff, acc.currency)}
-                          </p>
-                        </div>
-                      );
-                    })}
+                  {/* Collapsible account groups */}
+                  <div className="grid grid-cols-1 gap-2 mt-4">
+                    {/* Comptes courants */}
+                    <AccountGroup
+                      label="Comptes courants"
+                      total={totalCurrentBalance}
+                      accounts={currentAccounts}
+                      getBalance={getAccountBalanceAtMonth}
+                      getPrevBalance={getAccountBalanceAtPrevMonth}
+                      formatAmount={formatAmount}
+                    />
+                    {/* Comptes épargne */}
+                    <AccountGroup
+                      label="Comptes épargne"
+                      total={totalSavingsBalance}
+                      accounts={savingsAccounts}
+                      getBalance={getAccountBalanceAtMonth}
+                      getPrevBalance={getAccountBalanceAtPrevMonth}
+                      formatAmount={formatAmount}
+                    />
                   </div>
                 </div>
               </motion.div>
