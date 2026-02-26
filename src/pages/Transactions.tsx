@@ -65,16 +65,17 @@ const Transactions = () => {
   const isSavingsTx = (t: typeof transactions[0]) => !!(t.accountId && savingsAccountIds.has(t.accountId));
 
   // Find transfer IDs linked to savings accounts (either side)
+  const transferIdRegex = /\[?Transfert\s+#([^\]\s]+)\]?/i;
   const savingsTransferIds = new Set<string>();
-  filtered.forEach(t => {
+  monthTx.forEach(t => {
     if (isSavingsTx(t) && t.category === 'Transfert' && t.notes) {
-      const match = t.notes.match(/\[Transfert #(.+?)\]/);
+      const match = t.notes.match(transferIdRegex);
       if (match) savingsTransferIds.add(match[1]);
     }
   });
   const isSavingsTransferCounterpart = (t: typeof transactions[0]) => {
     if (t.category !== 'Transfert' || !t.notes) return false;
-    const match = t.notes.match(/\[Transfert #(.+?)\]/);
+    const match = t.notes.match(transferIdRegex);
     return match ? savingsTransferIds.has(match[1]) : false;
   };
   const isAnySavingsTx = (t: typeof transactions[0]) => isSavingsTx(t) || isSavingsTransferCounterpart(t);
