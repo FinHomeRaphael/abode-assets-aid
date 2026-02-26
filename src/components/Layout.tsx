@@ -201,8 +201,16 @@ const Layout = ({ children }: LayoutProps) => {
       </nav>
 
       <main className="max-w-5xl mx-auto px-4 lg:px-6 py-4 pb-24 lg:pb-8">
-        <div className="lg:hidden mb-3">
+        <div className="lg:hidden mb-3 flex items-center justify-between">
           <ScopeToggle />
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate('/aide')} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors" title="Aide">
+              <HelpCircle className="w-4 h-4" />
+            </button>
+            <button onClick={() => navigate('/profile')} className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-xs font-semibold text-muted-foreground hover:bg-muted/80 transition-colors">
+              {currentUser ? getInitials(currentUser.name) : '?'}
+            </button>
+          </div>
         </div>
         {children}
       </main>
