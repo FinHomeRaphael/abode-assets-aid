@@ -11,9 +11,13 @@ const BackHeader = ({ title, fallback = '/' }: BackHeaderProps) => {
   const navigate = useNavigate();
 
   const handleBack = () => {
-    if (window.history.length > 2) {
-      navigate(-1);
-    } else {
+    try {
+      if (window.history.state && window.history.state.idx > 0) {
+        navigate(-1);
+      } else {
+        navigate(fallback);
+      }
+    } catch {
       navigate(fallback);
     }
   };
