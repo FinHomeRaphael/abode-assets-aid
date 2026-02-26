@@ -377,7 +377,7 @@ const Dashboard = () => {
                     </div>
                   );
                 })}
-                {goalsData.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">Aucune enveloppe</p>}
+                {goalsData.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">Aucun objectif d'épargne</p>}
               </div>
             </div>
 

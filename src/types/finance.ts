@@ -76,7 +76,7 @@ export interface CustomCategory {
   type: 'expense' | 'income';
 }
 
-export type AccountType = 'courant' | 'epargne' | 'cash' | 'carte' | 'autre';
+export type AccountType = 'courant' | 'epargne' | 'pilier3a' | 'carte_credit' | 'cash' | 'prepaye' | 'pilier2' | 'terme' | 'autre';
 
 export interface Account {
   id: string;
@@ -94,10 +94,14 @@ export interface Account {
 
 export const ACCOUNT_TYPES: { value: AccountType; label: string; emoji: string }[] = [
   { value: 'courant', label: 'Compte courant', emoji: '🏦' },
-  { value: 'epargne', label: 'Enveloppe', emoji: '🐖' },
-  { value: 'cash', label: 'Cash', emoji: '💵' },
-  { value: 'carte', label: 'Carte', emoji: '💳' },
-  { value: 'autre', label: 'Autre', emoji: '📁' },
+  { value: 'epargne', label: 'Compte épargne', emoji: '🐖' },
+  { value: 'pilier3a', label: '3e pilier A', emoji: '🏔️' },
+  { value: 'carte_credit', label: 'Carte de crédit', emoji: '💳' },
+  { value: 'cash', label: 'Compte cash', emoji: '💵' },
+  { value: 'prepaye', label: 'Compte prépayé', emoji: '📱' },
+  { value: 'pilier2', label: '2e pilier (LPP)', emoji: '🏛️' },
+  { value: 'terme', label: 'Compte à terme', emoji: '⏳' },
+  { value: 'autre', label: 'Autres', emoji: '📁' },
 ];
 
 export interface Household {
