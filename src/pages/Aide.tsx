@@ -88,7 +88,7 @@ const Aide = () => {
             <Section emoji="⚡" title="Actions rapides">
               <p>Les <strong>4 boutons d'action rapide</strong> vous donnent un accès direct aux fonctionnalités clés :</p>
               <Step n={1}><strong>Préparer</strong> : planifiez votre début de mois (revenus, charges fixes).</Step>
-              <Step n={2}><strong>Chat IA</strong> : posez vos questions financières au conseiller IA (Premium).</Step>
+              <Step n={2}><strong>Coach IA</strong> : posez vos questions financières au coach IA (Premium).</Step>
               <Step n={3}><strong>Scanner</strong> : photographiez un ticket de caisse pour l'enregistrer automatiquement.</Step>
               <Step n={4}><strong>Rapport</strong> : générez un rapport mensuel détaillé de vos finances (Premium).</Step>
             </Section>
@@ -203,8 +203,8 @@ const Aide = () => {
               <Step n={5}><strong>Patrimoine total (10 pts)</strong> : comparaison avec la médiane européenne (~205 000 €). Inclut vos comptes bancaires + valeurs immobilières, véhicules et autres biens.</Step>
               <p>Chaque critère est <strong>cliquable</strong> pour voir le détail du calcul (formules, montants réels) et un conseil personnalisé.</p>
             </Section>
-            <Section emoji="✨" title="Conseiller IA">
-              <p>Le <strong>Conseiller IA</strong> analyse vos données financières et vous donne des conseils personnalisés. Accédez-y via le bouton <strong>+</strong> → <strong>Conseiller IA</strong> ou depuis la page Insights.</p>
+            <Section emoji="✨" title="Coach IA">
+              <p>Le <strong>Coach IA</strong> analyse vos données financières et vous donne des conseils personnalisés. Accédez-y via le bouton <strong>+</strong> → <strong>Coach IA</strong> ou depuis la page Insights.</p>
             </Section>
           </TabsContent>
 
@@ -237,7 +237,7 @@ const Aide = () => {
               <p>L'abonnement Premium débloque des fonctionnalités avancées :</p>
               <Step n={1}>Accès aux <strong>Dettes</strong> et au tableau d'amortissement.</Step>
               <Step n={2}>Page <strong>Insights</strong> complète avec tous les graphiques.</Step>
-              <Step n={3}><strong>Conseiller IA</strong> illimité.</Step>
+              <Step n={3}><strong>Coach IA</strong> illimité.</Step>
               <Step n={4}><strong>Scanner de tickets</strong> illimité.</Step>
             </Section>
             <Section emoji="🚪" title="Déconnexion">
