@@ -342,7 +342,15 @@ const Transactions = () => {
           </div>
         </div>
 
-        {/* Filters */}
+        {monthIncome - monthExpense + Math.min(monthSavingsNet, 0) < 0 && (
+          <div className="flex items-start gap-2 bg-destructive/5 border border-destructive/15 rounded-xl px-3 py-2.5">
+            <TrendingDown className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+            <p className="text-xs text-destructive">
+              Vos dépenses dépassent vos revenus ce mois-ci. Essayez de réduire certaines catégories pour rééquilibrer votre budget.
+            </p>
+          </div>
+        )}
+
         <div className="space-y-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
