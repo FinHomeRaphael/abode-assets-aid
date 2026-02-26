@@ -272,12 +272,6 @@ const Dashboard = () => {
                 <span className="text-[11px] text-muted-foreground">Épargne</span>
               </div>
               <p className="font-mono-amount text-sm font-medium">{monthSavings >= 0 ? '' : '-'}{formatAmount(Math.abs(monthSavings))}</p>
-              {(epargneIn > 0 || epargneOut > 0) && (
-                <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-muted-foreground">
-                  {epargneIn > 0 && <span className="text-success">+{formatAmount(epargneIn)}</span>}
-                  {epargneOut > 0 && <span className="text-destructive">-{formatAmount(epargneOut)}</span>}
-                </div>
-              )}
             </div>
           </div>
         </motion.div>
