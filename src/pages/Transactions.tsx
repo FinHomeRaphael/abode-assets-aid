@@ -120,11 +120,16 @@ const Transactions = () => {
       expenseByAccount[key] = (expenseByAccount[key] || 0) + t.convertedAmount;
     });
 
-    // Savings: all transactions on savings accounts
+    // Savings: split by income and expense per account
+    const savingsIncByAccount: Record<string, number> = {};
+    const savingsExpByAccount: Record<string, number> = {};
     monthTx.filter(t => isSavingsTx(t)).forEach(t => {
       const key = t.accountId || '__none__';
-      const sign = t.type === 'income' ? 1 : -1;
-      savingsByAccount[key] = (savingsByAccount[key] || 0) + sign * t.convertedAmount;
+      if (t.type === 'income') {
+        savingsIncByAccount[key] = (savingsIncByAccount[key] || 0) + t.convertedAmount;
+      } else {
+        savingsExpByAccount[key] = (savingsExpByAccount[key] || 0) + t.convertedAmount;
+      }
     });
 
     const toSorted = (map: Record<string, number>) =>
@@ -132,7 +137,7 @@ const Transactions = () => {
         .map(([id, amount]) => ({ id, amount, ...getAccountLabel(id === '__none__' ? null : id) }))
         .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
 
-    return { income: toSorted(incomeByAccount), expense: toSorted(expenseByAccount), savings: toSorted(savingsByAccount) };
+    return { income: toSorted(incomeByAccount), expense: toSorted(expenseByAccount), savingsIncome: toSorted(savingsIncByAccount), savingsExpense: toSorted(savingsExpByAccount) };
   }, [filtered, monthTx, accounts, allAccountTypes]);
 
 
@@ -400,39 +405,79 @@ const Transactions = () => {
               className="overflow-hidden"
             >
               <div className="bg-card border border-border rounded-xl p-3 space-y-1.5">
-                <p className="text-xs font-semibold mb-2">
-                  {expandedCard === 'income' ? '💰 Revenus par compte' : expandedCard === 'expense' ? '💸 Dépenses par compte' : '🐖 Épargne par compte'}
-                </p>
-                {(expandedCard === 'income' ? breakdownByAccount.income : expandedCard === 'expense' ? breakdownByAccount.expense : breakdownByAccount.savings).map(item => (
-                  <div key={item.id} className="flex items-center justify-between py-1 border-b border-border/30 last:border-0">
-                    <span className="text-xs flex items-center gap-1.5">
-                      <span>{item.emoji}</span>
-                      <span className="truncate max-w-[150px]">{item.name}</span>
-                    </span>
-                    <span className={`font-mono-amount text-xs font-semibold ${
-                      expandedCard === 'income' ? 'text-success' :
-                      expandedCard === 'expense' ? 'text-destructive' :
-                      item.amount >= 0 ? 'text-success' : 'text-destructive'
-                    }`}>
-                      {expandedCard === 'income' ? '+' : expandedCard === 'expense' ? '-' : item.amount >= 0 ? '+' : ''}{formatAmount(Math.abs(item.amount))}
-                    </span>
-                  </div>
-                ))}
-                {(expandedCard === 'income' ? breakdownByAccount.income : expandedCard === 'expense' ? breakdownByAccount.expense : breakdownByAccount.savings).length === 0 && (
-                  <p className="text-xs text-muted-foreground text-center py-2">Aucune donnée</p>
+                {expandedCard !== 'savings' ? (
+                  <>
+                    <p className="text-xs font-semibold mb-2">
+                      {expandedCard === 'income' ? '💰 Revenus par compte' : '💸 Dépenses par compte'}
+                    </p>
+                    {(expandedCard === 'income' ? breakdownByAccount.income : breakdownByAccount.expense).map(item => (
+                      <div key={item.id} className="flex items-center justify-between py-1 border-b border-border/30 last:border-0">
+                        <span className="text-xs flex items-center gap-1.5">
+                          <span>{item.emoji}</span>
+                          <span className="truncate max-w-[150px]">{item.name}</span>
+                        </span>
+                        <span className={`font-mono-amount text-xs font-semibold ${expandedCard === 'income' ? 'text-success' : 'text-destructive'}`}>
+                          {expandedCard === 'income' ? '+' : '-'}{formatAmount(item.amount)}
+                        </span>
+                      </div>
+                    ))}
+                    {(expandedCard === 'income' ? breakdownByAccount.income : breakdownByAccount.expense).length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-2">Aucune donnée</p>
+                    )}
+                    <div className="flex items-center justify-between pt-1.5 border-t border-border">
+                      <span className="text-xs font-bold">Total</span>
+                      <span className={`font-mono-amount text-xs font-bold ${expandedCard === 'income' ? 'text-success' : 'text-destructive'}`}>
+                        {expandedCard === 'income' ? `+${formatAmount(monthIncome)}` : `-${formatAmount(monthExpense)}`}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Savings Income by account */}
+                    <p className="text-xs font-semibold mb-1">💰 Revenus épargne par compte</p>
+                    {breakdownByAccount.savingsIncome.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-1">Aucun revenu</p>
+                    ) : breakdownByAccount.savingsIncome.map(item => (
+                      <div key={item.id} className="flex items-center justify-between py-1 border-b border-border/30 last:border-0">
+                        <span className="text-xs flex items-center gap-1.5">
+                          <span>{item.emoji}</span>
+                          <span className="truncate max-w-[150px]">{item.name}</span>
+                        </span>
+                        <span className="font-mono-amount text-xs font-semibold text-success">+{formatAmount(item.amount)}</span>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                      <span className="text-[11px] font-semibold">Sous-total revenus</span>
+                      <span className="font-mono-amount text-xs font-bold text-success">+{formatAmount(savingsIncomeTotal)}</span>
+                    </div>
+
+                    {/* Savings Expense by account */}
+                    <p className="text-xs font-semibold mt-3 mb-1">💸 Dépenses épargne par compte</p>
+                    {breakdownByAccount.savingsExpense.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-1">Aucune dépense</p>
+                    ) : breakdownByAccount.savingsExpense.map(item => (
+                      <div key={`exp-${item.id}`} className="flex items-center justify-between py-1 border-b border-border/30 last:border-0">
+                        <span className="text-xs flex items-center gap-1.5">
+                          <span>{item.emoji}</span>
+                          <span className="truncate max-w-[150px]">{item.name}</span>
+                        </span>
+                        <span className="font-mono-amount text-xs font-semibold text-destructive">-{formatAmount(item.amount)}</span>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between pt-1 border-t border-border/50">
+                      <span className="text-[11px] font-semibold">Sous-total dépenses</span>
+                      <span className="font-mono-amount text-xs font-bold text-destructive">-{formatAmount(savingsExpenseTotal)}</span>
+                    </div>
+
+                    {/* Net total */}
+                    <div className="flex items-center justify-between pt-2 mt-1 border-t-2 border-border">
+                      <span className="text-xs font-bold">Épargne nette</span>
+                      <span className={`font-mono-amount text-xs font-bold ${monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {monthSavingsNet >= 0 ? '+' : ''}{formatAmount(monthSavingsNet)}
+                      </span>
+                    </div>
+                  </>
                 )}
-                <div className="flex items-center justify-between pt-1.5 border-t border-border">
-                  <span className="text-xs font-bold">Total</span>
-                  <span className={`font-mono-amount text-xs font-bold ${
-                    expandedCard === 'income' ? 'text-success' :
-                    expandedCard === 'expense' ? 'text-destructive' :
-                    monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'
-                  }`}>
-                    {expandedCard === 'income' ? `+${formatAmount(monthIncome)}` :
-                     expandedCard === 'expense' ? `-${formatAmount(monthExpense)}` :
-                     `${monthSavingsNet >= 0 ? '+' : ''}${formatAmount(monthSavingsNet)}`}
-                  </span>
-                </div>
               </div>
             </motion.div>
           )}
