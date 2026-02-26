@@ -61,8 +61,10 @@ const Transactions = () => {
     return true;
   });
 
+  const savingsAccountIds = new Set(accounts.filter(a => a.type === 'epargne').map(a => a.id));
   const monthIncome = filtered.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
-  const monthExpense = filtered.filter(t => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
+  const monthSavings = filtered.filter(t => t.type === 'expense' && t.accountId && savingsAccountIds.has(t.accountId)).reduce((s, t) => s + t.convertedAmount, 0);
+  const monthExpense = filtered.filter(t => t.type === 'expense' && !(t.accountId && savingsAccountIds.has(t.accountId))).reduce((s, t) => s + t.convertedAmount, 0);
 
   const openEditModal = (t: typeof transactions[0]) => {
     setEditTarget(t);
@@ -287,22 +289,27 @@ const Transactions = () => {
         </div>
 
         {/* Month totals */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="bg-success/5 border border-success/15 rounded-xl p-3 text-center">
-            <TrendingUp className="w-3.5 h-3.5 text-success mx-auto mb-1" />
-            <p className="text-[10px] text-muted-foreground mb-0.5">Revenus</p>
-            <p className="font-mono-amount font-bold text-success text-sm">+{formatAmount(monthIncome)}</p>
+        <div className="grid grid-cols-4 gap-1.5">
+          <div className="bg-success/5 border border-success/15 rounded-xl p-2 text-center">
+            <TrendingUp className="w-3 h-3 text-success mx-auto mb-0.5" />
+            <p className="text-[9px] text-muted-foreground mb-0.5">Revenus</p>
+            <p className="font-mono-amount font-bold text-success text-xs">+{formatAmount(monthIncome)}</p>
           </div>
-          <div className="bg-destructive/5 border border-destructive/15 rounded-xl p-3 text-center">
-            <TrendingDown className="w-3.5 h-3.5 text-destructive mx-auto mb-1" />
-            <p className="text-[10px] text-muted-foreground mb-0.5">Dépenses</p>
-            <p className="font-mono-amount font-bold text-destructive text-sm">-{formatAmount(monthExpense)}</p>
+          <div className="bg-destructive/5 border border-destructive/15 rounded-xl p-2 text-center">
+            <TrendingDown className="w-3 h-3 text-destructive mx-auto mb-0.5" />
+            <p className="text-[9px] text-muted-foreground mb-0.5">Dépenses</p>
+            <p className="font-mono-amount font-bold text-destructive text-xs">-{formatAmount(monthExpense)}</p>
           </div>
-          <div className={`border rounded-xl p-3 text-center ${monthIncome - monthExpense >= 0 ? 'bg-success/5 border-success/15' : 'bg-destructive/5 border-destructive/15'}`}>
-            <Wallet className={`w-3.5 h-3.5 mx-auto mb-1 ${monthIncome - monthExpense >= 0 ? 'text-success' : 'text-destructive'}`} />
-            <p className="text-[10px] text-muted-foreground mb-0.5">Solde</p>
-            <p className={`font-mono-amount font-bold text-sm ${monthIncome - monthExpense >= 0 ? 'text-success' : 'text-destructive'}`}>
-              {monthIncome - monthExpense >= 0 ? '+' : ''}{formatAmount(monthIncome - monthExpense)}
+          <div className="bg-primary/5 border border-primary/15 rounded-xl p-2 text-center">
+            <Wallet className="w-3 h-3 text-primary mx-auto mb-0.5" />
+            <p className="text-[9px] text-muted-foreground mb-0.5">Épargne</p>
+            <p className="font-mono-amount font-bold text-primary text-xs">{monthSavings > 0 ? `-${formatAmount(monthSavings)}` : formatAmount(0)}</p>
+          </div>
+          <div className={`border rounded-xl p-2 text-center ${monthIncome - monthExpense - monthSavings >= 0 ? 'bg-success/5 border-success/15' : 'bg-destructive/5 border-destructive/15'}`}>
+            <Wallet className={`w-3 h-3 mx-auto mb-0.5 ${monthIncome - monthExpense - monthSavings >= 0 ? 'text-success' : 'text-destructive'}`} />
+            <p className="text-[9px] text-muted-foreground mb-0.5">Solde</p>
+            <p className={`font-mono-amount font-bold text-xs ${monthIncome - monthExpense - monthSavings >= 0 ? 'text-success' : 'text-destructive'}`}>
+              {monthIncome - monthExpense - monthSavings >= 0 ? '+' : ''}{formatAmount(monthIncome - monthExpense - monthSavings)}
             </p>
           </div>
         </div>
