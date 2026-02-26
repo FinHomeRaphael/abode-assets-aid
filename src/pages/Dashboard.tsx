@@ -238,45 +238,48 @@ const Dashboard = () => {
           </div>
         </motion.div>
 
-        {/* Health Score Widget */}
-        <motion.div
-          variants={fade}
-          className="bg-card border border-border rounded-xl p-4 cursor-pointer hover:bg-muted/30 transition-colors"
-          onClick={() => navigate('/health-score')}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <HeartPulse className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold">Santé Financière</span>
+        {/* Health Score + Quick Actions — side by side on md+ */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Health Score Widget */}
+          <motion.div
+            variants={fade}
+            className="bg-card border border-border rounded-xl p-4 cursor-pointer hover:bg-muted/30 transition-colors"
+            onClick={() => navigate('/health-score')}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <HeartPulse className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold">Santé Financière</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </div>
-          <div className="flex justify-center">
-            <HealthScoreGauge
-              score={healthScore.totalScore}
-              label={healthScore.label}
-              color={healthScore.color}
-              diff={healthScore.diff}
-              compact
-            />
-          </div>
-        </motion.div>
+            <div className="flex justify-center">
+              <HealthScoreGauge
+                score={healthScore.totalScore}
+                label={healthScore.label}
+                color={healthScore.color}
+                diff={healthScore.diff}
+                compact
+              />
+            </div>
+          </motion.div>
 
-        {/* Quick Actions */}
-        <motion.div variants={fade} className="grid grid-cols-4 gap-2">
-          {[
-            { icon: Calendar, label: 'Préparer', onClick: () => navigate('/start-of-month') },
-            { icon: Sparkles, label: 'Coach IA', onClick: () => isPremium ? navigate('/chat') : setPaywallFeature({ feature: 'le Coach IA', description: 'Accédez à votre coach financier personnel propulsé par l\'IA pour des conseils adaptés à votre situation.' }), locked: !subLoading && !isPremium },
-            { icon: Camera, label: 'Scanner', onClick: () => setShowScan(true) },
-            { icon: BarChart3, label: 'Rapport', onClick: () => isPremium ? setShowReport(true) : setPaywallFeature({ feature: 'le rapport mensuel', description: 'Obtenez un rapport détaillé de vos finances chaque mois avec des conseils personnalisés.' }), locked: !subLoading && !isPremium },
-          ].map((item: any, i: number) => (
-            <button key={i} onClick={item.onClick} className="bg-card border border-border rounded-xl p-3 flex flex-col items-center gap-2 hover:bg-muted/50 transition-colors active:scale-95 relative">
-              {item.locked && <Lock className="w-3 h-3 text-amber-500 absolute top-1.5 right-1.5" />}
-              <item.icon className="w-5 h-5 text-muted-foreground" />
-              <span className="text-[11px] font-medium">{item.label}</span>
-            </button>
-          ))}
-        </motion.div>
+          {/* Quick Actions */}
+          <motion.div variants={fade} className="grid grid-cols-2 md:grid-cols-2 gap-2 content-start">
+            {[
+              { icon: Calendar, label: 'Préparer', onClick: () => navigate('/start-of-month') },
+              { icon: Sparkles, label: 'Coach IA', onClick: () => isPremium ? navigate('/chat') : setPaywallFeature({ feature: 'le Coach IA', description: 'Accédez à votre coach financier personnel propulsé par l\'IA pour des conseils adaptés à votre situation.' }), locked: !subLoading && !isPremium },
+              { icon: Camera, label: 'Scanner', onClick: () => setShowScan(true) },
+              { icon: BarChart3, label: 'Rapport', onClick: () => isPremium ? setShowReport(true) : setPaywallFeature({ feature: 'le rapport mensuel', description: 'Obtenez un rapport détaillé de vos finances chaque mois avec des conseils personnalisés.' }), locked: !subLoading && !isPremium },
+            ].map((item: any, i: number) => (
+              <button key={i} onClick={item.onClick} className="bg-card border border-border rounded-xl p-3 flex flex-col items-center gap-2 hover:bg-muted/50 transition-colors active:scale-95 relative">
+                {item.locked && <Lock className="w-3 h-3 text-amber-500 absolute top-1.5 right-1.5" />}
+                <item.icon className="w-5 h-5 text-muted-foreground" />
+                <span className="text-[11px] font-medium">{item.label}</span>
+              </button>
+            ))}
+          </motion.div>
+        </div>
 
         {/* AI Insight */}
         <motion.div variants={fade} className="bg-card border border-border rounded-xl p-4">
