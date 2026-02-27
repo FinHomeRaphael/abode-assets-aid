@@ -148,6 +148,76 @@ const CalculDetail = ({ label, children }: { label: string; children: React.Reac
   );
 };
 
+const FlowRow = ({ icon, label, count, amount, sign, colorClass, diff, accounts, transactions: txs, formatAmount: fmt, extraDetail }: {
+  icon: React.ReactNode;
+  label: string;
+  count?: number;
+  amount: number;
+  sign: string;
+  colorClass: string;
+  diff: number | null;
+  accounts: { id: string; name: string; currency: string; type: string }[];
+  transactions: { accountId?: string; convertedAmount: number; amount: number; type: string }[];
+  formatAmount: (amount: number, currency?: string) => string;
+  extraDetail?: React.ReactNode;
+}) => {
+  const [expanded, setExpanded] = useState(false);
+  // Group by account
+  const byAccount = useMemo(() => {
+    const map: Record<string, { income: number; expense: number }> = {};
+    txs.forEach(t => {
+      const accId = t.accountId || '__none__';
+      if (!map[accId]) map[accId] = { income: 0, expense: 0 };
+      if (t.type === 'income') map[accId].income += t.convertedAmount;
+      else map[accId].expense += t.convertedAmount;
+    });
+    return Object.entries(map).map(([accId, { income, expense }]) => {
+      const acc = accounts.find(a => a.id === accId);
+      return { accId, name: acc?.name || 'Sans compte', net: income - expense, income, expense };
+    }).sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+  }, [txs, accounts]);
+
+  return (
+    <div>
+      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-secondary/30 transition-colors">
+        <div className="flex items-center gap-2">
+          {icon}
+          <span className="text-xs text-muted-foreground">{label}</span>
+          {count !== undefined && <span className="text-[9px] text-muted-foreground/60">({count})</span>}
+          <ChevronDown className={`w-3 h-3 text-muted-foreground/40 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        </div>
+        <div className="flex items-center gap-2">
+          <DiffBadge value={diff} suffix="%" />
+          <span className={`font-mono-amount text-xs font-bold ${colorClass}`}>{sign}{fmt(amount)}</span>
+        </div>
+      </button>
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-2.5 space-y-1">
+              {byAccount.map(({ accId, name, net, income, expense }) => (
+                <div key={accId} className="flex items-center justify-between">
+                  <span className="text-[10px] text-muted-foreground italic truncate flex-1">{name}</span>
+                  <span className={`font-mono-amount text-[10px] font-medium italic ${net >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    {net >= 0 ? '+' : '-'}{fmt(Math.abs(net))}
+                  </span>
+                </div>
+              ))}
+              {extraDetail}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const AccountGroup = ({ label, total, accounts: accs, getBalance, getPrevBalance, formatAmount: fmt }: {
   label: string;
   total: number;
@@ -573,58 +643,58 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                 )}
               </div>
 
-              {/* Lignes détaillées compactes */}
+              {/* Lignes détaillées compactes avec détail par compte */}
               <div className="bg-secondary/20 rounded-xl divide-y divide-border/30 overflow-hidden">
                 {/* Revenus */}
-                <div className="flex items-center justify-between px-3 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-3.5 h-3.5 text-success" />
-                    <span className="text-xs text-muted-foreground">Revenus</span>
-                    <span className="text-[9px] text-muted-foreground/60">({incomeCount})</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <DiffBadge value={diffPct(income, prevIncome)} suffix="%" />
-                    <span className="font-mono-amount text-xs font-bold text-success">+{formatAmount(income)}</span>
-                  </div>
-                </div>
+                <FlowRow
+                  icon={<TrendingUp className="w-3.5 h-3.5 text-success" />}
+                  label="Revenus"
+                  count={incomeCount}
+                  amount={income}
+                  sign="+"
+                  colorClass="text-success"
+                  diff={diffPct(income, prevIncome)}
+                  accounts={accounts}
+                  transactions={transactions.filter(t => t.type === 'income' && t.category !== 'Transfert' && !isAnySavingsTx(t))}
+                  formatAmount={formatAmount}
+                />
                 {/* Dépenses */}
-                <div className="flex items-center justify-between px-3 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <TrendingDown className="w-3.5 h-3.5 text-destructive" />
-                    <span className="text-xs text-muted-foreground">Dépenses</span>
-                    <span className="text-[9px] text-muted-foreground/60">({expenseCount})</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <DiffBadge value={diffPct(expenses, prevExpenses)} suffix="%" />
-                    <span className="font-mono-amount text-xs font-bold text-destructive">-{formatAmount(expenses)}</span>
-                  </div>
-                </div>
+                <FlowRow
+                  icon={<TrendingDown className="w-3.5 h-3.5 text-destructive" />}
+                  label="Dépenses"
+                  count={expenseCount}
+                  amount={expenses}
+                  sign="-"
+                  colorClass="text-destructive"
+                  diff={diffPct(expenses, prevExpenses)}
+                  accounts={accounts}
+                  transactions={transactions.filter(t => t.type === 'expense' && !isAnySavingsTx(t) && t.category !== 'Transfert')}
+                  formatAmount={formatAmount}
+                />
                 {/* Épargne nette */}
-                <div className="flex items-center justify-between px-3 py-2.5">
-                  <div className="flex items-center gap-2">
-                    <PiggyBank className={`w-3.5 h-3.5 ${monthSavingsNet >= 0 ? 'text-primary' : 'text-destructive'}`} />
-                    <span className="text-xs text-muted-foreground">Épargne nette</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <DiffBadge value={diffPct(monthSavingsNet, prevSavingsNet)} suffix="%" />
-                    <span className={`font-mono-amount text-xs font-bold ${monthSavingsNet >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                      {monthSavingsNet >= 0 ? '+' : '-'}{formatAmount(Math.abs(monthSavingsNet))}
-                    </span>
-                  </div>
-                </div>
-                {/* Détail épargne (versements/retraits) si pertinent */}
-                {(epargneIn > 0 || epargneOut > 0) && (
-                  <div className="px-3 py-2 bg-secondary/20">
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="text-muted-foreground">↳ Versements</span>
-                      <span className="font-mono-amount text-primary font-medium">+{formatAmount(epargneIn)}</span>
+                <FlowRow
+                  icon={<PiggyBank className={`w-3.5 h-3.5 ${monthSavingsNet >= 0 ? 'text-primary' : 'text-destructive'}`} />}
+                  label="Épargne nette"
+                  amount={Math.abs(monthSavingsNet)}
+                  sign={monthSavingsNet >= 0 ? '+' : '-'}
+                  colorClass={monthSavingsNet >= 0 ? 'text-primary' : 'text-destructive'}
+                  diff={diffPct(monthSavingsNet, prevSavingsNet)}
+                  accounts={accounts}
+                  transactions={transactions.filter(t => isAnySavingsTx(t))}
+                  formatAmount={formatAmount}
+                  extraDetail={(epargneIn > 0 || epargneOut > 0) ? (
+                    <div className="mt-1.5 space-y-0.5">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-muted-foreground">↳ Versements</span>
+                        <span className="font-mono-amount text-primary font-medium">+{formatAmount(epargneIn)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className="text-muted-foreground">↳ Retraits</span>
+                        <span className="font-mono-amount text-destructive font-medium">-{formatAmount(epargneOut)}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-[10px] mt-0.5">
-                      <span className="text-muted-foreground">↳ Retraits</span>
-                      <span className="font-mono-amount text-destructive font-medium">-{formatAmount(epargneOut)}</span>
-                    </div>
-                  </div>
-                )}
+                  ) : undefined}
+                />
                 {/* Stats compactes */}
                 <div className="flex items-center divide-x divide-border/30">
                   <div className="flex-1 px-3 py-2 text-center">
