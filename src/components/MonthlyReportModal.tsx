@@ -558,9 +558,9 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
 
   // Comparison bar chart data
   const comparisonData = useMemo(() => [
-    { name: 'Revenus', current: income, previous: prevIncome },
-    { name: 'Dépenses', current: expenses, previous: prevExpenses },
-    { name: 'Épargne', current: Math.max(monthSavingsNet, 0), previous: Math.max(prevSavingsNet, 0) },
+    { name: 'Revenus', current: income, previous: prevIncome, color: 'hsl(var(--success))' },
+    { name: 'Dépenses', current: expenses, previous: prevExpenses, color: 'hsl(var(--destructive))' },
+    { name: 'Épargne', current: Math.max(monthSavingsNet, 0), previous: Math.max(prevSavingsNet, 0), color: 'hsl(var(--primary))' },
   ], [income, prevIncome, expenses, prevExpenses, monthSavingsNet, prevSavingsNet]);
 
   const getTimeRemaining = (targetDate?: string) => {
@@ -872,8 +872,12 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                       <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
                       <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} width={50} tickFormatter={v => formatAmount(v)} />
                       <RechartsTooltip formatter={(val: number) => formatAmount(val)} />
-                      <Bar dataKey="previous" name="Mois précédent" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.4} />
-                      <Bar dataKey="current" name="Ce mois" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="previous" name="Mois précédent" radius={[4, 4, 0, 0]} opacity={0.3}>
+                        {comparisonData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                      </Bar>
+                      <Bar dataKey="current" name="Ce mois" radius={[4, 4, 0, 0]}>
+                        {comparisonData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
