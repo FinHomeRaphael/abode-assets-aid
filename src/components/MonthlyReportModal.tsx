@@ -783,7 +783,10 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                       <TooltipTrigger asChild>
                         <div className="flex-1 px-3 py-2 text-center cursor-help">
                           <p className="text-[9px] text-muted-foreground">Dép. moy. (3 mois)</p>
-                          <p className="font-mono-amount text-[10px] font-semibold">{formatAmount(avgExpense3m)}</p>
+                          <div className="flex items-center justify-center gap-1">
+                            <p className="font-mono-amount text-[10px] font-semibold">{formatAmount(avgExpense3m)}</p>
+                            <DiffBadge value={avgExpense3m > 0 ? ((expenses - avgExpense3m) / avgExpense3m) * 100 : null} suffix="%" />
+                          </div>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-[200px] text-center">
