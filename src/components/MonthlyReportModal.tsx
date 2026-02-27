@@ -207,18 +207,22 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   useEffect(() => { if (open) fetchDebts(); }, [open, fetchDebts]);
 
   // Helper: get remaining amount for a debt using schedules (source of truth)
+  // Uses the selected report month instead of today's date
   const getDebtRemaining = useCallback((debt: DebtRow) => {
     const schedules = debtSchedules.filter(s => s.debt_id === debt.id);
     if (schedules.length === 0) return debt.remaining_amount;
-    // Find the first upcoming schedule row (sorted by period_number)
     const sorted = [...schedules].sort((a, b) => a.period_number - b.period_number);
-    const now = new Date();
-    const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const upcoming = sorted.find(s => s.due_date >= nowStr);
-    if (upcoming) return upcoming.capital_before;
-    // All in the past: last row's capital_after
-    return sorted[sorted.length - 1].capital_after;
-  }, [debtSchedules]);
+    // Use end of selected month as reference date
+    const my = month.getFullYear();
+    const mm = month.getMonth() + 1;
+    const endOfMonth = new Date(my, mm, 0); // last day of selected month
+    const refStr = `${my}-${String(mm).padStart(2, '0')}-${String(endOfMonth.getDate()).padStart(2, '0')}`;
+    // Find the last schedule row whose due_date is <= end of selected month
+    const pastRows = sorted.filter(s => s.due_date <= refStr);
+    if (pastRows.length > 0) return pastRows[pastRows.length - 1].capital_after;
+    // No payments yet in or before this month: return initial remaining
+    return sorted[0].capital_before;
+  }, [debtSchedules, month]);
 
   // Helper: get monthly equivalent payment
   const getDebtMonthlyPayment = useCallback((debt: DebtRow) => {
