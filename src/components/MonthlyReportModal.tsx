@@ -225,16 +225,26 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
     return sorted[0].capital_before;
   }, [debtSchedules, month]);
 
-  // Helper: get monthly equivalent payment
+  // Helper: get monthly equivalent payment using schedule total (interest + principal)
   const getDebtMonthlyPayment = useCallback((debt: DebtRow) => {
     const freq = debt.payment_frequency;
-    const amount = debt.payment_amount;
-    if (freq === 'monthly') return amount;
-    if (freq === 'quarterly') return amount / 3;
-    if (freq === 'semi-annual') return amount / 6;
-    if (freq === 'annual') return amount / 12;
-    return amount;
-  }, []);
+    const divisor = freq === 'quarterly' ? 3 : freq === 'semi-annual' ? 6 : freq === 'annual' ? 12 : 1;
+    // Use the schedule's total_amount (interest + principal) for the closest period
+    const schedules = debtSchedules.filter(s => s.debt_id === debt.id);
+    if (schedules.length > 0) {
+      const sorted = [...schedules].sort((a, b) => a.period_number - b.period_number);
+      const my = month.getFullYear();
+      const mm = month.getMonth() + 1;
+      const endOfMonth = new Date(my, mm, 0);
+      const refStr = `${my}-${String(mm).padStart(2, '0')}-${String(endOfMonth.getDate()).padStart(2, '0')}`;
+      // Find the schedule row closest to the selected month
+      const pastRows = sorted.filter(s => s.due_date <= refStr);
+      const row = pastRows.length > 0 ? pastRows[pastRows.length - 1] : sorted[0];
+      return row.total_amount / divisor;
+    }
+    // Fallback: use payment_amount from debt record
+    return debt.payment_amount / divisor;
+  }, [debtSchedules, month]);
 
   const transactions = useMemo(() => getTransactionsForMonth(month), [month, getTransactionsForMonth]);
 
