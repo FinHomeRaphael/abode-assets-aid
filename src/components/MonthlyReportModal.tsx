@@ -185,6 +185,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
     remaining_amount: number; payment_amount: number; interest_rate: number;
     currency: string; start_date: string; duration_years: number; payment_frequency: string;
     scope: string; created_by: string | null;
+    mortgage_system: string | null; property_value: number | null;
   }
   interface ScheduleRow {
     debt_id: string; due_date: string; capital_before: number; capital_after: number;
@@ -789,20 +790,34 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                 <div className="space-y-2">
                   {scopedDebts.map(d => {
                     const remaining = getDebtRemaining(d);
-                    const pct = d.initial_amount > 0 ? Math.min(((d.initial_amount - remaining) / d.initial_amount) * 100, 100) : 0;
+                    const isSwissWithProperty = d.mortgage_system === 'swiss' && d.property_value;
+                    const refAmount = isSwissWithProperty ? d.property_value! : d.initial_amount;
+                    const pct = refAmount > 0 ? Math.min(((refAmount - remaining) / refAmount) * 100, 100) : 0;
                     const totalPaid = d.initial_amount - remaining;
                     const monthlyPayment = getDebtMonthlyPayment(d);
                     return (
                       <div key={d.id} className="bg-secondary/30 rounded-xl p-3">
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-sm font-medium">🏦 {d.name}</span>
-                          <span className="font-mono-amount text-xs font-bold text-primary">{Math.round(pct)}%</span>
+                          <span className="font-mono-amount text-xs font-bold text-primary">
+                            {isSwissWithProperty ? `LTV ${Math.round((remaining / d.property_value!) * 100)}%` : `${Math.round(pct)}%`}
+                          </span>
                         </div>
                         <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-1.5">
-                          <div className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-success' : pct >= 50 ? 'bg-primary' : 'bg-warning'}`} style={{ width: `${pct}%` }} />
+                          {isSwissWithProperty ? (
+                            <div className={`h-full rounded-full transition-all ${
+                              (remaining / d.property_value!) <= 0.65 ? 'bg-success' : (remaining / d.property_value!) <= 0.80 ? 'bg-primary' : 'bg-warning'
+                            }`} style={{ width: `${pct}%` }} />
+                          ) : (
+                            <div className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-success' : pct >= 50 ? 'bg-primary' : 'bg-warning'}`} style={{ width: `${pct}%` }} />
+                          )}
                         </div>
                         <div className="flex items-center justify-between text-[11px]">
-                          <span className="font-mono-amount text-muted-foreground">Payé : {formatAmount(totalPaid, d.currency)}</span>
+                          <span className="font-mono-amount text-muted-foreground">
+                            {isSwissWithProperty
+                              ? `${formatAmount(remaining, d.currency)} / ${formatAmount(d.property_value!, d.currency)}`
+                              : `Payé : ${formatAmount(totalPaid, d.currency)}`}
+                          </span>
                           <span className="font-mono-amount text-muted-foreground">Restant : {formatAmount(remaining, d.currency)}</span>
                         </div>
                         <div className="flex items-center justify-between text-[10px] mt-0.5">
