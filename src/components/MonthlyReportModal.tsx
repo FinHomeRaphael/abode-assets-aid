@@ -559,71 +559,86 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
             {/* ===== 2. FLUX DU MOIS ===== */}
             <div>
               <SectionTitle icon={Wallet} title="Flux du mois" subtitle={`${txCount} transactions`} />
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-success/5 border border-success/15 rounded-xl p-3 text-center">
-                  <TrendingUp className="w-4 h-4 text-success mx-auto mb-1" />
-                  <p className="text-[10px] text-muted-foreground mb-0.5">Revenus</p>
-                  <p className="font-mono-amount font-bold text-success text-sm">+{formatAmount(income)}</p>
-                  <DiffBadge value={diffPct(income, prevIncome)} suffix="%" />
-                  <p className="text-[9px] text-muted-foreground mt-0.5">{incomeCount} opérations</p>
-                </div>
-                <div className="bg-destructive/5 border border-destructive/15 rounded-xl p-3 text-center">
-                  <TrendingDown className="w-4 h-4 text-destructive mx-auto mb-1" />
-                  <p className="text-[10px] text-muted-foreground mb-0.5">Dépenses</p>
-                  <p className="font-mono-amount font-bold text-destructive text-sm">-{formatAmount(expenses)}</p>
-                  <DiffBadge value={diffPct(expenses, prevExpenses)} suffix="%" />
-                  <p className="text-[9px] text-muted-foreground mt-0.5">{expenseCount} opérations</p>
-                </div>
-                <div className={`border rounded-xl p-3 text-center ${monthSavingsNet >= 0 ? 'bg-primary/5 border-primary/15' : 'bg-destructive/5 border-destructive/15'}`}>
-                  <PiggyBank className={`w-4 h-4 mx-auto mb-1 ${monthSavingsNet >= 0 ? 'text-primary' : 'text-destructive'}`} />
-                  <p className="text-[10px] text-muted-foreground mb-0.5">Épargne</p>
-                  <p className={`font-mono-amount font-bold text-sm ${monthSavingsNet >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                    {monthSavingsNet >= 0 ? '+' : '-'}{formatAmount(Math.abs(monthSavingsNet))}
-                  </p>
-                  <DiffBadge value={diffPct(monthSavingsNet, prevSavingsNet)} suffix="%" />
-                </div>
-              </div>
 
-              {/* Épargne detail */}
-              {(epargneIn > 0 || epargneOut > 0) && (
-                <div className="grid grid-cols-2 gap-2 mt-2">
-                  <div className="bg-primary/5 border border-primary/15 rounded-xl p-2.5 text-center">
-                    <p className="text-[10px] text-muted-foreground mb-0.5">🐖 Versements épargne</p>
-                    <p className="font-mono-amount font-bold text-primary text-sm">+{formatAmount(epargneIn)}</p>
-                  </div>
-                  <div className="bg-destructive/5 border border-destructive/15 rounded-xl p-2.5 text-center">
-                    <p className="text-[10px] text-muted-foreground mb-0.5">🐖 Retraits épargne</p>
-                    <p className="font-mono-amount font-bold text-destructive text-sm">-{formatAmount(epargneOut)}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Balance */}
-              <div className={`mt-2 rounded-xl p-3 text-center border ${balance >= 0 ? 'bg-success/5 border-success/15' : 'bg-destructive/5 border-destructive/15'}`}>
+              {/* Solde principal en hero */}
+              <div className={`rounded-2xl p-4 text-center mb-3 border ${balance >= 0 ? 'bg-success/5 border-success/15' : 'bg-destructive/5 border-destructive/15'}`}>
                 <p className="text-[10px] text-muted-foreground mb-0.5">Solde du mois</p>
-                <p className={`font-mono-amount font-bold text-base ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                <p className={`font-mono-amount font-bold text-xl ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
                   {balance >= 0 ? '+' : ''}{formatAmount(balance)}
                 </p>
                 {monthSavingsNet > 0 && (
                   <p className="text-[9px] text-muted-foreground italic mt-1">
-                    Épargne positive (+{formatAmount(monthSavingsNet)}) non déduite du solde
+                    Épargne (+{formatAmount(monthSavingsNet)}) non déduite
                   </p>
                 )}
               </div>
 
-              {/* Average & stats */}
-              <div className="grid grid-cols-3 gap-2 mt-2">
-                <div className="bg-secondary/30 rounded-lg p-2 text-center">
-                  <p className="text-[9px] text-muted-foreground">Dépense moy.</p>
-                  <p className="font-mono-amount text-xs font-semibold">{formatAmount(avgExpense)}</p>
+              {/* Lignes détaillées compactes */}
+              <div className="bg-secondary/20 rounded-xl divide-y divide-border/30 overflow-hidden">
+                {/* Revenus */}
+                <div className="flex items-center justify-between px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-3.5 h-3.5 text-success" />
+                    <span className="text-xs text-muted-foreground">Revenus</span>
+                    <span className="text-[9px] text-muted-foreground/60">({incomeCount})</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <DiffBadge value={diffPct(income, prevIncome)} suffix="%" />
+                    <span className="font-mono-amount text-xs font-bold text-success">+{formatAmount(income)}</span>
+                  </div>
                 </div>
-                <div className="bg-secondary/30 rounded-lg p-2 text-center">
-                  <p className="text-[9px] text-muted-foreground">Taux d'épargne</p>
-                  <p className="font-mono-amount text-xs font-semibold">{income > 0 ? (monthSavingsNet / income * 100).toFixed(0) : 0}%</p>
+                {/* Dépenses */}
+                <div className="flex items-center justify-between px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <TrendingDown className="w-3.5 h-3.5 text-destructive" />
+                    <span className="text-xs text-muted-foreground">Dépenses</span>
+                    <span className="text-[9px] text-muted-foreground/60">({expenseCount})</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <DiffBadge value={diffPct(expenses, prevExpenses)} suffix="%" />
+                    <span className="font-mono-amount text-xs font-bold text-destructive">-{formatAmount(expenses)}</span>
+                  </div>
                 </div>
-                <div className="bg-secondary/30 rounded-lg p-2 text-center">
-                  <p className="text-[9px] text-muted-foreground">Transferts</p>
-                  <p className="font-mono-amount text-xs font-semibold">{transfers.length} ({formatAmount(transferTotal)})</p>
+                {/* Épargne nette */}
+                <div className="flex items-center justify-between px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <PiggyBank className={`w-3.5 h-3.5 ${monthSavingsNet >= 0 ? 'text-primary' : 'text-destructive'}`} />
+                    <span className="text-xs text-muted-foreground">Épargne nette</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <DiffBadge value={diffPct(monthSavingsNet, prevSavingsNet)} suffix="%" />
+                    <span className={`font-mono-amount text-xs font-bold ${monthSavingsNet >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                      {monthSavingsNet >= 0 ? '+' : '-'}{formatAmount(Math.abs(monthSavingsNet))}
+                    </span>
+                  </div>
+                </div>
+                {/* Détail épargne (versements/retraits) si pertinent */}
+                {(epargneIn > 0 || epargneOut > 0) && (
+                  <div className="px-3 py-2 bg-secondary/20">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="text-muted-foreground">↳ Versements</span>
+                      <span className="font-mono-amount text-primary font-medium">+{formatAmount(epargneIn)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] mt-0.5">
+                      <span className="text-muted-foreground">↳ Retraits</span>
+                      <span className="font-mono-amount text-destructive font-medium">-{formatAmount(epargneOut)}</span>
+                    </div>
+                  </div>
+                )}
+                {/* Stats compactes */}
+                <div className="flex items-center divide-x divide-border/30">
+                  <div className="flex-1 px-3 py-2 text-center">
+                    <p className="text-[9px] text-muted-foreground">Dép. moy.</p>
+                    <p className="font-mono-amount text-[10px] font-semibold">{formatAmount(avgExpense)}</p>
+                  </div>
+                  <div className="flex-1 px-3 py-2 text-center">
+                    <p className="text-[9px] text-muted-foreground">Tx épargne</p>
+                    <p className="font-mono-amount text-[10px] font-semibold">{income > 0 ? (monthSavingsNet / income * 100).toFixed(0) : 0}%</p>
+                  </div>
+                  <div className="flex-1 px-3 py-2 text-center">
+                    <p className="text-[9px] text-muted-foreground">Transferts</p>
+                    <p className="font-mono-amount text-[10px] font-semibold">{transfers.length} ({formatAmount(transferTotal)})</p>
+                  </div>
                 </div>
               </div>
             </div>
