@@ -629,7 +629,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
             </div>
 
             {/* ===== 3. COMPARAISON M-1 ===== */}
-            <CollapsibleSection title="Comparaison vs mois précédent" icon={BarChart3} defaultOpen>
+            <CollapsibleSection title="Comparaison vs mois précédent" icon={BarChart3}>
               <div className="bg-secondary/30 rounded-2xl p-4">
                 <div className="h-40">
                   <ResponsiveContainer width="100%" height="100%">
@@ -670,7 +670,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
 
             {/* ===== 5. DÉPENSES PAR CATÉGORIE ===== */}
             {expensesByCategory.length > 0 && (
-              <CollapsibleSection title="Dépenses par catégorie" icon={TrendingDown} defaultOpen>
+              <CollapsibleSection title="Dépenses par catégorie" icon={TrendingDown}>
                 <div className="bg-secondary/30 rounded-2xl p-4">
                   <div className="flex items-center gap-4">
                     <div className="w-28 h-28 flex-shrink-0">
@@ -744,7 +744,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
 
             {/* ===== 7. BUDGETS ===== */}
             {monthlyBudgets.length > 0 && (
-              <CollapsibleSection title={`Budgets${budgetUtilization !== null ? ` (${budgetUtilization.toFixed(0)}% utilisé)` : ''}`} icon={Target} defaultOpen>
+              <CollapsibleSection title={`Budgets${budgetUtilization !== null ? ` (${budgetUtilization.toFixed(0)}% utilisé)` : ''}`} icon={Target}>
                 <div className="space-y-2">
                   {monthlyBudgets.map(b => {
                     const spent = getBudgetSpent(b, month);
