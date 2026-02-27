@@ -6,7 +6,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import MonthSelector from './MonthSelector';
 import { supabase } from '@/integrations/supabase/client';
-import { ACCOUNT_TYPES } from '@/types/finance';
+import { ACCOUNT_TYPES, DEFAULT_EXCHANGE_RATES } from '@/types/finance';
 import { TrendingUp, TrendingDown, Target, Wallet, PiggyBank, CreditCard, Sparkles, X, ArrowUpRight, ArrowDownRight, ChevronDown, Receipt, ArrowLeftRight, BarChart3 } from 'lucide-react';
 
 interface Props {
@@ -837,24 +837,36 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                       </div>
                     );
                   })}
-                  <div className="bg-primary/8 border border-primary/15 rounded-xl p-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-semibold">Total restant dû</span>
-                      <span className="font-mono-amount font-bold text-sm text-primary">{formatAmount(scopedDebts.reduce((s, d) => s + getDebtRemaining(d), 0))}</span>
-                    </div>
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-[10px] text-muted-foreground">Mensualités totales</span>
-                      <span className="font-mono-amount text-[11px] text-muted-foreground">{formatAmount(scopedDebts.reduce((s, d) => s + getDebtMonthlyPayment(d), 0))}/mois</span>
-                    </div>
-                    {income > 0 && (
-                      <div className="flex justify-between items-center mt-0.5">
-                        <span className="text-[10px] text-muted-foreground">Taux d'endettement</span>
-                        <span className={`font-mono-amount text-[11px] font-semibold ${(scopedDebts.reduce((s, d) => s + getDebtMonthlyPayment(d), 0) / income * 100) > 33 ? 'text-destructive' : 'text-success'}`}>
-                          {(scopedDebts.reduce((s, d) => s + getDebtMonthlyPayment(d), 0) / income * 100).toFixed(1)}%
-                        </span>
+                  {(() => {
+                    const convertToMain = (amount: number, fromCurrency: string) => {
+                      if (fromCurrency === currency) return amount;
+                      const fromToEur = DEFAULT_EXCHANGE_RATES[fromCurrency] || 1;
+                      const mainToEur = DEFAULT_EXCHANGE_RATES[currency] || 1;
+                      return amount * (fromToEur / mainToEur);
+                    };
+                    const totalRemaining = scopedDebts.reduce((s, d) => s + convertToMain(getDebtRemaining(d), d.currency), 0);
+                    const totalMonthly = scopedDebts.reduce((s, d) => s + convertToMain(getDebtMonthlyPayment(d), d.currency), 0);
+                    return (
+                      <div className="bg-primary/8 border border-primary/15 rounded-xl p-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-semibold">Total restant dû</span>
+                          <span className="font-mono-amount font-bold text-sm text-primary">{formatAmount(totalRemaining)}</span>
+                        </div>
+                        <div className="flex justify-between items-center mt-1">
+                          <span className="text-[10px] text-muted-foreground">Mensualités totales</span>
+                          <span className="font-mono-amount text-[11px] text-muted-foreground">{formatAmount(totalMonthly)}/mois</span>
+                        </div>
+                        {income > 0 && (
+                          <div className="flex justify-between items-center mt-0.5">
+                            <span className="text-[10px] text-muted-foreground">Taux d'endettement</span>
+                            <span className={`font-mono-amount text-[11px] font-semibold ${(totalMonthly / income * 100) > 33 ? 'text-destructive' : 'text-success'}`}>
+                              {(totalMonthly / income * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
                 </div>
               </CollapsibleSection>
               ) : null;
