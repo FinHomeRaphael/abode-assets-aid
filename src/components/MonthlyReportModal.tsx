@@ -120,6 +120,34 @@ const CollapsibleSection = ({ title, icon, children, defaultOpen = false }: { ti
   );
 };
 
+const CalculDetail = ({ label, children }: { label: string; children: React.ReactNode }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="border-t border-dashed border-primary/20 pt-2 mt-1">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 text-[10px] font-semibold text-primary/70 hover:text-primary transition-colors w-full"
+      >
+        <span>{label}</span>
+        <ChevronDown className={`w-3 h-3 ml-auto transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="pt-2">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 const AccountGroup = ({ label, total, accounts: accs, getBalance, getPrevBalance, formatAmount: fmt }: {
   label: string;
   total: number;
@@ -867,10 +895,9 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                           </div>
                         )}
 
-                        {/* Détail taux d'endettement */}
+                        {/* Détail taux d'endettement - dépliable */}
                         {income > 0 && (
-                          <div className="border-t border-border/30 pt-2 mt-1">
-                            <p className="text-[10px] font-semibold text-muted-foreground mb-1.5">📐 Détail du calcul</p>
+                          <CalculDetail label="📐 Voir le détail du taux d'endettement">
                             <div className="space-y-1 mb-2">
                               {scopedDebts.map(d => {
                                 const monthly = getDebtMonthlyPayment(d);
@@ -905,13 +932,12 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                             <p className="text-[9px] text-muted-foreground italic mt-1">
                               {debtRatio <= 33 ? '✅ En dessous du seuil recommandé de 33%' : '⚠️ Au-dessus du seuil recommandé de 33%'}
                             </p>
-                          </div>
+                          </CalculDetail>
                         )}
 
-                        {/* Détail LTV */}
+                        {/* Détail LTV - dépliable */}
                         {ltvDebts.length > 0 && (
-                          <div className="border-t border-border/30 pt-2 mt-1">
-                            <p className="text-[10px] font-semibold text-muted-foreground mb-1.5">🏠 Détail LTV (Loan-to-Value)</p>
+                          <CalculDetail label="🏠 Voir le détail LTV (Loan-to-Value)">
                             <div className="space-y-2">
                               {ltvDebts.map(d => {
                                 const remaining = getDebtRemaining(d);
@@ -942,7 +968,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                                 );
                               })}
                             </div>
-                          </div>
+                          </CalculDetail>
                         )}
                       </div>
                     );
