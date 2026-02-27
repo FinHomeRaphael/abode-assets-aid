@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { getBudgetStatus, formatAmount as rawFormatAmount } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { Tooltip as UiTooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import MonthSelector from './MonthSelector';
 import { supabase } from '@/integrations/supabase/client';
 import { ACCOUNT_TYPES, DEFAULT_EXCHANGE_RATES } from '@/types/finance';
@@ -777,10 +778,19 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                 })()}
                 {/* Stats compactes */}
                 <div className="flex items-center divide-x divide-border/30">
-                  <div className="flex-1 px-3 py-2 text-center">
-                    <p className="text-[9px] text-muted-foreground">Dép. moy. (3 mois)</p>
-                    <p className="font-mono-amount text-[10px] font-semibold">{formatAmount(avgExpense3m)}</p>
-                  </div>
+                  <TooltipProvider>
+                    <UiTooltip delayDuration={200}>
+                      <TooltipTrigger asChild>
+                        <div className="flex-1 px-3 py-2 text-center cursor-help">
+                          <p className="text-[9px] text-muted-foreground">Dép. moy. (3 mois)</p>
+                          <p className="font-mono-amount text-[10px] font-semibold">{formatAmount(avgExpense3m)}</p>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[200px] text-center">
+                        <p className="text-xs">Moyenne mensuelle de vos dépenses sur les 3 derniers mois (mois en cours + 2 mois précédents).</p>
+                      </TooltipContent>
+                    </UiTooltip>
+                  </TooltipProvider>
                   <div className="flex-1 px-3 py-2 text-center">
                     <p className="text-[9px] text-muted-foreground">Tx épargne</p>
                     <p className="font-mono-amount text-[10px] font-semibold">{income > 0 ? (monthSavingsNet / income * 100).toFixed(0) : 0}%</p>
@@ -802,7 +812,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
                       <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} width={50} tickFormatter={v => formatAmount(v)} />
-                      <Tooltip formatter={(val: number) => formatAmount(val)} />
+                      <RechartsTooltip formatter={(val: number) => formatAmount(val)} />
                       <Bar dataKey="previous" name="Mois précédent" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.4} />
                       <Bar dataKey="current" name="Ce mois" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                     </BarChart>
@@ -844,7 +854,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                           <Pie data={expensesByCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={50} innerRadius={25} strokeWidth={2} stroke="hsl(var(--card))">
                             {expensesByCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                           </Pie>
-                          <Tooltip formatter={(val: number) => formatAmount(val)} />
+                          <RechartsTooltip formatter={(val: number) => formatAmount(val)} />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
