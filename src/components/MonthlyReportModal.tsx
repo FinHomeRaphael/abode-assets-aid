@@ -846,22 +846,102 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                     };
                     const totalRemaining = scopedDebts.reduce((s, d) => s + convertToMain(getDebtRemaining(d), d.currency), 0);
                     const totalMonthly = scopedDebts.reduce((s, d) => s + convertToMain(getDebtMonthlyPayment(d), d.currency), 0);
+                    const debtRatio = income > 0 ? (totalMonthly / income * 100) : 0;
+                    const ltvDebts = scopedDebts.filter(d => d.mortgage_system === 'swiss' && d.property_value);
                     return (
-                      <div className="bg-primary/8 border border-primary/15 rounded-xl p-3">
+                      <div className="bg-primary/8 border border-primary/15 rounded-xl p-3 space-y-2">
                         <div className="flex justify-between items-center">
                           <span className="text-sm font-semibold">Total restant dû</span>
                           <span className="font-mono-amount font-bold text-sm text-primary">{formatAmount(totalRemaining)}</span>
                         </div>
-                        <div className="flex justify-between items-center mt-1">
+                        <div className="flex justify-between items-center">
                           <span className="text-[10px] text-muted-foreground">Mensualités totales</span>
                           <span className="font-mono-amount text-[11px] text-muted-foreground">{formatAmount(totalMonthly)}/mois</span>
                         </div>
                         {income > 0 && (
-                          <div className="flex justify-between items-center mt-0.5">
+                          <div className="flex justify-between items-center">
                             <span className="text-[10px] text-muted-foreground">Taux d'endettement</span>
-                            <span className={`font-mono-amount text-[11px] font-semibold ${(totalMonthly / income * 100) > 33 ? 'text-destructive' : 'text-success'}`}>
-                              {(totalMonthly / income * 100).toFixed(1)}%
+                            <span className={`font-mono-amount text-[11px] font-semibold ${debtRatio > 33 ? 'text-destructive' : 'text-success'}`}>
+                              {debtRatio.toFixed(1)}%
                             </span>
+                          </div>
+                        )}
+
+                        {/* Détail taux d'endettement */}
+                        {income > 0 && (
+                          <div className="border-t border-border/30 pt-2 mt-1">
+                            <p className="text-[10px] font-semibold text-muted-foreground mb-1.5">📐 Détail du calcul</p>
+                            <div className="space-y-1 mb-2">
+                              {scopedDebts.map(d => {
+                                const monthly = getDebtMonthlyPayment(d);
+                                const converted = convertToMain(monthly, d.currency);
+                                const debtEmoji = d.type === 'mortgage' ? '🏠' : d.type === 'auto' ? '🚗' : d.type === 'consumer' ? '💳' : d.type === 'student' ? '🎓' : '📦';
+                                return (
+                                  <div key={d.id} className="flex items-center justify-between">
+                                    <span className="text-[10px] text-muted-foreground truncate flex-1">{debtEmoji} {d.name}</span>
+                                    <span className="font-mono-amount text-[10px] text-foreground ml-2">
+                                      {formatAmount(converted)}/mois
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div className="bg-secondary/40 rounded-lg p-2 space-y-0.5">
+                              <div className="flex justify-between items-center">
+                                <span className="text-[10px] text-muted-foreground">Σ Mensualités</span>
+                                <span className="font-mono-amount text-[10px] font-semibold">{formatAmount(totalMonthly)}</span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-[10px] text-muted-foreground">÷ Revenus du mois</span>
+                                <span className="font-mono-amount text-[10px] font-semibold">{formatAmount(income)}</span>
+                              </div>
+                              <div className="flex justify-between items-center border-t border-border/30 pt-1">
+                                <span className="text-[10px] font-semibold">= Taux d'endettement</span>
+                                <span className={`font-mono-amount text-[10px] font-bold ${debtRatio > 33 ? 'text-destructive' : 'text-success'}`}>
+                                  {debtRatio.toFixed(1)}%
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-[9px] text-muted-foreground italic mt-1">
+                              {debtRatio <= 33 ? '✅ En dessous du seuil recommandé de 33%' : '⚠️ Au-dessus du seuil recommandé de 33%'}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Détail LTV */}
+                        {ltvDebts.length > 0 && (
+                          <div className="border-t border-border/30 pt-2 mt-1">
+                            <p className="text-[10px] font-semibold text-muted-foreground mb-1.5">🏠 Détail LTV (Loan-to-Value)</p>
+                            <div className="space-y-2">
+                              {ltvDebts.map(d => {
+                                const remaining = getDebtRemaining(d);
+                                const ltv = d.property_value! > 0 ? (remaining / d.property_value!) * 100 : 0;
+                                return (
+                                  <div key={d.id} className="bg-secondary/40 rounded-lg p-2">
+                                    <p className="text-[10px] font-medium mb-1">🏠 {d.name}</p>
+                                    <div className="space-y-0.5">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-[10px] text-muted-foreground">Solde restant</span>
+                                        <span className="font-mono-amount text-[10px]">{formatAmount(remaining, d.currency)}</span>
+                                      </div>
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-[10px] text-muted-foreground">÷ Valeur du bien</span>
+                                        <span className="font-mono-amount text-[10px]">{formatAmount(d.property_value!, d.currency)}</span>
+                                      </div>
+                                      <div className="flex justify-between items-center border-t border-border/30 pt-1">
+                                        <span className="text-[10px] font-semibold">= LTV</span>
+                                        <span className={`font-mono-amount text-[10px] font-bold ${ltv <= 65 ? 'text-success' : ltv <= 80 ? 'text-primary' : 'text-destructive'}`}>
+                                          {ltv.toFixed(1)}%
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <p className="text-[9px] text-muted-foreground italic mt-1">
+                                      {ltv <= 65 ? '✅ LTV ≤ 65% — Seuil optimal atteint' : ltv <= 80 ? '👍 LTV ≤ 80% — Bon niveau' : '⚠️ LTV > 80% — Amortissement recommandé'}
+                                    </p>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
                         )}
                       </div>
