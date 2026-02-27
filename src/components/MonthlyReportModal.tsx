@@ -184,6 +184,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
     id: string; name: string; type: string; initial_amount: number;
     remaining_amount: number; payment_amount: number; interest_rate: number;
     currency: string; start_date: string; duration_years: number; payment_frequency: string;
+    scope: string; created_by: string | null;
   }
   interface ScheduleRow {
     debt_id: string; due_date: string; capital_before: number; capital_after: number;
@@ -773,10 +774,16 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
             )}
 
             {/* ===== 9. DETTES ===== */}
-            {debts.length > 0 && (
+            {(() => {
+              const userId = session?.user?.id;
+              const scopedDebts = debts.filter(d => {
+                if (financeScope === 'personal') return d.scope === 'personal' && d.created_by === userId;
+                return d.scope === 'household';
+              });
+              return scopedDebts.length > 0 ? (
               <CollapsibleSection title="Suivi des dettes" icon={CreditCard}>
                 <div className="space-y-2">
-                  {debts.map(d => {
+                  {scopedDebts.map(d => {
                     const remaining = getDebtRemaining(d);
                     const pct = d.initial_amount > 0 ? Math.min(((d.initial_amount - remaining) / d.initial_amount) * 100, 100) : 0;
                     const totalPaid = d.initial_amount - remaining;
@@ -804,24 +811,25 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                   <div className="bg-primary/8 border border-primary/15 rounded-xl p-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-semibold">Total restant dû</span>
-                      <span className="font-mono-amount font-bold text-sm text-primary">{formatAmount(debts.reduce((s, d) => s + getDebtRemaining(d), 0))}</span>
+                      <span className="font-mono-amount font-bold text-sm text-primary">{formatAmount(scopedDebts.reduce((s, d) => s + getDebtRemaining(d), 0))}</span>
                     </div>
                     <div className="flex justify-between items-center mt-1">
                       <span className="text-[10px] text-muted-foreground">Mensualités totales</span>
-                      <span className="font-mono-amount text-[11px] text-muted-foreground">{formatAmount(debts.reduce((s, d) => s + getDebtMonthlyPayment(d), 0))}/mois</span>
+                      <span className="font-mono-amount text-[11px] text-muted-foreground">{formatAmount(scopedDebts.reduce((s, d) => s + getDebtMonthlyPayment(d), 0))}/mois</span>
                     </div>
                     {income > 0 && (
                       <div className="flex justify-between items-center mt-0.5">
                         <span className="text-[10px] text-muted-foreground">Taux d'endettement</span>
-                        <span className={`font-mono-amount text-[11px] font-semibold ${(debts.reduce((s, d) => s + getDebtMonthlyPayment(d), 0) / income * 100) > 33 ? 'text-destructive' : 'text-success'}`}>
-                          {(debts.reduce((s, d) => s + getDebtMonthlyPayment(d), 0) / income * 100).toFixed(1)}%
+                        <span className={`font-mono-amount text-[11px] font-semibold ${(scopedDebts.reduce((s, d) => s + getDebtMonthlyPayment(d), 0) / income * 100) > 33 ? 'text-destructive' : 'text-success'}`}>
+                          {(scopedDebts.reduce((s, d) => s + getDebtMonthlyPayment(d), 0) / income * 100).toFixed(1)}%
                         </span>
                       </div>
                     )}
                   </div>
                 </div>
               </CollapsibleSection>
-            )}
+              ) : null;
+            })()}
 
             {/* ===== 10. CONSEIL IA ===== */}
             <div className="bg-gradient-to-br from-primary/8 to-primary/3 border border-primary/15 rounded-2xl p-4">
