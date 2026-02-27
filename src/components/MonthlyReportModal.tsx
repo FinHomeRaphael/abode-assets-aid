@@ -148,7 +148,7 @@ const CalculDetail = ({ label, children }: { label: string; children: React.Reac
   );
 };
 
-const FlowRow = ({ icon, label, count, amount, sign, colorClass, diff, accounts, transactions: txs, formatAmount: fmt, extraDetail }: {
+const FlowRow = ({ icon, label, count, amount, sign, colorClass, diff, accounts, transactions: txs, formatAmount: fmt, customDetail }: {
   icon: React.ReactNode;
   label: string;
   count?: number;
@@ -159,22 +159,20 @@ const FlowRow = ({ icon, label, count, amount, sign, colorClass, diff, accounts,
   accounts: { id: string; name: string; currency: string; type: string }[];
   transactions: { accountId?: string; convertedAmount: number; amount: number; type: string }[];
   formatAmount: (amount: number, currency?: string) => string;
-  extraDetail?: React.ReactNode;
+  customDetail?: React.ReactNode;
 }) => {
   const [expanded, setExpanded] = useState(false);
   // Group by account
   const byAccount = useMemo(() => {
-    const map: Record<string, { income: number; expense: number }> = {};
+    const map: Record<string, number> = {};
     txs.forEach(t => {
       const accId = t.accountId || '__none__';
-      if (!map[accId]) map[accId] = { income: 0, expense: 0 };
-      if (t.type === 'income') map[accId].income += t.convertedAmount;
-      else map[accId].expense += t.convertedAmount;
+      map[accId] = (map[accId] || 0) + t.convertedAmount;
     });
-    return Object.entries(map).map(([accId, { income, expense }]) => {
+    return Object.entries(map).map(([accId, total]) => {
       const acc = accounts.find(a => a.id === accId);
-      return { accId, name: acc?.name || 'Sans compte', net: income - expense, income, expense };
-    }).sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+      return { accId, name: acc?.name || 'Sans compte', total };
+    }).sort((a, b) => b.total - a.total);
   }, [txs, accounts]);
 
   return (
@@ -200,16 +198,19 @@ const FlowRow = ({ icon, label, count, amount, sign, colorClass, diff, accounts,
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
           >
-            <div className="px-4 pb-2.5 space-y-1">
-              {byAccount.map(({ accId, name, net, income, expense }) => (
-                <div key={accId} className="flex items-center justify-between">
-                  <span className="text-[10px] text-muted-foreground italic truncate flex-1">{name}</span>
-                  <span className={`font-mono-amount text-[10px] font-medium italic ${net >= 0 ? 'text-success' : 'text-destructive'}`}>
-                    {net >= 0 ? '+' : '-'}{fmt(Math.abs(net))}
-                  </span>
+            <div className="px-4 pb-2.5">
+              {customDetail || (
+                <div className="space-y-1">
+                  {byAccount.map(({ accId, name, total }) => (
+                    <div key={accId} className="flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground italic truncate flex-1">{name}</span>
+                      <span className={`font-mono-amount text-[10px] font-medium italic ${colorClass}`}>
+                        {sign}{fmt(total)}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-              {extraDetail}
+              )}
             </div>
           </motion.div>
         )}
@@ -672,29 +673,81 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                   formatAmount={formatAmount}
                 />
                 {/* Épargne nette */}
-                <FlowRow
-                  icon={<PiggyBank className={`w-3.5 h-3.5 ${monthSavingsNet >= 0 ? 'text-primary' : 'text-destructive'}`} />}
-                  label="Épargne nette"
-                  amount={Math.abs(monthSavingsNet)}
-                  sign={monthSavingsNet >= 0 ? '+' : '-'}
-                  colorClass={monthSavingsNet >= 0 ? 'text-primary' : 'text-destructive'}
-                  diff={diffPct(monthSavingsNet, prevSavingsNet)}
-                  accounts={accounts}
-                  transactions={transactions.filter(t => isAnySavingsTx(t))}
-                  formatAmount={formatAmount}
-                  extraDetail={(epargneIn > 0 || epargneOut > 0) ? (
-                    <div className="mt-1.5 space-y-0.5">
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-muted-foreground">↳ Versements</span>
-                        <span className="font-mono-amount text-primary font-medium">+{formatAmount(epargneIn)}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-[10px]">
-                        <span className="text-muted-foreground">↳ Retraits</span>
-                        <span className="font-mono-amount text-destructive font-medium">-{formatAmount(epargneOut)}</span>
-                      </div>
-                    </div>
-                  ) : undefined}
-                />
+                {(() => {
+                  // Build savings breakdown by account (income vs expense)
+                  const savingsTxs = transactions.filter(t => isAnySavingsTx(t));
+                  const savingsIncByAcc: Record<string, number> = {};
+                  const savingsExpByAcc: Record<string, number> = {};
+                  savingsTxs.forEach(t => {
+                    const key = t.accountId || '__none__';
+                    if (t.type === 'income') savingsIncByAcc[key] = (savingsIncByAcc[key] || 0) + t.convertedAmount;
+                    else savingsExpByAcc[key] = (savingsExpByAcc[key] || 0) + t.convertedAmount;
+                  });
+                  const toList = (map: Record<string, number>) =>
+                    Object.entries(map).map(([id, amount]) => {
+                      const acc = accounts.find(a => a.id === id);
+                      return { id, name: acc?.name || 'Sans compte', amount };
+                    }).sort((a, b) => b.amount - a.amount);
+                  const savingsIncList = toList(savingsIncByAcc);
+                  const savingsExpList = toList(savingsExpByAcc);
+
+                  return (
+                    <FlowRow
+                      icon={<PiggyBank className={`w-3.5 h-3.5 ${monthSavingsNet >= 0 ? 'text-primary' : 'text-destructive'}`} />}
+                      label="Épargne nette"
+                      amount={Math.abs(monthSavingsNet)}
+                      sign={monthSavingsNet >= 0 ? '+' : '-'}
+                      colorClass={monthSavingsNet >= 0 ? 'text-primary' : 'text-destructive'}
+                      diff={diffPct(monthSavingsNet, prevSavingsNet)}
+                      accounts={accounts}
+                      transactions={savingsTxs}
+                      formatAmount={formatAmount}
+                      customDetail={
+                        <div className="space-y-2">
+                          {/* Revenus épargne par compte */}
+                          <div>
+                            <p className="text-[10px] font-semibold mb-1">💰 Revenus épargne</p>
+                            {savingsIncList.length === 0 ? (
+                              <p className="text-[10px] text-muted-foreground italic">Aucun</p>
+                            ) : savingsIncList.map(item => (
+                              <div key={item.id} className="flex items-center justify-between py-0.5">
+                                <span className="text-[10px] text-muted-foreground italic truncate flex-1">{item.name}</span>
+                                <span className="font-mono-amount text-[10px] font-medium text-success">+{formatAmount(item.amount)}</span>
+                              </div>
+                            ))}
+                            <div className="flex items-center justify-between mt-1 px-2 py-1 rounded bg-success/10">
+                              <span className="text-[9px] text-success">Sous-total</span>
+                              <span className="font-mono-amount text-[10px] text-success font-semibold">+{formatAmount(epargneIn)}</span>
+                            </div>
+                          </div>
+                          {/* Dépenses épargne par compte */}
+                          <div>
+                            <p className="text-[10px] font-semibold mb-1">💸 Dépenses épargne</p>
+                            {savingsExpList.length === 0 ? (
+                              <p className="text-[10px] text-muted-foreground italic">Aucune</p>
+                            ) : savingsExpList.map(item => (
+                              <div key={`exp-${item.id}`} className="flex items-center justify-between py-0.5">
+                                <span className="text-[10px] text-muted-foreground italic truncate flex-1">{item.name}</span>
+                                <span className="font-mono-amount text-[10px] font-medium text-destructive">-{formatAmount(item.amount)}</span>
+                              </div>
+                            ))}
+                            <div className="flex items-center justify-between mt-1 px-2 py-1 rounded bg-destructive/10">
+                              <span className="text-[9px] text-destructive">Sous-total</span>
+                              <span className="font-mono-amount text-[10px] text-destructive font-semibold">-{formatAmount(epargneOut)}</span>
+                            </div>
+                          </div>
+                          {/* Total net */}
+                          <div className="flex items-center justify-between pt-1.5 border-t-2 border-border/50">
+                            <span className="text-[10px] font-bold">Épargne nette</span>
+                            <span className={`font-mono-amount text-[10px] font-bold ${monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'}`}>
+                              {monthSavingsNet >= 0 ? '+' : ''}{formatAmount(monthSavingsNet)}
+                            </span>
+                          </div>
+                        </div>
+                      }
+                    />
+                  );
+                })()}
                 {/* Stats compactes */}
                 <div className="flex items-center divide-x divide-border/30">
                   <div className="flex-1 px-3 py-2 text-center">
