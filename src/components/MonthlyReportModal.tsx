@@ -179,26 +179,56 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   const { formatAmount, currency } = useCurrency();
   const [month, setMonth] = useState(new Date());
 
-  // Fetch debts
+  // Fetch debts + schedules
   interface DebtRow {
     id: string; name: string; type: string; initial_amount: number;
     remaining_amount: number; payment_amount: number; interest_rate: number;
     currency: string; start_date: string; duration_years: number; payment_frequency: string;
   }
+  interface ScheduleRow {
+    debt_id: string; due_date: string; capital_before: number; capital_after: number;
+    principal_amount: number; interest_amount: number; total_amount: number; period_number: number;
+  }
   const [debts, setDebts] = useState<DebtRow[]>([]);
+  const [debtSchedules, setDebtSchedules] = useState<ScheduleRow[]>([]);
   const fetchDebts = useCallback(async () => {
     if (!householdId) return;
     const userId = session?.user?.id;
-    let query = supabase.from('debts').select('*');
-    if (financeScope === 'personal') {
-      query = query.eq('created_by', userId).eq('scope', 'personal');
-    } else {
-      query = query.eq('household_id', householdId).eq('scope', 'household');
-    }
-    const { data } = await query;
+    // Fetch both scopes like the main debts page
+    const { data } = await supabase.from('debts').select('*')
+      .or(`and(household_id.eq.${householdId},scope.eq.household),and(created_by.eq.${userId},scope.eq.personal)`);
     if (data) setDebts(data as DebtRow[]);
+    // Fetch schedules
+    const { data: schedData } = await supabase.from('debt_schedules').select('*')
+      .eq('household_id', householdId);
+    if (schedData) setDebtSchedules(schedData as ScheduleRow[]);
   }, [householdId, financeScope, session?.user?.id]);
   useEffect(() => { if (open) fetchDebts(); }, [open, fetchDebts]);
+
+  // Helper: get remaining amount for a debt using schedules (source of truth)
+  const getDebtRemaining = useCallback((debt: DebtRow) => {
+    const schedules = debtSchedules.filter(s => s.debt_id === debt.id);
+    if (schedules.length === 0) return debt.remaining_amount;
+    // Find the first upcoming schedule row (sorted by period_number)
+    const sorted = [...schedules].sort((a, b) => a.period_number - b.period_number);
+    const now = new Date();
+    const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const upcoming = sorted.find(s => s.due_date >= nowStr);
+    if (upcoming) return upcoming.capital_before;
+    // All in the past: last row's capital_after
+    return sorted[sorted.length - 1].capital_after;
+  }, [debtSchedules]);
+
+  // Helper: get monthly equivalent payment
+  const getDebtMonthlyPayment = useCallback((debt: DebtRow) => {
+    const freq = debt.payment_frequency;
+    const amount = debt.payment_amount;
+    if (freq === 'monthly') return amount;
+    if (freq === 'quarterly') return amount / 3;
+    if (freq === 'semi-annual') return amount / 6;
+    if (freq === 'annual') return amount / 12;
+    return amount;
+  }, []);
 
   const transactions = useMemo(() => getTransactionsForMonth(month), [month, getTransactionsForMonth]);
 
@@ -747,8 +777,10 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
               <CollapsibleSection title="Suivi des dettes" icon={CreditCard}>
                 <div className="space-y-2">
                   {debts.map(d => {
-                    const pct = d.initial_amount > 0 ? Math.min(((d.initial_amount - d.remaining_amount) / d.initial_amount) * 100, 100) : 0;
-                    const totalPaid = d.initial_amount - d.remaining_amount;
+                    const remaining = getDebtRemaining(d);
+                    const pct = d.initial_amount > 0 ? Math.min(((d.initial_amount - remaining) / d.initial_amount) * 100, 100) : 0;
+                    const totalPaid = d.initial_amount - remaining;
+                    const monthlyPayment = getDebtMonthlyPayment(d);
                     return (
                       <div key={d.id} className="bg-secondary/30 rounded-xl p-3">
                         <div className="flex items-center justify-between mb-1.5">
@@ -760,10 +792,10 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                         </div>
                         <div className="flex items-center justify-between text-[11px]">
                           <span className="font-mono-amount text-muted-foreground">Payé : {formatAmount(totalPaid, d.currency)}</span>
-                          <span className="font-mono-amount text-muted-foreground">Restant : {formatAmount(d.remaining_amount, d.currency)}</span>
+                          <span className="font-mono-amount text-muted-foreground">Restant : {formatAmount(remaining, d.currency)}</span>
                         </div>
                         <div className="flex items-center justify-between text-[10px] mt-0.5">
-                          <span className="text-muted-foreground">Mensualité : {formatAmount(d.payment_amount, d.currency)}</span>
+                          <span className="text-muted-foreground">Mensualité : {formatAmount(monthlyPayment, d.currency)}</span>
                           {d.interest_rate > 0 && <span className="text-muted-foreground">Taux : {d.interest_rate}%</span>}
                         </div>
                       </div>
@@ -772,17 +804,17 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                   <div className="bg-primary/8 border border-primary/15 rounded-xl p-3">
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-semibold">Total restant dû</span>
-                      <span className="font-mono-amount font-bold text-sm text-primary">{formatAmount(debts.reduce((s, d) => s + d.remaining_amount, 0))}</span>
+                      <span className="font-mono-amount font-bold text-sm text-primary">{formatAmount(debts.reduce((s, d) => s + getDebtRemaining(d), 0))}</span>
                     </div>
                     <div className="flex justify-between items-center mt-1">
                       <span className="text-[10px] text-muted-foreground">Mensualités totales</span>
-                      <span className="font-mono-amount text-[11px] text-muted-foreground">{formatAmount(debts.reduce((s, d) => s + d.payment_amount, 0))}/mois</span>
+                      <span className="font-mono-amount text-[11px] text-muted-foreground">{formatAmount(debts.reduce((s, d) => s + getDebtMonthlyPayment(d), 0))}/mois</span>
                     </div>
                     {income > 0 && (
                       <div className="flex justify-between items-center mt-0.5">
                         <span className="text-[10px] text-muted-foreground">Taux d'endettement</span>
-                        <span className={`font-mono-amount text-[11px] font-semibold ${(debts.reduce((s, d) => s + d.payment_amount, 0) / income * 100) > 33 ? 'text-destructive' : 'text-success'}`}>
-                          {(debts.reduce((s, d) => s + d.payment_amount, 0) / income * 100).toFixed(1)}%
+                        <span className={`font-mono-amount text-[11px] font-semibold ${(debts.reduce((s, d) => s + getDebtMonthlyPayment(d), 0) / income * 100) > 33 ? 'text-destructive' : 'text-success'}`}>
+                          {(debts.reduce((s, d) => s + getDebtMonthlyPayment(d), 0) / income * 100).toFixed(1)}%
                         </span>
                       </div>
                     )}
