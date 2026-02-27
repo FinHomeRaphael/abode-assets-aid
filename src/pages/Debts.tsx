@@ -219,7 +219,7 @@ const Debts = () => {
   const selectedDebt = useMemo(() => debts.find(d => d.id === selectedDebtId) || null, [debts, selectedDebtId]);
 
   const handleDebtAdded = async () => { await fetchDebts(); await refreshDebtSchedules(); setShowAdd(false); };
-  const handleDebtUpdated = () => { fetchDebts(); setSelectedDebtId(null); };
+  const handleDebtUpdated = async () => { await fetchDebts(); await refreshDebtSchedules(); setSelectedDebtId(null); };
 
   const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
   const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
