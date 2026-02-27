@@ -427,21 +427,6 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
     return Object.entries(map).map(([name, { amount, emoji }]) => ({ name, value: amount, emoji })).sort((a, b) => b.value - a.value);
   }, [transactions]);
 
-  // Top 5 biggest expenses
-  const topExpenses = useMemo(() => {
-    return transactions
-      .filter(t => t.type === 'expense' && !isAnySavingsTx(t) && t.category !== 'Transfert')
-      .sort((a, b) => b.convertedAmount - a.convertedAmount)
-      .slice(0, 5);
-  }, [transactions]);
-
-  // Top 5 biggest incomes
-  const topIncomes = useMemo(() => {
-    return transactions
-      .filter(t => t.type === 'income' && t.category !== 'Transfert' && !isAnySavingsTx(t))
-      .sort((a, b) => b.convertedAmount - a.convertedAmount)
-      .slice(0, 5);
-  }, [transactions]);
 
   // Transfer count & total
   const transfers = useMemo(() => {
@@ -884,44 +869,6 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
               </div>
             </CollapsibleSection>
 
-            {(topExpenses.length > 0 || topIncomes.length > 0) && (
-              <CollapsibleSection title="Top transactions" icon={Receipt}>
-                {topIncomes.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-[11px] font-semibold text-muted-foreground mb-1.5">💰 Plus gros revenus</p>
-                    <div className="space-y-1">
-                      {topIncomes.map(t => (
-                        <div key={t.id} className="flex items-center gap-2 bg-success/5 rounded-lg px-3 py-1.5">
-                          <span className="text-sm">{t.emoji}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs truncate font-medium">{t.label}</p>
-                            <p className="text-[9px] text-muted-foreground">{new Date(t.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</p>
-                          </div>
-                          <span className="font-mono-amount text-xs font-semibold text-success">+{formatAmount(t.convertedAmount)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {topExpenses.length > 0 && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-muted-foreground mb-1.5">💸 Plus grosses dépenses</p>
-                    <div className="space-y-1">
-                      {topExpenses.map(t => (
-                        <div key={t.id} className="flex items-center gap-2 bg-destructive/5 rounded-lg px-3 py-1.5">
-                          <span className="text-sm">{t.emoji}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs truncate font-medium">{t.label}</p>
-                            <p className="text-[9px] text-muted-foreground">{new Date(t.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</p>
-                          </div>
-                          <span className="font-mono-amount text-xs font-semibold text-destructive">-{formatAmount(t.convertedAmount)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CollapsibleSection>
-            )}
 
             {/* ===== 7. BUDGETS ===== */}
             {monthlyBudgets.length > 0 && (
