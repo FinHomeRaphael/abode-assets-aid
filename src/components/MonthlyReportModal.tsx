@@ -806,24 +806,6 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
               </div>
             </div>
 
-            {/* ===== 3. COMPARAISON M-1 ===== */}
-            <CollapsibleSection title="Comparaison vs mois précédent" icon={BarChart3}>
-              <div className="bg-secondary/30 rounded-2xl p-4">
-                <div className="h-40">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={comparisonData} barGap={4}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-                      <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} width={50} tickFormatter={v => formatAmount(v)} />
-                      <RechartsTooltip formatter={(val: number) => formatAmount(val)} />
-                      <Bar dataKey="previous" name="Mois précédent" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.4} />
-                      <Bar dataKey="current" name="Ce mois" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </CollapsibleSection>
-
             {/* ===== 4. REVENUS PAR CATÉGORIE ===== */}
             {incomeByCategory.length > 0 && (
               <CollapsibleSection title="Revenus par catégorie" icon={TrendingUp}>
@@ -880,7 +862,24 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
               </CollapsibleSection>
             )}
 
-            {/* ===== 6. TOP TRANSACTIONS ===== */}
+            {/* ===== COMPARAISON M-1 ===== */}
+            <CollapsibleSection title="Comparaison vs mois précédent" icon={BarChart3}>
+              <div className="bg-secondary/30 rounded-2xl p-4">
+                <div className="h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={comparisonData} barGap={4}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                      <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} width={50} tickFormatter={v => formatAmount(v)} />
+                      <RechartsTooltip formatter={(val: number) => formatAmount(val)} />
+                      <Bar dataKey="previous" name="Mois précédent" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.4} />
+                      <Bar dataKey="current" name="Ce mois" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </CollapsibleSection>
+
             {(topExpenses.length > 0 || topIncomes.length > 0) && (
               <CollapsibleSection title="Top transactions" icon={Receipt}>
                 {topIncomes.length > 0 && (
