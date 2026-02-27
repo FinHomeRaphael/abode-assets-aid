@@ -452,7 +452,34 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   const txCount = transactions.length;
   const incomeCount = transactions.filter(t => t.type === 'income' && t.category !== 'Transfert' && !isAnySavingsTx(t)).length;
   const expenseCount = transactions.filter(t => t.type === 'expense' && !isAnySavingsTx(t) && t.category !== 'Transfert').length;
-  const avgExpense = expenseCount > 0 ? expenses / expenseCount : 0;
+
+  // Average expenses over the last 3 months (M, M-1, M-2)
+  const avgExpense3m = useMemo(() => {
+    const months: number[] = [expenses];
+    for (let offset = 1; offset <= 2; offset++) {
+      const m = new Date(month);
+      m.setMonth(m.getMonth() - offset);
+      const mTxs = getTransactionsForMonth(m);
+      // Replicate savings transfer exclusion logic for that month
+      const mEpargneIds = new Set<string>();
+      mTxs.forEach(t => {
+        if (isEpargneTx(t) && t.category === 'Transfert' && t.notes) {
+          const match = t.notes.match(transferIdRegex);
+          if (match) mEpargneIds.add(match[1]);
+        }
+      });
+      const isMSavingsTx = (t: typeof transactions[0]) => {
+        if (isEpargneTx(t)) return true;
+        if (t.category !== 'Transfert' || !t.notes) return false;
+        const match = t.notes.match(transferIdRegex);
+        return match ? mEpargneIds.has(match[1]) : false;
+      };
+      const mExp = mTxs.filter(t => t.type === 'expense' && !isMSavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+      months.push(mExp);
+    }
+    const total = months.reduce((s, v) => s + v, 0);
+    return total / months.length;
+  }, [expenses, month, getTransactionsForMonth, epargneAccountIds]);
 
   // Budgets
   const monthlyBudgets = useMemo(() => getBudgetsForMonth(month).filter(b => b.period === 'monthly'), [getBudgetsForMonth, month]);
@@ -751,8 +778,8 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                 {/* Stats compactes */}
                 <div className="flex items-center divide-x divide-border/30">
                   <div className="flex-1 px-3 py-2 text-center">
-                    <p className="text-[9px] text-muted-foreground">Dép. moy.</p>
-                    <p className="font-mono-amount text-[10px] font-semibold">{formatAmount(avgExpense)}</p>
+                    <p className="text-[9px] text-muted-foreground">Dép. moy. (3 mois)</p>
+                    <p className="font-mono-amount text-[10px] font-semibold">{formatAmount(avgExpense3m)}</p>
                   </div>
                   <div className="flex-1 px-3 py-2 text-center">
                     <p className="text-[9px] text-muted-foreground">Tx épargne</p>
