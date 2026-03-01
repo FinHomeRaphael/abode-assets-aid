@@ -316,26 +316,28 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
     return sorted[0].capital_before;
   }, [debtSchedules, month]);
 
-  // Helper: get monthly equivalent payment using schedule total (interest + principal)
-  const getDebtMonthlyPayment = useCallback((debt: DebtRow) => {
-    const freq = debt.payment_frequency;
-    const divisor = freq === 'quarterly' ? 3 : freq === 'semi-annual' ? 6 : freq === 'annual' ? 12 : 1;
-    // Use the schedule's total_amount (interest + principal) for the closest period
+  // Helper: get actual payment for a debt in the selected period from schedule rows
+  const getDebtPeriodPayment = useCallback((debt: DebtRow) => {
     const schedules = debtSchedules.filter(s => s.debt_id === debt.id);
-    if (schedules.length > 0) {
-      const sorted = [...schedules].sort((a, b) => a.period_number - b.period_number);
-      const my = month.getFullYear();
-      const mm = month.getMonth() + 1;
-      const endOfMonth = new Date(my, mm, 0);
-      const refStr = `${my}-${String(mm).padStart(2, '0')}-${String(endOfMonth.getDate()).padStart(2, '0')}`;
-      // Find the schedule row closest to the selected month
-      const pastRows = sorted.filter(s => s.due_date <= refStr);
-      const row = pastRows.length > 0 ? pastRows[pastRows.length - 1] : sorted[0];
-      return row.total_amount / divisor;
+    if (schedules.length === 0) return debt.payment_amount;
+    const my = month.getFullYear();
+    const mm = month.getMonth() + 1;
+    let startStr: string, endStr: string;
+    if (reportPeriod === 'yearly') {
+      startStr = `${my}-01-01`;
+      endStr = `${my}-12-31`;
+    } else {
+      const lastDay = new Date(my, mm, 0).getDate();
+      startStr = `${my}-${String(mm).padStart(2, '0')}-01`;
+      endStr = `${my}-${String(mm).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
     }
-    // Fallback: use payment_amount from debt record
-    return debt.payment_amount / divisor;
-  }, [debtSchedules, month]);
+    const periodRows = schedules.filter(s => s.due_date >= startStr && s.due_date <= endStr);
+    if (periodRows.length > 0) {
+      return periodRows.reduce((sum, r) => sum + r.total_amount, 0);
+    }
+    // Fallback: no schedules in this period
+    return 0;
+  }, [debtSchedules, month, reportPeriod]);
 
   const transactions = useMemo(() => {
     if (reportPeriod === 'monthly') return getTransactionsForMonth(month);
@@ -952,7 +954,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                     const totalPaid = d.initial_amount - remaining;
                     const pct = d.initial_amount > 0 ? Math.min((totalPaid / d.initial_amount) * 100, 100) : 0;
                     const ltv = isSwissWithProperty ? Math.round((remaining / d.property_value!) * 100) : null;
-                    const monthlyPayment = getDebtMonthlyPayment(d);
+                    const periodPayment = getDebtPeriodPayment(d);
                     return (
                       <div key={d.id} className="bg-secondary/30 rounded-xl p-3">
                         <div className="flex items-center justify-between mb-1.5">
@@ -975,7 +977,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                         </div>
                         <div className="flex items-center justify-between text-[10px] mt-0.5">
                           <span className="text-muted-foreground">
-                            {reportPeriod === 'yearly' ? `Annuité : ${formatAmount(monthlyPayment * 12, d.currency)}` : `Mensualité : ${formatAmount(monthlyPayment, d.currency)}`}
+                            {reportPeriod === 'yearly' ? `Annuité : ${formatAmount(periodPayment, d.currency)}` : `Mensualité : ${formatAmount(periodPayment, d.currency)}`}
                           </span>
                           {d.interest_rate > 0 && <span className="text-muted-foreground">Taux : {d.interest_rate}%</span>}
                         </div>
@@ -990,9 +992,8 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                       return amount * (fromToEur / mainToEur);
                     };
                     const totalRemaining = scopedDebts.reduce((s, d) => s + convertToMain(getDebtRemaining(d), d.currency), 0);
-                    const totalMonthly = scopedDebts.reduce((s, d) => s + convertToMain(getDebtMonthlyPayment(d), d.currency), 0);
-                    const totalPayments = reportPeriod === 'yearly' ? totalMonthly * 12 : totalMonthly;
-                    const debtRatio = income > 0 ? (totalPayments / income * 100) : 0;
+                    const totalPeriodPayments = scopedDebts.reduce((s, d) => s + convertToMain(getDebtPeriodPayment(d), d.currency), 0);
+                    const debtRatio = income > 0 ? (totalPeriodPayments / income * 100) : 0;
                     const ltvDebts = scopedDebts.filter(d => d.mortgage_system === 'swiss' && d.property_value);
                     return (
                       <div className="bg-primary/8 border border-primary/15 rounded-xl p-3 space-y-2">
@@ -1002,7 +1003,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                         </div>
                         <div className="flex justify-between items-center">
                           <span className="text-[10px] text-muted-foreground">{reportPeriod === 'yearly' ? 'Annuités totales' : 'Mensualités totales'}</span>
-                          <span className="font-mono-amount text-[11px] text-muted-foreground">{formatAmount(reportPeriod === 'yearly' ? totalMonthly * 12 : totalMonthly)}/{reportPeriod === 'yearly' ? 'an' : 'mois'}</span>
+                          <span className="font-mono-amount text-[11px] text-muted-foreground">{formatAmount(totalPeriodPayments)}/{reportPeriod === 'yearly' ? 'an' : 'mois'}</span>
                         </div>
                         {income > 0 && (
                           <div className="flex justify-between items-center">
@@ -1018,14 +1019,14 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                           <CalculDetail label="📐 Voir le détail du taux d'endettement">
                             <div className="space-y-1 mb-2">
                               {scopedDebts.map(d => {
-                                const monthly = getDebtMonthlyPayment(d);
-                                const converted = convertToMain(monthly, d.currency);
+                                const payment = getDebtPeriodPayment(d);
+                                const converted = convertToMain(payment, d.currency);
                                 const debtEmoji = d.type === 'mortgage' ? '🏠' : d.type === 'auto' ? '🚗' : d.type === 'consumer' ? '💳' : d.type === 'student' ? '🎓' : '📦';
                                 return (
                                   <div key={d.id} className="flex items-center justify-between">
                                     <span className="text-[10px] text-muted-foreground truncate flex-1">{debtEmoji} {d.name}</span>
                                     <span className="font-mono-amount text-[10px] text-foreground ml-2">
-                                      {formatAmount(reportPeriod === 'yearly' ? converted * 12 : converted)}/{reportPeriod === 'yearly' ? 'an' : 'mois'}
+                                      {formatAmount(converted)}/{reportPeriod === 'yearly' ? 'an' : 'mois'}
                                     </span>
                                   </div>
                                 );
@@ -1034,7 +1035,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                             <div className="bg-secondary/40 rounded-lg p-2 space-y-0.5">
                               <div className="flex justify-between items-center">
                                 <span className="text-[10px] text-muted-foreground">Σ {reportPeriod === 'yearly' ? 'Annuités' : 'Mensualités'}</span>
-                                <span className="font-mono-amount text-[10px] font-semibold">{formatAmount(reportPeriod === 'yearly' ? totalMonthly * 12 : totalMonthly)}</span>
+                                <span className="font-mono-amount text-[10px] font-semibold">{formatAmount(totalPeriodPayments)}</span>
                               </div>
                               <div className="flex justify-between items-center">
                                 <span className="text-[10px] text-muted-foreground">÷ Revenus {reportPeriod === 'monthly' ? 'du mois' : "de l'année"}</span>
