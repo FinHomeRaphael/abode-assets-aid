@@ -484,11 +484,16 @@ const Budgets = () => {
                   <div className="px-5 pb-5">
                     {(() => {
                       const COLORS = ['hsl(var(--primary))', 'hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--destructive))', '#6366f1', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16', '#a855f7'];
-                      const chartData = filteredBudgets.map((b, i) => ({
+                      const budgetData = filteredBudgets.map((b, i) => ({
                         name: `${b.emoji} ${b.category}`,
                         value: b.limit,
                         color: COLORS[i % COLORS.length],
                       }));
+                      const remaining = Math.max(remainingToBudget, 0);
+                      const chartData = remaining > 0
+                        ? [...budgetData, { name: '💡 Restant à budgéter', value: remaining, color: 'hsl(var(--muted-foreground) / 0.25)' }]
+                        : budgetData;
+                      const chartTotal = chartData.reduce((s, d) => s + d.value, 0);
                       return (
                         <div className="space-y-3">
                           <ResponsiveContainer width="100%" height={200}>
@@ -514,7 +519,7 @@ const Budgets = () => {
                           </ResponsiveContainer>
                           <div className="grid grid-cols-2 gap-1.5">
                             {chartData.map((item, i) => {
-                              const pct = totalBudgeted > 0 ? Math.round((item.value / totalBudgeted) * 100) : 0;
+                              const pct = chartTotal > 0 ? Math.round((item.value / chartTotal) * 100) : 0;
                               return (
                                 <div key={i} className="flex items-center gap-2 text-[11px]">
                                   <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
