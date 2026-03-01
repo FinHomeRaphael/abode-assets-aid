@@ -108,12 +108,7 @@ const Budgets = () => {
   const allExpenseCategories = useMemo(() => {
     const base = [...EXPENSE_CATEGORIES];
     const customs = customCategories.filter(c => c.type === 'expense').map(c => c.name);
-    const all = [...base, ...customs];
-    // Always include Épargne as a budgetable category
-    if (!all.includes(EPARGNE_CATEGORY)) {
-      all.push(EPARGNE_CATEGORY);
-    }
-    return all;
+    return [...base, ...customs].filter(c => c !== EPARGNE_CATEGORY);
   }, [customCategories]);
 
   const budgetedCategories = new Set(filteredBudgets.map(b => b.category));
@@ -126,10 +121,7 @@ const Budgets = () => {
         catSpent.set(t.category, (catSpent.get(t.category) || 0) + t.convertedAmount);
       }
     });
-    // Add Épargne if there are savings transfers but no budget for it
-    if (monthSavingsAmount > 0 && !budgetedCategories.has(EPARGNE_CATEGORY)) {
-      catSpent.set(EPARGNE_CATEGORY, monthSavingsAmount);
-    }
+    // Épargne is handled separately via savings deduction, not as a budget category
     return Array.from(catSpent.entries())
       .sort((a, b) => b[1] - a[1])
       .map(([cat, spent]) => ({ category: cat, spent, emoji: CATEGORY_EMOJIS[cat] || '📌' }));
@@ -279,17 +271,12 @@ const Budgets = () => {
           {/* Total épargné */}
           {monthSavingsNet !== 0 && (
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>🐖 Total épargné</span>
+              <span>Total épargné</span>
               <span className={`font-mono-amount font-medium ${monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'}`}>
                 {monthSavingsNet >= 0 ? '-' : '+'}{formatAmount(totalSavingsDeducted)}
               </span>
             </div>
           )}
-
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Disponible à budgéter</span>
-            <span className="font-mono-amount font-medium text-foreground">{formatAmount(availableAfterSavings)}</span>
-          </div>
 
           <div>
             <div className="flex items-center justify-between text-xs mb-1.5">
