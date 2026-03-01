@@ -98,11 +98,12 @@ const Budgets = () => {
   const allExpenseCategories = useMemo(() => {
     const base = [...EXPENSE_CATEGORIES];
     const customs = customCategories.filter(c => c.type === 'expense').map(c => c.name);
-    // Ensure Épargne is included
-    if (!base.includes(EPARGNE_CATEGORY as any) && !customs.includes(EPARGNE_CATEGORY)) {
-      // It's already in EXPENSE_CATEGORIES via types, but let's ensure
+    const all = [...base, ...customs];
+    // Always include Épargne as a budgetable category
+    if (!all.includes(EPARGNE_CATEGORY)) {
+      all.push(EPARGNE_CATEGORY);
     }
-    return [...base, ...customs];
+    return all;
   }, [customCategories]);
 
   const budgetedCategories = new Set(filteredBudgets.map(b => b.category));
