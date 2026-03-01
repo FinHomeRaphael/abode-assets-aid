@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatDate, formatDateLong, formatLocalDate } from '@/utils/format';
@@ -19,17 +19,19 @@ import { toast } from 'sonner';
 import { TrendingUp, TrendingDown, Wallet, Search, Plus, ArrowLeftRight, Download, CheckSquare, X, Trash2, Eye, ChevronDown } from 'lucide-react';
 import { recalculateScheduleFromRow } from '@/utils/recalculateSchedule';
 import { getPeriodsPerYear } from '@/types/debt';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 
 const Transactions = () => {
   const { scopedTransactions: transactions, getMemberById, household, householdId, getTransactionsForMonth, deleteTransaction, updateTransaction, softDeleteRecurringTransaction, scopedAccounts: accounts, financeScope, customAccountTypes } = useApp();
   const { formatAmount, currency } = useCurrency();
+  const location = useLocation();
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
   const [filterMember, setFilterMember] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showAddModal, setShowAddModal] = useState(false);
+  const [addModalDefaultType, setAddModalDefaultType] = useState<'income' | 'expense' | undefined>(undefined);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
@@ -50,6 +52,19 @@ const Transactions = () => {
   const [deleteRecTarget, setDeleteRecTarget] = useState<typeof transactions[0] | null>(null);
   const [viewDebtTarget, setViewDebtTarget] = useState<typeof transactions[0] | null>(null);
   const [expandedCard, setExpandedCard] = useState<'income' | 'expense' | 'savings' | 'balance' | null>(null);
+
+  // Handle redirect from Budgets page to open add modal with income preselected
+  useEffect(() => {
+    const state = location.state as { openModal?: boolean; preselectedType?: 'income' | 'expense' } | null;
+    if (state?.openModal) {
+      setShowAddModal(true);
+      if (state.preselectedType) {
+        setAddModalDefaultType(state.preselectedType);
+      }
+      // Clear the state to prevent re-triggering
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const monthTx = useMemo(() => getTransactionsForMonth(currentMonth), [currentMonth, getTransactionsForMonth]);
   const categories = [...new Set(monthTx.map(t => t.category))].sort();
@@ -615,7 +630,7 @@ const Transactions = () => {
         </AnimatePresence>
       </motion.div>
 
-      <AddTransactionModal open={showAddModal} onClose={() => setShowAddModal(false)} />
+      <AddTransactionModal open={showAddModal} onClose={() => { setShowAddModal(false); setAddModalDefaultType(undefined); }} defaultType={addModalDefaultType} />
       <AddTransferModal open={showTransferModal} onClose={() => setShowTransferModal(false)} />
       <ImportCSVModal open={showImportModal} onClose={() => setShowImportModal(false)} />
 
