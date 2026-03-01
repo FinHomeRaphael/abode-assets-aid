@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Layout from '@/components/Layout';
 import { useCurrency } from '@/hooks/useCurrency';
 import { formatDateLong, formatAmount as formatAmountWithCurrency } from '@/utils/format';
@@ -57,6 +57,7 @@ const Debts = () => {
   const [selectedDebtId, setSelectedDebtId] = useState<string | null>(null);
   const [upcomingPayments, setUpcomingPayments] = useState<UpcomingPayment[]>([]);
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
+  const [showPaymentBreakdown, setShowPaymentBreakdown] = useState(false);
 
   const fetchDebts = useCallback(async () => {
     if (!householdId) return;
@@ -217,6 +218,39 @@ const Debts = () => {
   }, 0), [scopeFilteredDebts, debtNextPaymentMap, debtRemainingMap, convert]);
   const totalRepaid = useMemo(() => scopeFilteredDebts.reduce((s, d) => s + convert(d.initialAmount - getRealRemaining(d), d.currency), 0), [scopeFilteredDebts, debtRemainingMap, convert]);
 
+  // Per-debt monthly contribution breakdown
+  const paymentBreakdownList = useMemo(() => {
+    return scopeFilteredDebts.map(d => {
+      const ppy = getPeriodsPerYear(d.paymentFrequency as PaymentFrequency);
+      const monthlyFactor = ppy / 12;
+      let monthlyAmount = 0;
+      if (d.consumerType === 'revolving') {
+        monthlyAmount = convert(d.minimumPayment || 0, d.currency);
+      } else if (d.type === 'other' && d.hasSchedule === false) {
+        monthlyAmount = 0;
+      } else {
+        const nextRow = debtNextPaymentMap.get(d.id);
+        if (nextRow) {
+          monthlyAmount = convert(nextRow.total_amount * monthlyFactor, d.currency);
+        } else if (d.mortgageSystem === 'swiss') {
+          const remaining = getRealRemaining(d);
+          const interest = remaining * d.interestRate / 100 / ppy;
+          const amort = d.swissAmortizationType !== 'none' && d.annualAmortization ? d.annualAmortization / ppy : 0;
+          const maint = d.includeMaintenance && d.propertyValue ? d.propertyValue * 0.01 / ppy : 0;
+          monthlyAmount = convert((interest + amort + maint) * monthlyFactor, d.currency);
+        } else {
+          monthlyAmount = convert(d.paymentAmount * monthlyFactor, d.currency);
+        }
+      }
+      return {
+        name: d.vehicleName || d.name,
+        emoji: getDebtEmoji(d.type),
+        monthlyAmount,
+        frequency: d.paymentFrequency,
+      };
+    }).filter(item => item.monthlyAmount > 0).sort((a, b) => b.monthlyAmount - a.monthlyAmount);
+  }, [scopeFilteredDebts, debtNextPaymentMap, debtRemainingMap, convert]);
+
   const selectedDebt = useMemo(() => debts.find(d => d.id === selectedDebtId) || null, [debts, selectedDebtId]);
 
   const handleDebtAdded = async () => { await fetchDebts(); await refreshDebtSchedules(); setShowAdd(false); };
@@ -266,8 +300,14 @@ const Debts = () => {
             <p className="text-[11px] text-muted-foreground mb-1">Capital restant dû</p>
             <p className="font-mono-amount font-semibold text-destructive text-sm">{formatAmount(totalRemaining)}</p>
           </div>
-          <div className="bg-card border border-border rounded-xl p-3 text-center">
-            <p className="text-[11px] text-muted-foreground mb-1">Échéance mensuelle</p>
+          <div
+            className="bg-card border border-border rounded-xl p-3 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={() => setShowPaymentBreakdown(!showPaymentBreakdown)}
+          >
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <p className="text-[11px] text-muted-foreground">Échéance mensuelle</p>
+              {showPaymentBreakdown ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
+            </div>
             <p className="font-mono-amount font-semibold text-sm">{formatAmount(totalPayment)}<span className="text-[10px] text-muted-foreground font-normal">/mois</span></p>
           </div>
           <div className="bg-card border border-border rounded-xl p-3 text-center">
@@ -275,6 +315,46 @@ const Debts = () => {
             <p className="font-mono-amount font-semibold text-success text-sm">{formatAmount(totalRepaid)}</p>
           </div>
         </motion.div>
+
+        {/* Payment breakdown expandable */}
+        <AnimatePresence>
+          {showPaymentBreakdown && paymentBreakdownList.length > 0 && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="bg-card border border-border rounded-xl p-4 space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground mb-2">Détail de l'échéance mensuelle</p>
+                {paymentBreakdownList.map((item, i) => {
+                  const pct = totalPayment > 0 ? (item.monthlyAmount / totalPayment) * 100 : 0;
+                  return (
+                    <div key={i} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="truncate">{item.emoji} {item.name}</span>
+                        <span className="font-mono-amount font-medium shrink-0 ml-2">{formatAmount(item.monthlyAmount)}<span className="text-muted-foreground font-normal">/mois</span></span>
+                      </div>
+                      <div className="h-1 bg-muted rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${pct}%` }}
+                          transition={{ duration: 0.4, delay: i * 0.05 }}
+                          className="h-full rounded-full bg-primary"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                <div className="border-t border-border pt-2 mt-2 flex items-center justify-between text-xs font-semibold">
+                  <span>Total</span>
+                  <span className="font-mono-amount">{formatAmount(totalPayment)}/mois</span>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Debt list */}
         {debts.length === 0 ? (
