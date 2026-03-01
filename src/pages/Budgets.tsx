@@ -578,14 +578,15 @@ const Budgets = () => {
                             {chartData.map((item, i) => {
                               const pct = chartTotal > 0 ? Math.round((item.value / chartTotal) * 100) : 0;
                               const isActive = activeIndex === i;
-                              return (
+                                  const isOver = item.spent > item.value && item.name !== '💡 Restant à budgéter';
+                                  return (
                                 <div
                                   key={i}
-                                  className="flex items-center gap-3 text-xs rounded-xl px-3 py-2.5 cursor-pointer transition-all duration-200"
+                                  className={`flex items-center gap-3 text-xs rounded-xl px-3 py-2.5 cursor-pointer transition-all duration-200 ${isOver ? 'ring-1 ring-destructive/40' : ''}`}
                                   style={{
-                                    backgroundColor: isActive ? `${item.color}18` : undefined,
+                                    backgroundColor: isActive ? (isOver ? '#ef444418' : `${item.color}18`) : (isOver ? '#ef44440a' : undefined),
                                     opacity: activeIndex === null || isActive ? 1 : 0.4,
-                                    borderLeft: isActive ? `3px solid ${item.color}` : '3px solid transparent',
+                                    borderLeft: isOver ? '3px solid #ef4444' : (isActive ? `3px solid ${item.color}` : '3px solid transparent'),
                                     transform: isActive ? 'translateX(2px)' : 'none',
                                   }}
                                   onMouseEnter={() => setHoveredSlice(i)}
@@ -594,29 +595,39 @@ const Budgets = () => {
                                   <div
                                     className="w-3.5 h-3.5 rounded-md shrink-0"
                                     style={{
-                                      backgroundColor: item.color,
-                                      boxShadow: isActive ? `0 0 8px ${item.color}60` : `0 1px 2px ${item.color}30`,
+                                      backgroundColor: isOver ? '#ef4444' : item.color,
+                                      boxShadow: isActive ? `0 0 8px ${isOver ? '#ef4444' : item.color}60` : `0 1px 2px ${isOver ? '#ef4444' : item.color}30`,
                                     }}
                                   />
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between mb-1">
-                                      <span className="font-medium text-foreground truncate">{item.name}</span>
+                                      <div className="flex items-center gap-1.5 truncate">
+                                        <span className="font-medium text-foreground truncate">{item.name}</span>
+                                        {isOver && <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />}
+                                      </div>
                                       <span className="font-mono-amount font-semibold text-foreground shrink-0 ml-2">{pct}%</span>
                                     </div>
                                     {item.value > 0 && item.spent !== undefined && item.name !== '💡 Restant à budgéter' ? (
-                                      <div className="flex items-center gap-2">
-                                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                                          <div
-                                            className="h-full rounded-full transition-all duration-300"
-                                            style={{
-                                              width: `${Math.min((item.spent / item.value) * 100, 100)}%`,
-                                              backgroundColor: item.spent > item.value ? '#ef4444' : item.color,
-                                            }}
-                                          />
+                                      <div className="space-y-0.5">
+                                        <div className="flex items-center gap-2">
+                                          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                                            <div
+                                              className="h-full rounded-full transition-all duration-300"
+                                              style={{
+                                                width: `${Math.min((item.spent / item.value) * 100, 100)}%`,
+                                                backgroundColor: isOver ? '#ef4444' : item.color,
+                                              }}
+                                            />
+                                          </div>
+                                          <span className={`font-mono-amount text-[10px] shrink-0 ${isOver ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
+                                            {formatAmount(item.spent)} / {formatAmount(item.value)}
+                                          </span>
                                         </div>
-                                        <span className="font-mono-amount text-[10px] text-muted-foreground shrink-0">
-                                          {formatAmount(item.spent)} / {formatAmount(item.value)}
-                                        </span>
+                                        {isOver && (
+                                          <p className="text-[10px] text-destructive font-medium">
+                                            ⚠️ Dépassement de {formatAmount(item.spent - item.value)}
+                                          </p>
+                                        )}
                                       </div>
                                     ) : (
                                       <span className="font-mono-amount text-[10px] text-muted-foreground">{formatAmount(item.value)}</span>
