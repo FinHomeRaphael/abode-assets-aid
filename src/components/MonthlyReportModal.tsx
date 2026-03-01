@@ -991,7 +991,8 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                     };
                     const totalRemaining = scopedDebts.reduce((s, d) => s + convertToMain(getDebtRemaining(d), d.currency), 0);
                     const totalMonthly = scopedDebts.reduce((s, d) => s + convertToMain(getDebtMonthlyPayment(d), d.currency), 0);
-                    const debtRatio = income > 0 ? (totalMonthly / income * 100) : 0;
+                    const totalPayments = reportPeriod === 'yearly' ? totalMonthly * 12 : totalMonthly;
+                    const debtRatio = income > 0 ? (totalPayments / income * 100) : 0;
                     const ltvDebts = scopedDebts.filter(d => d.mortgage_system === 'swiss' && d.property_value);
                     return (
                       <div className="bg-primary/8 border border-primary/15 rounded-xl p-3 space-y-2">
