@@ -21,7 +21,6 @@ function generateReportAdvice(
   income: number,
   expenses: number,
   savings: number,
-  savingsGoals: { name: string; emoji: string; target: number; saved: number; targetDate?: string }[],
   overBudgets: { category: string; emoji: string }[],
   currency: string,
   prevIncome: number,
@@ -35,16 +34,16 @@ function generateReportAdvice(
   if (overBudgets.length > 0) {
     parts.push(`⚠️ ${overBudgets.length} budget(s) dépassé(s) : ${overBudgets.map(b => `${b.emoji} ${b.category}`).join(', ')}.`);
   } else {
-    parts.push(`✅ Tous vos budgets sont respectés ce mois-ci.`);
+    parts.push(`✅ Tous vos budgets sont respectés.`);
   }
 
   // Expense trend
   if (prevExpenses > 0) {
     const diff = ((expenses - prevExpenses) / prevExpenses) * 100;
     if (diff > 5) {
-      parts.push(`📈 Vos dépenses ont augmenté de ${diff.toFixed(0)}% vs le mois dernier.`);
+      parts.push(`📈 Vos dépenses ont augmenté de ${diff.toFixed(0)}% vs la période précédente.`);
     } else if (diff < -5) {
-      parts.push(`📉 Vos dépenses ont baissé de ${Math.abs(diff).toFixed(0)}% vs le mois dernier. Bravo !`);
+      parts.push(`📉 Vos dépenses ont baissé de ${Math.abs(diff).toFixed(0)}% vs la période précédente. Bravo !`);
     }
   }
 
@@ -57,15 +56,6 @@ function generateReportAdvice(
     } else if (savingsRate > 0) {
       parts.push(`💡 Taux d'épargne de ${savingsRate.toFixed(0)}%. Essayez d'atteindre au moins 10%.`);
     }
-  }
-
-  // Goal projection
-  const goalsWithDate = savingsGoals.filter(g => g.targetDate && g.saved < g.target);
-  if (goalsWithDate.length > 0 && savings > 0) {
-    const g = goalsWithDate[0];
-    const remaining = g.target - g.saved;
-    const monthsToGoal = Math.ceil(remaining / savings);
-    parts.push(`🎯 À ce rythme, ${g.emoji} "${g.name}" sera atteint dans ~${monthsToGoal} mois.`);
   }
 
   return parts.join(' ');
@@ -275,7 +265,7 @@ const AccountGroup = ({ label, total, accounts: accs, getBalance, getPrevBalance
 };
 
 const MonthlyReportModal = ({ open, onClose }: Props) => {
-  const { getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getMonthSavings, scopedSavingsGoals: savingsGoals, getGoalSaved, getActiveAccounts, scopedAccounts: accounts, scopedTransactions: allTransactions, householdId, financeScope, session } = useApp();
+  const { getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getMonthSavings, getActiveAccounts, scopedAccounts: accounts, scopedTransactions: allTransactions, householdId, financeScope, session } = useApp();
   const { formatAmount, currency } = useCurrency();
   const [month, setMonth] = useState(new Date());
   const [reportPeriod, setReportPeriod] = useState<'monthly' | 'yearly'>('monthly');
@@ -485,21 +475,22 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
     return total / months.length;
   }, [expenses, month, getTransactionsForMonth, epargneAccountIds]);
 
-  // Budgets
-  const monthlyBudgets = useMemo(() => getBudgetsForMonth(month).filter(b => b.period === 'monthly'), [getBudgetsForMonth, month]);
-  const overBudgets = useMemo(() => monthlyBudgets.filter(b => getBudgetSpent(b, month) > b.limit), [monthlyBudgets, getBudgetSpent, month]);
+  // Budgets - use yearly budgets for yearly mode
+  const periodBudgets = useMemo(() => {
+    const budgets = getBudgetsForMonth(month);
+    return budgets.filter(b => reportPeriod === 'yearly' ? b.period === 'yearly' : b.period === 'monthly');
+  }, [getBudgetsForMonth, month, reportPeriod]);
+  const overBudgets = useMemo(() => periodBudgets.filter(b => getBudgetSpent(b, month) > b.limit), [periodBudgets, getBudgetSpent, month]);
   const budgetUtilization = useMemo(() => {
-    if (monthlyBudgets.length === 0) return null;
-    const totalSpent = monthlyBudgets.reduce((s, b) => s + getBudgetSpent(b, month), 0);
-    const totalLimit = monthlyBudgets.reduce((s, b) => s + b.limit, 0);
+    if (periodBudgets.length === 0) return null;
+    const totalSpent = periodBudgets.reduce((s, b) => s + getBudgetSpent(b, month), 0);
+    const totalLimit = periodBudgets.reduce((s, b) => s + b.limit, 0);
     return totalLimit > 0 ? (totalSpent / totalLimit) * 100 : 0;
-  }, [monthlyBudgets, getBudgetSpent, month]);
+  }, [periodBudgets, getBudgetSpent, month]);
 
-  // Goals
-  const goalsData = useMemo(() => savingsGoals.map(g => ({ ...g, saved: getGoalSaved(g.id) })), [savingsGoals, getGoalSaved]);
 
   // AI advice
-  const aiAdvice = useMemo(() => generateReportAdvice(income, expenses, monthSavingsNet, goalsData, overBudgets, currency, prevIncome, prevExpenses), [income, expenses, monthSavingsNet, goalsData, overBudgets, currency, prevIncome, prevExpenses]);
+  const aiAdvice = useMemo(() => generateReportAdvice(income, expenses, monthSavingsNet, overBudgets, currency, prevIncome, prevExpenses), [income, expenses, monthSavingsNet, overBudgets, currency, prevIncome, prevExpenses]);
 
   const diffPct = (curr: number, prev: number) => prev === 0 ? null : ((curr - prev) / prev) * 100;
 
@@ -907,10 +898,10 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
 
 
             {/* ===== 7. BUDGETS ===== */}
-            {monthlyBudgets.length > 0 && (
+            {periodBudgets.length > 0 && (
               <CollapsibleSection title={`Budgets${budgetUtilization !== null ? ` (${budgetUtilization.toFixed(0)}% utilisé)` : ''}`} icon={Target}>
                 <div className="space-y-2">
-                  {monthlyBudgets.map(b => {
+                  {periodBudgets.map(b => {
                     const spent = getBudgetSpent(b, month);
                     const status = getBudgetStatus(spent, b.limit);
                     const pct = b.limit > 0 ? Math.min((spent / b.limit) * 100, 100) : 0;
@@ -944,41 +935,6 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
               </CollapsibleSection>
             )}
 
-            {/* ===== 8. OBJECTIFS D'ÉPARGNE ===== */}
-            {goalsData.length > 0 && (
-              <CollapsibleSection title="Objectifs d'épargne" icon={PiggyBank}>
-                <div className="space-y-2">
-                  {goalsData.map(g => {
-                    const pct = g.target > 0 ? Math.min((g.saved / g.target) * 100, 100) : 0;
-                    const remaining = g.target - g.saved;
-                    const timeRemaining = getTimeRemaining(g.targetDate);
-                    return (
-                      <div key={g.id} className="bg-secondary/30 rounded-xl p-3">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-sm font-medium">{g.emoji} {g.name}</span>
-                          <span className={`font-mono-amount text-xs font-bold ${pct >= 100 ? 'text-success' : 'text-primary'}`}>{Math.round(pct)}%</span>
-                        </div>
-                        <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-1.5">
-                          <div
-                            className={`h-full rounded-full transition-all ${pct >= 100 ? 'bg-success' : pct >= 60 ? 'bg-primary' : 'bg-warning'}`}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono-amount text-[11px] text-muted-foreground">{formatAmount(g.saved, g.currency)} / {formatAmount(g.target, g.currency)}</span>
-                          <span className="text-[10px] text-muted-foreground">{timeRemaining || 'Pas de date cible'}</span>
-                        </div>
-                        {remaining > 0 && monthSavingsNet > 0 && (
-                          <p className="text-[9px] text-muted-foreground mt-1">
-                            ~{Math.ceil(remaining / monthSavingsNet)} mois au rythme actuel
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </CollapsibleSection>
-            )}
 
             {/* ===== 9. DETTES ===== */}
             {(() => {
