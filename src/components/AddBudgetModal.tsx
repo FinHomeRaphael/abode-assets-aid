@@ -16,20 +16,22 @@ const AddBudgetModal = ({ open, onClose }: Props) => {
   const [period, setPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [alerts, setAlerts] = useState(true);
   const [isRecurring, setIsRecurring] = useState(true);
+  const isDebtCategory = category === 'Dettes';
 
   const handleCreate = () => {
     if (!category || !limit) { toast.error('Remplissez tous les champs'); return; }
     const now = new Date();
     const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const effectiveRecurring = isDebtCategory ? false : isRecurring;
     addBudget({
       category,
       limit: parseFloat(limit),
       period,
       emoji: CATEGORY_EMOJIS[category] || '📌',
       alertsEnabled: alerts,
-      recurring: isRecurring,
-      isRecurring,
-      monthYear: isRecurring ? undefined : monthYear,
+      recurring: effectiveRecurring,
+      isRecurring: effectiveRecurring,
+      monthYear: effectiveRecurring ? undefined : monthYear,
     });
     // silent
     onClose();
@@ -75,12 +77,18 @@ const AddBudgetModal = ({ open, onClose }: Props) => {
               </div>
             </div>
 
-            <label className="flex items-center gap-3 cursor-pointer">
-              <div className={`w-10 h-6 rounded-full transition-colors ${isRecurring ? 'bg-primary' : 'bg-muted'} relative`} onClick={() => setIsRecurring(!isRecurring)}>
-                <div className={`w-4 h-4 bg-card rounded-full absolute top-1 transition-transform ${isRecurring ? 'translate-x-5' : 'translate-x-1'}`} />
+            {isDebtCategory ? (
+              <div className="bg-muted/50 border border-border rounded-xl px-3 py-2">
+                <p className="text-xs text-muted-foreground">💡 Le budget Dettes s'adapte automatiquement chaque mois selon vos échéances. Il ne peut pas être récurrent.</p>
               </div>
-              <span className="text-sm">Récurrent chaque mois</span>
-            </label>
+            ) : (
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div className={`w-10 h-6 rounded-full transition-colors ${isRecurring ? 'bg-primary' : 'bg-muted'} relative`} onClick={() => setIsRecurring(!isRecurring)}>
+                  <div className={`w-4 h-4 bg-card rounded-full absolute top-1 transition-transform ${isRecurring ? 'translate-x-5' : 'translate-x-1'}`} />
+                </div>
+                <span className="text-sm">Récurrent chaque mois</span>
+              </label>
+            )}
 
             <label className="flex items-center gap-3 cursor-pointer">
               <div className={`w-10 h-6 rounded-full transition-colors ${alerts ? 'bg-primary' : 'bg-muted'} relative`} onClick={() => setAlerts(!alerts)}>
