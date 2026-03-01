@@ -15,12 +15,20 @@ import MoneyInput from '@/components/ui/money-input';
 interface Props {
   open: boolean;
   onClose: () => void;
+  defaultType?: 'income' | 'expense';
 }
 
-const AddTransactionModal = ({ open, onClose }: Props) => {
+const AddTransactionModal = ({ open, onClose, defaultType }: Props) => {
   const { addTransaction, household, customCategories, addCustomCategory, getActiveAccounts, currentUser } = useApp();
   const navigate = useNavigate();
-  const [type, setType] = useState<'income' | 'expense'>('expense');
+  const [type, setType] = useState<'income' | 'expense'>(defaultType || 'expense');
+
+  // Sync type with defaultType when modal opens
+  React.useEffect(() => {
+    if (open && defaultType) {
+      setType(defaultType);
+    }
+  }, [open, defaultType]);
   const [label, setLabel] = useState('');
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState(household.currency);
