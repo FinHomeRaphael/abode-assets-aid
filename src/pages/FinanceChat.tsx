@@ -485,7 +485,7 @@ Revenus: ${incomeCategories || 'Aucune'}`;
 
     // Score de santé faible
     if (healthScore.totalScore < 50) {
-      contextual.push({ emoji: '💊', text: `Mon score de santé est de ${healthScore.totalScore}/100, comment l'améliorer ?`, priority: 7 });
+      contextual.push({ emoji: '💊', text: `Mon score de santé financière est de ${healthScore.totalScore}/100, comment l'améliorer ?`, priority: 7 });
     }
 
     // Pas de revenus encore ce mois
