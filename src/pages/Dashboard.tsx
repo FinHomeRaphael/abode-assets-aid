@@ -229,6 +229,11 @@ const Dashboard = () => {
                       </span>
                     </div>
                   )}
+                  {monthSavingsNet > 0 && (
+                    <p className="text-[10px] text-success/80 italic py-0.5">
+                      ✅ Vous avez épargné {formatAmount(monthSavingsNet)} ce mois — bravo !
+                    </p>
+                  )}
                   <div className="flex items-center justify-between pt-2 mt-1 border-t-2 border-border">
                     <span className="text-xs font-bold">Solde</span>
                     <span className={`font-mono-amount text-xs font-bold ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
