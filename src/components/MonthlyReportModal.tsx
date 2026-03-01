@@ -1000,8 +1000,8 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                           <span className="font-mono-amount font-bold text-sm text-primary">{formatAmount(totalRemaining)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-[10px] text-muted-foreground">Mensualités totales</span>
-                          <span className="font-mono-amount text-[11px] text-muted-foreground">{formatAmount(totalMonthly)}/mois</span>
+                          <span className="text-[10px] text-muted-foreground">{reportPeriod === 'yearly' ? 'Annuités totales' : 'Mensualités totales'}</span>
+                          <span className="font-mono-amount text-[11px] text-muted-foreground">{formatAmount(reportPeriod === 'yearly' ? totalMonthly * 12 : totalMonthly)}/{reportPeriod === 'yearly' ? 'an' : 'mois'}</span>
                         </div>
                         {income > 0 && (
                           <div className="flex justify-between items-center">
@@ -1024,7 +1024,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                                   <div key={d.id} className="flex items-center justify-between">
                                     <span className="text-[10px] text-muted-foreground truncate flex-1">{debtEmoji} {d.name}</span>
                                     <span className="font-mono-amount text-[10px] text-foreground ml-2">
-                                      {formatAmount(converted)}/mois
+                                      {formatAmount(reportPeriod === 'yearly' ? converted * 12 : converted)}/{reportPeriod === 'yearly' ? 'an' : 'mois'}
                                     </span>
                                   </div>
                                 );
@@ -1032,8 +1032,8 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                             </div>
                             <div className="bg-secondary/40 rounded-lg p-2 space-y-0.5">
                               <div className="flex justify-between items-center">
-                                <span className="text-[10px] text-muted-foreground">Σ Mensualités</span>
-                                <span className="font-mono-amount text-[10px] font-semibold">{formatAmount(totalMonthly)}</span>
+                                <span className="text-[10px] text-muted-foreground">Σ {reportPeriod === 'yearly' ? 'Annuités' : 'Mensualités'}</span>
+                                <span className="font-mono-amount text-[10px] font-semibold">{formatAmount(reportPeriod === 'yearly' ? totalMonthly * 12 : totalMonthly)}</span>
                               </div>
                               <div className="flex justify-between items-center">
                                 <span className="text-[10px] text-muted-foreground">÷ Revenus {reportPeriod === 'monthly' ? 'du mois' : "de l'année"}</span>
