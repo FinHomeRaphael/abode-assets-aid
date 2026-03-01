@@ -54,14 +54,33 @@ const Budgets = () => {
     if (!householdId) return;
     const fetchDebtTotal = async () => {
       const userId = session?.user?.id;
-      let query = supabase.from('debts').select('*');
+      // Fetch schedules due this month
+      const now = new Date();
+      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+      // Fetch debts for scope filtering
+      let debtQuery = supabase.from('debts').select('id, currency');
       if (financeScope === 'personal') {
-        query = query.eq('scope', 'personal').eq('created_by', userId);
+        debtQuery = debtQuery.eq('scope', 'personal').eq('created_by', userId);
       } else {
-        query = query.eq('household_id', householdId).eq('scope', 'household');
+        debtQuery = debtQuery.eq('household_id', householdId).eq('scope', 'household');
       }
-      const { data } = await query;
-      if (!data || data.length === 0) { setDebtMonthlyTotal(0); return; }
+      const { data: debtsData } = await debtQuery;
+      if (!debtsData || debtsData.length === 0) { setDebtMonthlyTotal(0); return; }
+
+      const debtIds = debtsData.map((d: any) => d.id);
+      const debtCurrencyMap = new Map(debtsData.map((d: any) => [d.id, d.currency]));
+
+      const { data: schedules } = await supabase
+        .from('debt_schedules')
+        .select('debt_id, total_amount')
+        .in('debt_id', debtIds)
+        .gte('due_date', monthStart)
+        .lte('due_date', monthEnd);
+
+      if (!schedules || schedules.length === 0) { setDebtMonthlyTotal(0); return; }
 
       const baseCurrency = household.currency;
       const convert = (amount: number, from: string) => {
@@ -71,41 +90,10 @@ const Budgets = () => {
         return amount * (fromToEur / mainToEur);
       };
 
-      // Fetch next schedule rows for accurate amounts
-      const debtIds = data.map((d: any) => d.id);
-      const today = new Date().toISOString().split('T')[0];
-      const { data: schedules } = await supabase
-        .from('debt_schedules')
-        .select('*')
-        .in('debt_id', debtIds)
-        .in('status', ['prevu', 'ajuste'])
-        .gte('due_date', today)
-        .order('due_date', { ascending: true });
-
-      const nextScheduleMap = new Map<string, any>();
-      if (schedules) {
-        for (const s of schedules) {
-          if (!nextScheduleMap.has(s.debt_id)) nextScheduleMap.set(s.debt_id, s);
-        }
-      }
-
       let total = 0;
-      for (const d of data) {
-        const ppy = getPeriodsPerYear((d.payment_frequency || 'monthly') as PaymentFrequency);
-        const monthlyFactor = ppy / 12;
-        if (d.consumer_type === 'revolving') { total += convert(d.minimum_payment || 0, d.currency); continue; }
-        if (d.type === 'other' && d.has_schedule === false) continue;
-        const nextRow = nextScheduleMap.get(d.id);
-        if (nextRow) { total += convert(Number(nextRow.total_amount) * monthlyFactor, d.currency); continue; }
-        if (d.mortgage_system === 'swiss') {
-          const remaining = d.remaining_amount;
-          const interest = remaining * (d.interest_rate || 0) / 100 / ppy;
-          const amort = d.swiss_amortization_type !== 'none' && d.annual_amortization ? d.annual_amortization / ppy : 0;
-          const maint = d.include_maintenance && d.property_value ? d.property_value * 0.01 / ppy : 0;
-          total += convert((interest + amort + maint) * monthlyFactor, d.currency);
-          continue;
-        }
-        total += convert(Number(d.payment_amount) * monthlyFactor, d.currency);
+      for (const s of schedules) {
+        const cur = debtCurrencyMap.get(s.debt_id) || baseCurrency;
+        total += convert(Number(s.total_amount), cur);
       }
       setDebtMonthlyTotal(Math.round(total));
     };
