@@ -488,11 +488,12 @@ const Budgets = () => {
                       const budgetData = filteredBudgets.map((b, i) => ({
                         name: `${b.emoji} ${b.category}`,
                         value: b.limit,
+                        spent: getBudgetSpent(b),
                         color: COLORS[i % COLORS.length],
                       }));
                       const remaining = Math.max(remainingToBudget, 0);
                       const chartData = remaining > 0
-                        ? [...budgetData, { name: '💡 Restant à budgéter', value: remaining, color: '#d1d5db' }]
+                        ? [...budgetData, { name: '💡 Restant à budgéter', value: remaining, spent: 0, color: '#d1d5db' }]
                         : budgetData;
                       const chartTotal = chartData.reduce((s, d) => s + d.value, 0);
                       const activeIndex = hoveredSlice;
@@ -553,15 +554,21 @@ const Budgets = () => {
                             {/* Center label */}
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                               <div className="text-center">
-                                {activeIndex !== null ? (
+                                {activeIndex !== null && chartData[activeIndex].name !== '💡 Restant à budgéter' ? (
+                                  <>
+                                    <p className="text-[10px] text-muted-foreground max-w-[80px] truncate mx-auto">{chartData[activeIndex].name}</p>
+                                    <p className="text-sm font-bold font-mono-amount">{formatAmount(chartData[activeIndex].spent)}</p>
+                                    <p className="text-[9px] text-muted-foreground">sur {formatAmount(chartData[activeIndex].value)}</p>
+                                  </>
+                                ) : activeIndex !== null ? (
                                   <>
                                     <p className="text-lg font-bold font-mono-amount">{formatAmount(chartData[activeIndex].value)}</p>
-                                    <p className="text-[10px] text-muted-foreground max-w-[80px] truncate">{chartData[activeIndex].name}</p>
+                                    <p className="text-[10px] text-muted-foreground">Restant</p>
                                   </>
                                 ) : (
                                   <>
                                     <p className="text-lg font-bold font-mono-amount">{formatAmount(chartTotal)}</p>
-                                    <p className="text-[10px] text-muted-foreground">Total</p>
+                                    <p className="text-[10px] text-muted-foreground">Total budgété</p>
                                   </>
                                 )}
                               </div>
@@ -591,10 +598,29 @@ const Budgets = () => {
                                       boxShadow: isActive ? `0 0 8px ${item.color}60` : `0 1px 2px ${item.color}30`,
                                     }}
                                   />
-                                  <span className="font-medium text-foreground">{item.name}</span>
-                                  <div className="ml-auto flex items-center gap-2 shrink-0">
-                                    <span className="font-mono-amount text-muted-foreground">{formatAmount(item.value)}</span>
-                                    <span className="font-mono-amount font-semibold text-foreground w-8 text-right">{pct}%</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between mb-1">
+                                      <span className="font-medium text-foreground truncate">{item.name}</span>
+                                      <span className="font-mono-amount font-semibold text-foreground shrink-0 ml-2">{pct}%</span>
+                                    </div>
+                                    {item.value > 0 && item.spent !== undefined && item.name !== '💡 Restant à budgéter' ? (
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                                          <div
+                                            className="h-full rounded-full transition-all duration-300"
+                                            style={{
+                                              width: `${Math.min((item.spent / item.value) * 100, 100)}%`,
+                                              backgroundColor: item.spent > item.value ? '#ef4444' : item.color,
+                                            }}
+                                          />
+                                        </div>
+                                        <span className="font-mono-amount text-[10px] text-muted-foreground shrink-0">
+                                          {formatAmount(item.spent)} / {formatAmount(item.value)}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="font-mono-amount text-[10px] text-muted-foreground">{formatAmount(item.value)}</span>
+                                    )}
                                   </div>
                                 </div>
                               );
