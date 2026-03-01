@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PremiumGate } from '@/components/PremiumPaywall';
 import { formatLocalDate } from '@/utils/format';
 import { Debt, DEBT_TYPES, getDebtEmoji, estimateEndDate, getPeriodsPerYear } from '@/types/debt';
+import { useHealthScore } from '@/hooks/useHealthScore';
 
 type Msg = { role: 'user' | 'assistant'; content: string };
 
@@ -24,6 +25,7 @@ const FinanceChat = () => {
     getBudgetSpent, getGoalSaved, getMonthSavings, getTotalSavings,
     getBudgetsForMonth, householdId, accounts, scopedAccounts, getAccountBalance,
     getRecurringTransactions, financeScope, session,
+    customCategories, customAccountTypes, getGoalDeposits,
   } = useApp();
   const { formatAmount } = useCurrency();
   const { isPremium } = useSubscription(householdId, currentUser?.id);
@@ -57,6 +59,27 @@ const FinanceChat = () => {
     };
     fetchDebts();
   }, [householdId, financeScope, session?.user?.id]);
+
+  // Fetch debt schedules
+  const [debtSchedules, setDebtSchedules] = useState<{ debt_id: string; due_date: string; total_amount: number; principal_amount: number; interest_amount: number; capital_before: number; capital_after: number; status: string; period_number: number }[]>([]);
+  useEffect(() => {
+    if (!householdId) return;
+    supabase.from('debt_schedules').select('*').eq('household_id', householdId).order('due_date').then(({ data }) => {
+      if (data) setDebtSchedules(data);
+    });
+  }, [householdId]);
+
+  // Fetch health scores history
+  const [healthHistory, setHealthHistory] = useState<{ month_year: string; total_score: number; savings_rate_percent: number | null; debt_to_income_ratio: number | null; emergency_fund_months: number | null; budgets_respected_percent: number | null }[]>([]);
+  useEffect(() => {
+    if (!householdId) return;
+    supabase.from('health_scores').select('month_year, total_score, savings_rate_percent, debt_to_income_ratio, emergency_fund_months, budgets_respected_percent').eq('household_id', householdId).order('month_year', { ascending: false }).limit(6).then(({ data }) => {
+      if (data) setHealthHistory(data);
+    });
+  }, [householdId]);
+
+  // Current health score
+  const healthScore = useHealthScore();
 
   // Separate chat history per scope
   const chatStorageKey = useMemo(() => {
@@ -178,11 +201,48 @@ const FinanceChat = () => {
     // Périmètre actuel
     const scopeLabel = financeScope === 'personal' ? 'Personnel' : 'Foyer';
 
+    // Categories available
+    const expenseCategories = customCategories.filter(c => c.type === 'expense').map(c => `${c.emoji} ${c.name}`).join(', ');
+    const incomeCategories = customCategories.filter(c => c.type === 'income').map(c => `${c.emoji} ${c.name}`).join(', ');
+
+    // Savings deposits details
+    const depositLines = savingsGoals.map(g => {
+      const deposits = getGoalDeposits(g.id);
+      if (deposits.length === 0) return null;
+      const recentDeposits = deposits.sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5)
+        .map(d => `  - ${d.date}: ${formatAmount(d.amount, g.currency)}`).join('\n');
+      return `${g.emoji} ${g.name}:\n${recentDeposits}`;
+    }).filter(Boolean).join('\n');
+
+    // Debt schedules (upcoming payments)
+    const nowStr = formatLocalDate(now);
+    const upcomingSchedules = debtSchedules
+      .filter(s => s.due_date >= nowStr && s.status === 'prevu')
+      .slice(0, 12);
+    const scheduleLines = upcomingSchedules.map(s => {
+      const debt = debts.find(d => d.id === s.debt_id);
+      return `- ${debt?.name || '?'}: ${s.due_date} — ${formatAmount(s.total_amount)} (capital: ${formatAmount(s.principal_amount)}, intérêts: ${formatAmount(s.interest_amount)}, restant après: ${formatAmount(s.capital_after)})`;
+    }).join('\n');
+
+    // Health score
+    const healthLines = healthScore.criteria.map(c => `- ${c.label}: ${c.score}/20 — ${c.details}`).join('\n');
+    const healthHistoryLines = healthHistory.map(h => `- ${h.month_year}: ${h.total_score}/100`).join('\n');
+
+    // Monthly savings target
+    const savingsTarget = household.monthlySavingsTarget;
+
+    // 2 months before for trend
+    const twoMonthsAgo = new Date(now); twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    const twoMonthsAgoTx = getTransactionsForMonth(twoMonthsAgo);
+    const twoMonthsAgoExpense = twoMonthsAgoTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
+    const twoMonthsAgoIncome = twoMonthsAgoTx.filter(t => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
+
     return `Utilisateur: ${currentUser?.name || 'Inconnu'}
 Foyer: ${household.name} (${household.members.length} membre(s))
 Devise principale: ${household.currency}
 Périmètre actuel: ${scopeLabel}
 Plan: ${household.plan}
+${savingsTarget ? `Objectif d'épargne mensuel: ${formatAmount(savingsTarget)}` : ''}
 
 --- MEMBRES DU FOYER ---
 ${memberLines || 'Aucun membre'}
@@ -198,6 +258,10 @@ Revenus: +${formatAmount(prevIncome)}
 Dépenses: -${formatAmount(prevExpense)}
 Évolution dépenses: ${prevExpense > 0 ? `${totalExpense > prevExpense ? '📈 +' : '📉 -'}${Math.abs(Math.round(((totalExpense - prevExpense) / prevExpense) * 100))}%` : 'N/A'}
 
+--- IL Y A 2 MOIS (${twoMonthsAgo.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}) ---
+Revenus: +${formatAmount(twoMonthsAgoIncome)}
+Dépenses: -${formatAmount(twoMonthsAgoExpense)}
+
 --- SOURCES DE REVENUS ---
 ${topIncome || 'Aucun revenu'}
 
@@ -211,6 +275,9 @@ ${budgetLines || 'Aucun budget défini'}
 ${goalLines || 'Aucun objectif'}
 Épargne totale cumulée: ${formatAmount(totalSavings)}
 
+--- DERNIERS VERSEMENTS D'ÉPARGNE ---
+${depositLines || 'Aucun versement récent'}
+
 --- COMPTES BANCAIRES ---
 ${accountLines || 'Aucun compte'}
 ${activeAccounts.length > 0 ? `Solde total tous comptes: ${totalAccountBalance >= 0 ? '+' : '-'}${formatAmount(Math.abs(totalAccountBalance))}` : ''}
@@ -221,14 +288,27 @@ ${debts.length > 0 ? `Total restant dû: -${formatAmount(totalDebtRemaining)}
 Total remboursé: ${formatAmount(totalRepaid)}
 Mensualités totales: -${formatAmount(totalDebtPayment)}` : ''}
 
+--- PROCHAINES ÉCHÉANCES DE DETTES ---
+${scheduleLines || 'Aucune échéance à venir'}
+
 --- TRANSACTIONS RÉCURRENTES ---
 ${recurringLines || 'Aucune transaction récurrente'}
 
 --- TRANSACTIONS RÉCENTES ---
 ${recentTx || 'Aucune transaction'}
 
-Nombre total de transactions ce mois: ${monthTx.length}`;
-  }, [transactions, budgets, savingsGoals, savingsDeposits, household, currentUser, getTransactionsForMonth, getBudgetSpent, getGoalSaved, getMonthSavings, getTotalSavings, getBudgetsForMonth, formatAmount, debts, scopedAccounts, getAccountBalance, getRecurringTransactions, financeScope]);
+Nombre total de transactions ce mois: ${monthTx.length}
+
+--- SCORE DE SANTÉ FINANCIÈRE (${healthScore.totalScore}/100) ---
+${healthLines || 'Non calculé'}
+
+--- HISTORIQUE DES SCORES ---
+${healthHistoryLines || 'Aucun historique'}
+
+--- CATÉGORIES DISPONIBLES ---
+Dépenses: ${expenseCategories || 'Aucune'}
+Revenus: ${incomeCategories || 'Aucune'}`;
+  }, [transactions, budgets, savingsGoals, savingsDeposits, household, currentUser, getTransactionsForMonth, getBudgetSpent, getGoalSaved, getGoalDeposits, getMonthSavings, getTotalSavings, getBudgetsForMonth, formatAmount, debts, debtSchedules, scopedAccounts, getAccountBalance, getRecurringTransactions, financeScope, customCategories, healthScore, healthHistory]);
 
   const checkAiLimit = useCallback(async (): Promise<boolean> => {
     return true;
