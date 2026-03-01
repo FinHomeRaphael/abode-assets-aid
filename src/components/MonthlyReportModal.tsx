@@ -802,7 +802,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                         </div>
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-[200px] text-center">
-                        <p className="text-xs">Moyenne mensuelle de vos dépenses sur les 3 derniers mois (mois en cours + 2 mois précédents).</p>
+                        <p className="text-xs">Moyenne {reportPeriod === 'monthly' ? 'mensuelle de vos dépenses sur les 3 derniers mois (mois en cours + 2 mois précédents)' : 'annuelle de vos dépenses'}.</p>
                       </TooltipContent>
                     </UiTooltip>
                   </TooltipProvider>
@@ -874,8 +874,8 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
               </CollapsibleSection>
             )}
 
-            {/* ===== COMPARAISON M-1 ===== */}
-            <CollapsibleSection title="Comparaison vs mois précédent" icon={BarChart3}>
+            {/* ===== COMPARAISON ===== */}
+            <CollapsibleSection title={`Comparaison vs ${reportPeriod === 'monthly' ? 'mois précédent' : 'année précédente'}`} icon={BarChart3}>
               <div className="bg-secondary/30 rounded-2xl p-4">
                 <div className="h-40">
                   <ResponsiveContainer width="100%" height="100%">
@@ -884,10 +884,10 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                       <XAxis dataKey="name" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
                       <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} width={50} tickFormatter={v => formatAmount(v)} />
                       <RechartsTooltip formatter={(val: number) => formatAmount(val)} />
-                      <Bar dataKey="previous" name="Mois précédent" radius={[4, 4, 0, 0]} opacity={0.3}>
+                      <Bar dataKey="previous" name={reportPeriod === 'monthly' ? 'Mois précédent' : 'Année précédente'} radius={[4, 4, 0, 0]} opacity={0.3}>
                         {comparisonData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                       </Bar>
-                      <Bar dataKey="current" name="Ce mois" radius={[4, 4, 0, 0]}>
+                      <Bar dataKey="current" name={reportPeriod === 'monthly' ? 'Ce mois' : 'Cette année'} radius={[4, 4, 0, 0]}>
                         {comparisonData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                       </Bar>
                     </BarChart>
