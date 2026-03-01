@@ -131,6 +131,28 @@ const Budgets = () => {
   const remainingToBudget = availableAfterSavings - totalBudgeted;
   const budgetPercentage = availableAfterSavings > 0 ? Math.min((totalBudgeted / availableAfterSavings) * 100, 100) : 0;
 
+  // === 3-month average spending per category ===
+  const avg3MonthByCategory = useMemo(() => {
+    const map = new Map<string, number[]>();
+    for (let offset = 0; offset < 3; offset++) {
+      const d = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - offset, 1);
+      const txMonth = getTransactionsForMonth(d);
+      const catTotals = new Map<string, number>();
+      txMonth.filter(t => t.type === 'expense' && t.category !== 'Transfert').forEach(t => {
+        catTotals.set(t.category, (catTotals.get(t.category) || 0) + t.convertedAmount);
+      });
+      catTotals.forEach((total, cat) => {
+        if (!map.has(cat)) map.set(cat, []);
+        map.get(cat)!.push(total);
+      });
+    }
+    const result = new Map<string, number>();
+    map.forEach((values, cat) => {
+      result.set(cat, Math.round(values.reduce((a, b) => a + b, 0) / values.length));
+    });
+    return result;
+  }, [currentMonth, getTransactionsForMonth]);
+
   // === Categories without budget ===
   const allExpenseCategories = useMemo(() => {
     const base = [...EXPENSE_CATEGORIES];
@@ -148,11 +170,15 @@ const Budgets = () => {
         catSpent.set(t.category, (catSpent.get(t.category) || 0) + t.convertedAmount);
       }
     });
-    // Épargne is handled separately via savings deduction, not as a budget category
     return Array.from(catSpent.entries())
       .sort((a, b) => b[1] - a[1])
-      .map(([cat, spent]) => ({ category: cat, spent, emoji: CATEGORY_EMOJIS[cat] || '📌' }));
-  }, [monthTx, budgetedCategories, monthSavingsAmount]);
+      .map(([cat, spent]) => ({
+        category: cat,
+        spent,
+        emoji: CATEGORY_EMOJIS[cat] || '📌',
+        suggestedBudget: avg3MonthByCategory.get(cat) || Math.round(spent),
+      }));
+  }, [monthTx, budgetedCategories, monthSavingsAmount, avg3MonthByCategory]);
 
   // === Available categories for create modal (exclude already budgeted) ===
   const availableCategories = allExpenseCategories.filter(c => !budgetedCategories.has(c));
@@ -181,9 +207,9 @@ const Budgets = () => {
     setNewLimit('');
   };
 
-  const handleCreateFromSuggestion = (category: string) => {
+  const handleCreateFromSuggestion = (category: string, suggestedAmount?: number) => {
     setNewCategory(category);
-    setNewLimit('');
+    setNewLimit(suggestedAmount ? String(suggestedAmount) : '');
     setShowCreate(true);
   };
 
@@ -647,26 +673,39 @@ const Budgets = () => {
           </div>
         )}
 
-        {/* Section 4: Categories without budget */}
+        {/* Section 4: Categories without budget — Smart suggestions */}
         {categoriesWithoutBudget.length > 0 && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-warning" />
-              <h2 className="text-base font-bold">Catégories sans budget</h2>
+              <Lightbulb className="w-4 h-4 text-primary" />
+              <h2 className="text-base font-bold">Suggestions de budget</h2>
             </div>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Basées sur vos dépenses moyennes des 3 derniers mois
+            </p>
             <div className="space-y-2">
-              {categoriesWithoutBudget.map(({ category, spent, emoji }) => (
-                <div key={category} className="bg-card border border-border rounded-xl px-4 py-3 flex items-center justify-between">
-                  <div>
-                    <span className="text-sm font-medium">{emoji} {category}</span>
-                    <p className="text-xs text-muted-foreground">Dépensé : <span className="font-mono-amount">{formatAmount(spent)}</span></p>
+              {categoriesWithoutBudget.map(({ category, spent, emoji, suggestedBudget }) => (
+                <div key={category} className="bg-card border border-border rounded-xl px-4 py-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium">{emoji} {category}</span>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <p className="text-xs text-muted-foreground">
+                          Ce mois : <span className="font-mono-amount font-medium text-foreground">{formatAmount(spent)}</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Moy. 3 mois : <span className="font-mono-amount font-medium text-primary">{formatAmount(suggestedBudget)}</span>
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleCreateFromSuggestion(category, suggestedBudget)}
+                      className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shrink-0 flex items-center gap-1.5"
+                    >
+                      <Target className="w-3 h-3" />
+                      {formatAmount(suggestedBudget)}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleCreateFromSuggestion(category)}
-                    className="h-7 px-3 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
-                  >
-                    Créer un budget
-                  </button>
                 </div>
               ))}
             </div>
