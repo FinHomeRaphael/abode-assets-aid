@@ -62,19 +62,26 @@ const Budgets = () => {
   }, [incomeTransactions]);
 
   // === Budget calculations ===
-  // === Savings tracking (transfers to epargne/pilier3a accounts) ===
+  // === Savings tracking (same logic as Transactions page) ===
   const savingsAccountIds = useMemo(() => {
     return new Set(accounts.filter(a => (a.type === 'epargne' || a.type === 'pilier3a') && !a.isArchived).map(a => a.id));
   }, [accounts]);
 
-  const transferIdRegex = /\[?Transfert\s+#([^\]\s]+)\]?/i;
+  const isSavingsTx = (t: typeof monthTx[0]) => !!(t.accountId && savingsAccountIds.has(t.accountId));
 
+  const monthSavingsNet = useMemo(() => {
+    const savingsTransferIn = monthTx.filter(t => t.type === 'income' && isSavingsTx(t) && t.category === 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+    const savingsTransferOut = monthTx.filter(t => t.type === 'expense' && isSavingsTx(t) && t.category === 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+    const savingsDirectIncome = monthTx.filter(t => t.type === 'income' && isSavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+    const savingsDirectExpenses = monthTx.filter(t => t.type === 'expense' && isSavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+    return (savingsTransferIn + savingsDirectIncome) - (savingsTransferOut + savingsDirectExpenses);
+  }, [monthTx, savingsAccountIds]);
+
+  // monthSavingsAmount for Épargne budget tracking (income side only)
   const monthSavingsAmount = useMemo(() => {
-    // Sum of income transactions on savings accounts that are transfers (= money flowing into savings)
-    const savingsIncome = monthTx
+    return monthTx
       .filter(t => t.type === 'income' && t.accountId && savingsAccountIds.has(t.accountId) && t.category === 'Transfert')
       .reduce((s, t) => s + t.convertedAmount, 0);
-    return savingsIncome;
   }, [monthTx, savingsAccountIds]);
 
   const EPARGNE_CATEGORY = 'Épargne';
@@ -91,8 +98,11 @@ const Budgets = () => {
     return filteredBudgets.reduce((s, b) => s + b.limit, 0);
   }, [filteredBudgets]);
 
-  const remainingToBudget = totalIncome - totalBudgeted;
-  const budgetPercentage = totalIncome > 0 ? Math.min((totalBudgeted / totalIncome) * 100, 100) : 0;
+  // Available to budget = income - abs(savings net) - budgeted
+  const totalSavingsDeducted = Math.abs(monthSavingsNet);
+  const availableAfterSavings = totalIncome - totalSavingsDeducted;
+  const remainingToBudget = availableAfterSavings - totalBudgeted;
+  const budgetPercentage = availableAfterSavings > 0 ? Math.min((totalBudgeted / availableAfterSavings) * 100, 100) : 0;
 
   // === Categories without budget ===
   const allExpenseCategories = useMemo(() => {
@@ -264,6 +274,21 @@ const Budgets = () => {
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Total revenus</span>
             <span className="font-mono-amount font-medium text-foreground">{formatAmount(totalIncome)}</span>
+          </div>
+
+          {/* Total épargné */}
+          {monthSavingsNet !== 0 && (
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>🐖 Total épargné</span>
+              <span className={`font-mono-amount font-medium ${monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'}`}>
+                {monthSavingsNet >= 0 ? '-' : '+'}{formatAmount(totalSavingsDeducted)}
+              </span>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Disponible à budgéter</span>
+            <span className="font-mono-amount font-medium text-foreground">{formatAmount(availableAfterSavings)}</span>
           </div>
 
           <div>
