@@ -154,7 +154,7 @@ const Dashboard = () => {
   const totalExpense = monthTx.filter(t => t.type === 'expense' && !isAnySavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
   const monthSavings = monthSavingsNet;
   const totalSavings = getTotalSavings();
-  const balance = totalIncome - totalExpense - monthSavingsNet;
+  const balance = totalIncome - totalExpense - Math.abs(monthSavingsNet);
 
   const prevMonth = new Date(now);
   prevMonth.setMonth(prevMonth.getMonth() - 1);
@@ -225,7 +225,7 @@ const Dashboard = () => {
                     <div className="flex items-center justify-between py-1">
                       <span className="text-xs flex items-center gap-1.5">🏦 Épargne nette</span>
                       <span className={`font-mono-amount text-xs font-semibold ${monthSavingsNet > 0 ? 'text-success' : 'text-destructive'}`}>
-                        {monthSavingsNet > 0 ? '-' : '+'}{formatAmount(Math.abs(monthSavingsNet))}
+                        -{formatAmount(Math.abs(monthSavingsNet))}
                       </span>
                     </div>
                   )}
