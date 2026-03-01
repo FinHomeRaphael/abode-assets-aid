@@ -560,20 +560,13 @@ const Debts = () => {
                   ) : (
                     <>
                       <div className="h-1 bg-muted rounded-full overflow-hidden mb-1.5">
-                        {d.mortgageSystem === 'swiss' && d.propertyValue ? (
-                          <div className={`h-full rounded-full transition-all ${
-                            (remaining / d.propertyValue) <= 0.65 ? 'bg-success' : (remaining / d.propertyValue) <= 0.80 ? 'bg-primary' : 'bg-warning'
-                          }`} style={{ width: `${Math.min((1 - remaining / d.propertyValue) * 100, 100)}%` }} />
-                        ) : (
-                          <div className={`h-full rounded-full transition-all ${repaidPct >= 100 ? 'bg-success' : repaidPct >= 50 ? 'bg-primary' : 'bg-warning'}`} style={{ width: `${repaidPct}%` }} />
-                        )}
+                        <div className={`h-full rounded-full transition-all ${repaidPct >= 100 ? 'bg-success' : repaidPct >= 50 ? 'bg-primary' : 'bg-warning'}`} style={{ width: `${repaidPct}%` }} />
                       </div>
                       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                        <span className="font-mono-amount">{formatAmountWithCurrency(remaining, d.currency)} restant{d.mortgageSystem === 'swiss' && d.propertyValue ? ` / ${formatAmountWithCurrency(d.propertyValue, d.currency)}` : ` / ${formatAmountWithCurrency(d.initialAmount, d.currency)}`}</span>
+                        <span className="font-mono-amount">{formatAmountWithCurrency(remaining, d.currency)} restant / {formatAmountWithCurrency(d.initialAmount, d.currency)}</span>
                         <span className="font-mono-amount">
-                          {d.mortgageSystem === 'swiss' && d.propertyValue
-                            ? `LTV ${Math.round((remaining / d.propertyValue) * 100)}%`
-                            : `${Math.round(repaidPct)}%`}
+                          {Math.round(repaidPct)}% remboursé
+                          {d.mortgageSystem === 'swiss' && d.propertyValue ? ` · LTV ${Math.round((remaining / d.propertyValue) * 100)}%` : ''}
                         </span>
                       </div>
                       
