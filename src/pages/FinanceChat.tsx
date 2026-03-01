@@ -444,12 +444,96 @@ Revenus: ${incomeCategories || 'Aucune'}`;
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   };
 
-  const suggestions = [
-    'Comment optimiser mes dépenses ?',
-    'Analyse mon budget du mois',
-    'Combien je peux mettre de côté ?',
-    'Quelles sont mes plus grosses dépenses ?',
-  ];
+  const suggestions = useMemo(() => {
+    const now = new Date();
+    const monthTx = getTransactionsForMonth(now);
+    const totalIncome = monthTx.filter(t => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
+    const totalExpense = monthTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
+    const monthBudgets = getBudgetsForMonth(now);
+
+    const contextual: { emoji: string; text: string; priority: number }[] = [];
+
+    // Budgets dépassés
+    const overBudgets = monthBudgets.filter(b => {
+      const spent = getBudgetSpent(b, now);
+      return spent > b.limit;
+    });
+    if (overBudgets.length > 0) {
+      const names = overBudgets.map(b => b.category).join(', ');
+      contextual.push({ emoji: '🔴', text: `J'ai dépassé mon budget ${names}, que faire ?`, priority: 10 });
+    }
+
+    // Budgets en alerte (>80%)
+    const warningBudgets = monthBudgets.filter(b => {
+      const spent = getBudgetSpent(b, now);
+      const ratio = spent / b.limit;
+      return ratio > 0.8 && ratio <= 1;
+    });
+    if (warningBudgets.length > 0) {
+      contextual.push({ emoji: '🟡', text: `Mon budget ${warningBudgets[0].category} est presque épuisé, des conseils ?`, priority: 8 });
+    }
+
+    // Échéances proches (dans les 7 jours)
+    const nowStr = formatLocalDate(now);
+    const weekLater = new Date(now); weekLater.setDate(weekLater.getDate() + 7);
+    const weekStr = formatLocalDate(weekLater);
+    const upcomingPayments = debtSchedules.filter(s => s.due_date >= nowStr && s.due_date <= weekStr && s.status === 'prevu');
+    if (upcomingPayments.length > 0) {
+      const totalDue = upcomingPayments.reduce((s, p) => s + p.total_amount, 0);
+      contextual.push({ emoji: '📅', text: `J'ai ${formatAmount(totalDue)} d'échéances cette semaine, suis-je prêt ?`, priority: 9 });
+    }
+
+    // Score de santé faible
+    if (healthScore.totalScore < 50) {
+      contextual.push({ emoji: '💊', text: `Mon score de santé est de ${healthScore.totalScore}/100, comment l'améliorer ?`, priority: 7 });
+    }
+
+    // Pas de revenus encore ce mois
+    if (totalIncome === 0 && now.getDate() > 5) {
+      contextual.push({ emoji: '⚠️', text: `Aucun revenu enregistré ce mois, est-ce normal ?`, priority: 6 });
+    }
+
+    // Dépenses élevées vs revenus
+    if (totalIncome > 0 && totalExpense > totalIncome * 0.9) {
+      contextual.push({ emoji: '📈', text: `Mes dépenses atteignent ${Math.round(totalExpense / totalIncome * 100)}% de mes revenus, que faire ?`, priority: 8 });
+    }
+
+    // Objectif d'épargne
+    const savingsTarget = household.monthlySavingsTarget;
+    const monthSavings = getMonthSavings(now);
+    if (savingsTarget && monthSavings < savingsTarget) {
+      contextual.push({ emoji: '🎯', text: `Comment atteindre mon objectif d'épargne de ${formatAmount(savingsTarget)} ce mois ?`, priority: 5 });
+    }
+
+    // Objectifs d'épargne proches de l'objectif
+    const nearGoals = savingsGoals.filter(g => {
+      const saved = getGoalSaved(g.id);
+      return g.target > 0 && saved / g.target >= 0.9 && saved < g.target;
+    });
+    if (nearGoals.length > 0) {
+      contextual.push({ emoji: '🏁', text: `Mon objectif "${nearGoals[0].name}" est presque atteint, et après ?`, priority: 4 });
+    }
+
+    // Trier par priorité et prendre les 2 meilleurs
+    contextual.sort((a, b) => b.priority - a.priority);
+    const dynamic = contextual.slice(0, 2).map(c => `${c.emoji} ${c.text}`);
+
+    // Suggestions par défaut
+    const defaults = [
+      'Analyse mon budget du mois',
+      'Combien je peux mettre de côté ?',
+      'Quelles sont mes plus grosses dépenses ?',
+      'Comment optimiser mes finances ?',
+    ];
+
+    // Combiner: contextuelles d'abord, puis compléter avec les défauts
+    const result = [...dynamic];
+    for (const d of defaults) {
+      if (result.length >= 4) break;
+      result.push(d);
+    }
+    return result;
+  }, [getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, debtSchedules, healthScore, savingsGoals, getGoalSaved, household, getMonthSavings, formatAmount]);
 
   return (
     <>
