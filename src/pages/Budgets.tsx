@@ -66,8 +66,9 @@ const Budgets = () => {
       const baseCurrency = household.currency;
       const convert = (amount: number, from: string) => {
         if (from === baseCurrency) return amount;
-        const rate = DEFAULT_EXCHANGE_RATES[`${from}_${baseCurrency}`] || 1;
-        return amount * rate;
+        const fromToEur = DEFAULT_EXCHANGE_RATES[from] || 1;
+        const mainToEur = DEFAULT_EXCHANGE_RATES[baseCurrency] || 1;
+        return amount * (fromToEur / mainToEur);
       };
 
       // Fetch next schedule rows for accurate amounts
