@@ -255,15 +255,17 @@ const Budgets = () => {
 
   const handleCreate = () => {
     if (!newCategory || !newLimit) { toast.error('Remplissez tous les champs'); return; }
-    const monthYear = newIsRecurring ? undefined : currentMonthYear;
+    const isDebt = newCategory === 'Dettes';
+    const effectiveRecurring = isDebt ? false : newIsRecurring;
+    const monthYear = effectiveRecurring ? undefined : currentMonthYear;
     addBudget({
       category: newCategory,
       limit: parseFloat(newLimit),
       period: 'monthly',
       emoji: CATEGORY_EMOJIS[newCategory] || '📌',
       alertsEnabled: newAlerts,
-      recurring: newIsRecurring,
-      isRecurring: newIsRecurring,
+      recurring: effectiveRecurring,
+      isRecurring: effectiveRecurring,
       monthYear,
       startMonth: currentMonthYear,
     });
@@ -855,14 +857,20 @@ const Budgets = () => {
                     </div>
                   )}
 
-                  <div>
-                    <label className="block text-xs font-medium mb-1">Type</label>
-                    <div className="flex gap-2">
-                      <button onClick={() => setNewIsRecurring(true)} className={`flex-1 py-2 rounded-xl border text-sm font-medium transition-all ${newIsRecurring ? 'border-primary bg-primary/5 text-primary' : 'border-border/30 bg-secondary/20 hover:bg-secondary/40'}`}>🔄 Récurrent</button>
-                      <button onClick={() => setNewIsRecurring(false)} className={`flex-1 py-2 rounded-xl border text-sm font-medium transition-all ${!newIsRecurring ? 'border-primary bg-primary/5 text-primary' : 'border-border/30 bg-secondary/20 hover:bg-secondary/40'}`}>📌 Ponctuel</button>
+                  {newCategory === 'Dettes' ? (
+                    <div className="bg-muted/50 border border-border rounded-xl px-3 py-2">
+                      <p className="text-xs text-muted-foreground">💡 Le budget Dettes s'adapte automatiquement chaque mois selon vos échéances. Il ne peut pas être récurrent.</p>
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-1">{newIsRecurring ? 'Actif tous les mois.' : 'Ce mois uniquement.'}</p>
-                  </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-medium mb-1">Type</label>
+                      <div className="flex gap-2">
+                        <button onClick={() => setNewIsRecurring(true)} className={`flex-1 py-2 rounded-xl border text-sm font-medium transition-all ${newIsRecurring ? 'border-primary bg-primary/5 text-primary' : 'border-border/30 bg-secondary/20 hover:bg-secondary/40'}`}>🔄 Récurrent</button>
+                        <button onClick={() => setNewIsRecurring(false)} className={`flex-1 py-2 rounded-xl border text-sm font-medium transition-all ${!newIsRecurring ? 'border-primary bg-primary/5 text-primary' : 'border-border/30 bg-secondary/20 hover:bg-secondary/40'}`}>📌 Ponctuel</button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-1">{newIsRecurring ? 'Actif tous les mois.' : 'Ce mois uniquement.'}</p>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <input type="checkbox" checked={newAlerts} onChange={e => setNewAlerts(e.target.checked)} id="alerts" className="rounded" />
                     <label htmlFor="alerts" className="text-xs">Alertes activées</label>
