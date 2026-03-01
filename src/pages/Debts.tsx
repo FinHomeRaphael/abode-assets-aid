@@ -198,58 +198,35 @@ const Debts = () => {
 
   const totalRemaining = useMemo(() => scopeFilteredDebts.reduce((s, d) => s + convert(getRealRemaining(d), d.currency), 0), [scopeFilteredDebts, debtRemainingMap, convert]);
   const totalInitial = useMemo(() => scopeFilteredDebts.reduce((s, d) => s + convert(d.initialAmount, d.currency), 0), [scopeFilteredDebts, convert]);
-  const totalPayment = useMemo(() => scopeFilteredDebts.reduce((s, d) => {
-    const ppy = getPeriodsPerYear(d.paymentFrequency as PaymentFrequency);
-    const monthlyFactor = ppy / 12; // Convert to monthly equivalent
-    // Revolving: use minimum payment (already monthly)
-    if (d.consumerType === 'revolving') return s + convert(d.minimumPayment || 0, d.currency);
-    // Other without schedule: skip
-    if (d.type === 'other' && d.hasSchedule === false) return s;
-    const nextRow = debtNextPaymentMap.get(d.id);
-    if (nextRow) return s + convert(nextRow.total_amount * monthlyFactor, d.currency);
-    if (d.mortgageSystem === 'swiss') {
-      const remaining = getRealRemaining(d);
-      const interest = remaining * d.interestRate / 100 / ppy;
-      const amort = d.swissAmortizationType !== 'none' && d.annualAmortization ? d.annualAmortization / ppy : 0;
-      const maint = d.includeMaintenance && d.propertyValue ? d.propertyValue * 0.01 / ppy : 0;
-      return s + convert((interest + amort + maint) * monthlyFactor, d.currency);
-    }
-    return s + convert(d.paymentAmount * monthlyFactor, d.currency);
-  }, 0), [scopeFilteredDebts, debtNextPaymentMap, debtRemainingMap, convert]);
-  const totalRepaid = useMemo(() => scopeFilteredDebts.reduce((s, d) => s + convert(d.initialAmount - getRealRemaining(d), d.currency), 0), [scopeFilteredDebts, debtRemainingMap, convert]);
+  // Compute actual payments due THIS month from schedules
+  const currentMonthPayments = useMemo(() => {
+    const now = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+    return upcomingPayments.filter(p => p.due_date >= monthStart && p.due_date <= monthEnd);
+  }, [upcomingPayments]);
 
-  // Per-debt monthly contribution breakdown
+  const totalPayment = useMemo(() => {
+    return currentMonthPayments.reduce((s, p) => s + convert(p.total_amount, p.debtCurrency), 0);
+  }, [currentMonthPayments, convert]);
+
+  // Per-debt breakdown for current month
   const paymentBreakdownList = useMemo(() => {
-    return scopeFilteredDebts.map(d => {
-      const ppy = getPeriodsPerYear(d.paymentFrequency as PaymentFrequency);
-      const monthlyFactor = ppy / 12;
-      let monthlyAmount = 0;
-      if (d.consumerType === 'revolving') {
-        monthlyAmount = convert(d.minimumPayment || 0, d.currency);
-      } else if (d.type === 'other' && d.hasSchedule === false) {
-        monthlyAmount = 0;
+    const map = new Map<string, { name: string; emoji: string; monthlyAmount: number }>();
+    for (const p of currentMonthPayments) {
+      const existing = map.get(p.debt_id);
+      const amount = convert(p.total_amount, p.debtCurrency);
+      if (existing) {
+        existing.monthlyAmount += amount;
       } else {
-        const nextRow = debtNextPaymentMap.get(d.id);
-        if (nextRow) {
-          monthlyAmount = convert(nextRow.total_amount * monthlyFactor, d.currency);
-        } else if (d.mortgageSystem === 'swiss') {
-          const remaining = getRealRemaining(d);
-          const interest = remaining * d.interestRate / 100 / ppy;
-          const amort = d.swissAmortizationType !== 'none' && d.annualAmortization ? d.annualAmortization / ppy : 0;
-          const maint = d.includeMaintenance && d.propertyValue ? d.propertyValue * 0.01 / ppy : 0;
-          monthlyAmount = convert((interest + amort + maint) * monthlyFactor, d.currency);
-        } else {
-          monthlyAmount = convert(d.paymentAmount * monthlyFactor, d.currency);
-        }
+        map.set(p.debt_id, { name: p.debtName, emoji: p.debtEmoji, monthlyAmount: amount });
       }
-      return {
-        name: d.vehicleName || d.name,
-        emoji: getDebtEmoji(d.type),
-        monthlyAmount,
-        frequency: d.paymentFrequency,
-      };
-    }).filter(item => item.monthlyAmount > 0).sort((a, b) => b.monthlyAmount - a.monthlyAmount);
-  }, [scopeFilteredDebts, debtNextPaymentMap, debtRemainingMap, convert]);
+    }
+    return Array.from(map.values()).filter(item => item.monthlyAmount > 0).sort((a, b) => b.monthlyAmount - a.monthlyAmount);
+  }, [currentMonthPayments, convert]);
+
+  const totalRepaid = useMemo(() => scopeFilteredDebts.reduce((s, d) => s + convert(d.initialAmount - getRealRemaining(d), d.currency), 0), [scopeFilteredDebts, debtRemainingMap, convert]);
 
   const selectedDebt = useMemo(() => debts.find(d => d.id === selectedDebtId) || null, [debts, selectedDebtId]);
 
@@ -306,10 +283,10 @@ const Debts = () => {
               onClick={() => setShowPaymentBreakdown(!showPaymentBreakdown)}
             >
               <div className="flex items-center justify-center gap-1 mb-1">
-                <p className="text-[11px] text-muted-foreground">Échéance mensuelle</p>
+                <p className="text-[11px] text-muted-foreground">Échéances du mois</p>
                 {showPaymentBreakdown ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
               </div>
-              <p className="font-mono-amount font-semibold text-sm">{formatAmount(totalPayment)}<span className="text-[10px] text-muted-foreground font-normal">/mois</span></p>
+              <p className="font-mono-amount font-semibold text-sm">{formatAmount(totalPayment)}</p>
             </div>
             <AnimatePresence>
               {showPaymentBreakdown && paymentBreakdownList.length > 0 && (
