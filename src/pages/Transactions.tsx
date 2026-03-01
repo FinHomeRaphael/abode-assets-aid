@@ -62,7 +62,7 @@ const Transactions = () => {
     return true;
   });
 
-  const savingsAccountIds = new Set(accounts.filter(a => a.type === 'epargne').map(a => a.id));
+  const savingsAccountIds = new Set(accounts.filter(a => a.type === 'epargne' || a.type === 'pilier3a').map(a => a.id));
   const isSavingsTx = (t: typeof transactions[0]) => !!(t.accountId && savingsAccountIds.has(t.accountId));
 
   // Find transfer IDs where at least one side is a savings account

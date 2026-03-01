@@ -143,7 +143,7 @@ export function useHealthScore(): HealthScoreResult {
 
   return useMemo(() => {
     const monthTx = getTransactionsForMonth(now);
-    const epargneAccountIds = new Set(accounts.filter(a => a.type === 'epargne').map(a => a.id));
+    const epargneAccountIds = new Set(accounts.filter(a => a.type === 'epargne' || a.type === 'pilier3a').map(a => a.id));
 
     // Monthly income (exclude savings accounts & transfers)
     const monthlyIncome = monthTx

@@ -1117,7 +1117,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const getMonthSavings = useCallback((refDate: Date = new Date()) => {
     const range = getMonthRange(refDate);
-    const epargneAccountIds = new Set(scopedAccounts.filter(a => a.type === 'epargne' && !a.isArchived).map(a => a.id));
+    const epargneAccountIds = new Set(scopedAccounts.filter(a => (a.type === 'epargne' || a.type === 'pilier3a') && !a.isArchived).map(a => a.id));
     const savingsTx = scopedTransactions.filter(t => t.accountId && epargneAccountIds.has(t.accountId) && t.date >= range.start && t.date <= range.end);
     const income = savingsTx.filter(t => t.type === 'income').reduce((s, t) => s + t.convertedAmount, 0);
     const expense = savingsTx.filter(t => t.type === 'expense').reduce((s, t) => s + t.convertedAmount, 0);
@@ -1125,7 +1125,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [scopedAccounts, scopedTransactions]);
 
   const getTotalSavings = useCallback(() => {
-    const epargneAccounts = scopedAccounts.filter(a => a.type === 'epargne' && !a.isArchived);
+    const epargneAccounts = scopedAccounts.filter(a => (a.type === 'epargne' || a.type === 'pilier3a') && !a.isArchived);
     return epargneAccounts.reduce((sum, acc) => {
       const txs = scopedTransactions.filter(t => t.accountId === acc.id);
       const income = txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);

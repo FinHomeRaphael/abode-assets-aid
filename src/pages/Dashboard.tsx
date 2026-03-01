@@ -122,7 +122,7 @@ const Dashboard = () => {
   const now = new Date();
   const monthTx = useMemo(() => getTransactionsForMonth(now), [getTransactionsForMonth]);
 
-  const epargneAccountIds = new Set(accounts.filter(a => a.type === 'epargne').map(a => a.id));
+  const epargneAccountIds = new Set(accounts.filter(a => a.type === 'epargne' || a.type === 'pilier3a').map(a => a.id));
   const isEpargneTx = (t: typeof monthTx[0]) => !!(t.accountId && epargneAccountIds.has(t.accountId));
 
   // Identify transfer IDs linked to savings accounts
