@@ -741,14 +741,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const getBudgetSpent = useCallback((budget: Budget, refDate: Date = new Date()) => {
     const range = budget.period === 'monthly' ? getMonthRange(refDate) : getYearRange(refDate);
     const userId = session?.user?.id;
+    // Filter transactions by scope
     const scopeFilteredTx = transactions.filter(t => {
       if (financeScope === 'personal') return t.scope === 'personal' && t.createdBy === userId;
       return t.scope === 'household' || !t.scope;
     });
-    return scopeFilteredTx
+    // Also include virtual debt schedule transactions for the "Dettes" category
+    let allTx: Transaction[] = [...scopeFilteredTx];
+    if (budget.category === 'Dettes') {
+      const baseCurrency = household.currency;
+      const debtMap = new Map(debts.map(d => [d.id, d]));
+      for (const sched of debtSchedules) {
+        if (sched.due_date < range.start || sched.due_date > range.end) continue;
+        if (sched.transaction_id) continue;
+        const alreadyHasRealTx = scopeFilteredTx.some(t => t.debtId === sched.debt_id && t.date === sched.due_date);
+        if (alreadyHasRealTx) continue;
+        const debt = debtMap.get(sched.debt_id);
+        if (!debt) continue;
+        if (financeScope === 'personal' && debt.scope !== 'personal') continue;
+        if (financeScope === 'household' && debt.scope === 'personal') continue;
+        const rate = getExchangeRate(debt.currency, baseCurrency);
+        allTx.push({
+          id: `debt-sched-${sched.id}`,
+          type: 'expense',
+          amount: sched.total_amount,
+          currency: debt.currency,
+          baseCurrency,
+          exchangeRate: rate,
+          convertedAmount: sched.total_amount * rate,
+          category: 'Dettes',
+          emoji: '🏦',
+          label: debt.name,
+          date: sched.due_date,
+          memberId: debt.createdBy || userId || '',
+          scope: (debt.scope as FinanceScope) || 'household',
+          createdBy: debt.createdBy,
+          debtId: debt.id,
+        });
+      }
+    }
+    return allTx
       .filter(t => t.type === 'expense' && t.category === budget.category && t.date >= range.start && t.date <= range.end)
       .reduce((sum, t) => sum + t.convertedAmount, 0);
-  }, [transactions, financeScope, session?.user?.id]);
+  }, [transactions, financeScope, session?.user?.id, debts, debtSchedules, household.currency]);
 
   const getBudgetsForMonth = useCallback((refDate: Date) => {
     const monthYear = getMonthYearStr(refDate);
