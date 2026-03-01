@@ -974,7 +974,9 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                           <span className="font-mono-amount text-muted-foreground">Restant : {formatAmount(remaining, d.currency)}</span>
                         </div>
                         <div className="flex items-center justify-between text-[10px] mt-0.5">
-                          <span className="text-muted-foreground">Mensualité : {formatAmount(monthlyPayment, d.currency)}</span>
+                          <span className="text-muted-foreground">
+                            {reportPeriod === 'yearly' ? `Annuité : ${formatAmount(monthlyPayment * 12, d.currency)}` : `Mensualité : ${formatAmount(monthlyPayment, d.currency)}`}
+                          </span>
                           {d.interest_rate > 0 && <span className="text-muted-foreground">Taux : {d.interest_rate}%</span>}
                         </div>
                       </div>
