@@ -326,28 +326,14 @@ const Debts = () => {
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="bg-card border border-border rounded-xl p-4 space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground mb-2">Détail de l'échéance mensuelle</p>
-                {paymentBreakdownList.map((item, i) => {
-                  const pct = totalPayment > 0 ? (item.monthlyAmount / totalPayment) * 100 : 0;
-                  return (
-                    <div key={i} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="truncate">{item.emoji} {item.name}</span>
-                        <span className="font-mono-amount font-medium shrink-0 ml-2">{formatAmount(item.monthlyAmount)}<span className="text-muted-foreground font-normal">/mois</span></span>
-                      </div>
-                      <div className="h-1 bg-muted rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${pct}%` }}
-                          transition={{ duration: 0.4, delay: i * 0.05 }}
-                          className="h-full rounded-full bg-primary"
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-                <div className="border-t border-border pt-2 mt-2 flex items-center justify-between text-xs font-semibold">
+              <div className="bg-card border border-border rounded-xl px-3 py-2.5 space-y-1.5">
+                {paymentBreakdownList.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between text-[11px]">
+                    <span className="truncate text-muted-foreground">{item.emoji} {item.name}</span>
+                    <span className="font-mono-amount font-medium shrink-0 ml-2">{formatAmount(item.monthlyAmount)}</span>
+                  </div>
+                ))}
+                <div className="border-t border-border pt-1.5 flex items-center justify-between text-[11px] font-semibold">
                   <span>Total</span>
                   <span className="font-mono-amount">{formatAmount(totalPayment)}/mois</span>
                 </div>
