@@ -279,9 +279,9 @@ const Budgets = () => {
           )}
 
           {monthSavingsNet < 0 && (
-            <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-xl px-3 py-2">
-              <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />
-              <p className="text-[11px] text-destructive">Attention, vous avez réduit votre épargne ce mois. Corrigez cela pour ne pas détériorer votre fortune globale.</p>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-600 dark:text-amber-400">
+              <span>⚠️</span>
+              <span>Vous puisez dans vos économies ce mois-ci. Pensez à faire un transfert vers votre épargne.</span>
             </div>
           )}
 
