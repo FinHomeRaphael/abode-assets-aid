@@ -483,7 +483,7 @@ const Budgets = () => {
                 >
                   <div className="px-5 pb-5">
                     {(() => {
-                      const COLORS = ['hsl(var(--primary))', 'hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--destructive))', '#6366f1', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16', '#a855f7'];
+                      const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16', '#a855f7'];
                       const budgetData = filteredBudgets.map((b, i) => ({
                         name: `${b.emoji} ${b.category}`,
                         value: b.limit,
