@@ -492,55 +492,110 @@ const Budgets = () => {
                       }));
                       const remaining = Math.max(remainingToBudget, 0);
                       const chartData = remaining > 0
-                        ? [...budgetData, { name: '💡 Restant à budgéter', value: remaining, color: 'hsl(var(--muted-foreground) / 0.25)' }]
+                        ? [...budgetData, { name: '💡 Restant à budgéter', value: remaining, color: '#d1d5db' }]
                         : budgetData;
                       const chartTotal = chartData.reduce((s, d) => s + d.value, 0);
+                      const activeIndex = hoveredSlice;
                       return (
-                        <div className="space-y-3">
-                          <ResponsiveContainer width="100%" height={200}>
-                            <RechartsPieChart>
-                              <Pie
-                                data={chartData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={50}
-                                outerRadius={80}
-                                paddingAngle={2}
-                                dataKey="value"
-                                onMouseEnter={(_, index) => setHoveredSlice(index)}
-                                onMouseLeave={() => setHoveredSlice(null)}
-                              >
-                                {chartData.map((entry, index) => (
-                                  <Cell
-                                    key={`cell-${index}`}
-                                    fill={entry.color}
-                                    opacity={hoveredSlice === null || hoveredSlice === index ? 1 : 0.3}
-                                    stroke={hoveredSlice === index ? entry.color : 'transparent'}
-                                    strokeWidth={hoveredSlice === index ? 3 : 0}
-                                    style={{ transition: 'opacity 0.2s, stroke-width 0.2s', cursor: 'pointer' }}
-                                  />
-                                ))}
-                              </Pie>
-                              <Tooltip
-                                formatter={(value: number) => formatAmount(value)}
-                                contentStyle={{ borderRadius: '12px', fontSize: '12px', border: '1px solid hsl(var(--border))' }}
-                              />
-                            </RechartsPieChart>
-                          </ResponsiveContainer>
-                          <div className="grid grid-cols-1 gap-2 mt-1">
+                        <div className="space-y-4">
+                          <div className="relative">
+                            <ResponsiveContainer width="100%" height={240}>
+                              <RechartsPieChart>
+                                <defs>
+                                  {chartData.map((entry, i) => (
+                                    <filter key={`shadow-${i}`} id={`glow-${i}`}>
+                                      <feDropShadow dx="0" dy="0" stdDeviation="4" floodColor={entry.color} floodOpacity="0.5" />
+                                    </filter>
+                                  ))}
+                                </defs>
+                                <Pie
+                                  data={chartData}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={55}
+                                  outerRadius={activeIndex !== null ? 95 : 90}
+                                  cornerRadius={4}
+                                  paddingAngle={3}
+                                  dataKey="value"
+                                  onMouseEnter={(_, index) => setHoveredSlice(index)}
+                                  onMouseLeave={() => setHoveredSlice(null)}
+                                  animationBegin={0}
+                                  animationDuration={600}
+                                >
+                                  {chartData.map((entry, index) => (
+                                    <Cell
+                                      key={`cell-${index}`}
+                                      fill={entry.color}
+                                      opacity={activeIndex === null || activeIndex === index ? 1 : 0.25}
+                                      stroke={activeIndex === index ? '#fff' : 'transparent'}
+                                      strokeWidth={activeIndex === index ? 2 : 0}
+                                      style={{
+                                        transition: 'opacity 0.3s ease, transform 0.3s ease',
+                                        cursor: 'pointer',
+                                        filter: activeIndex === index ? `url(#glow-${index})` : 'none',
+                                      }}
+                                    />
+                                  ))}
+                                </Pie>
+                                <Tooltip
+                                  formatter={(value: number) => formatAmount(value)}
+                                  contentStyle={{
+                                    borderRadius: '12px',
+                                    fontSize: '13px',
+                                    border: 'none',
+                                    boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+                                    backdropFilter: 'blur(8px)',
+                                    background: 'hsl(var(--card) / 0.95)',
+                                  }}
+                                />
+                              </RechartsPieChart>
+                            </ResponsiveContainer>
+                            {/* Center label */}
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <div className="text-center">
+                                {activeIndex !== null ? (
+                                  <>
+                                    <p className="text-lg font-bold font-mono-amount">{formatAmount(chartData[activeIndex].value)}</p>
+                                    <p className="text-[10px] text-muted-foreground max-w-[80px] truncate">{chartData[activeIndex].name}</p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p className="text-lg font-bold font-mono-amount">{formatAmount(chartTotal)}</p>
+                                    <p className="text-[10px] text-muted-foreground">Total</p>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 gap-1.5">
                             {chartData.map((item, i) => {
                               const pct = chartTotal > 0 ? Math.round((item.value / chartTotal) * 100) : 0;
+                              const isActive = activeIndex === i;
                               return (
                                 <div
                                   key={i}
-                                  className="flex items-center gap-3 text-xs rounded-lg px-3 py-2 cursor-pointer transition-all duration-200"
-                                  style={{ backgroundColor: hoveredSlice === i ? `${item.color}20` : undefined, opacity: hoveredSlice === null || hoveredSlice === i ? 1 : 0.4 }}
+                                  className="flex items-center gap-3 text-xs rounded-xl px-3 py-2.5 cursor-pointer transition-all duration-200"
+                                  style={{
+                                    backgroundColor: isActive ? `${item.color}18` : undefined,
+                                    opacity: activeIndex === null || isActive ? 1 : 0.4,
+                                    borderLeft: isActive ? `3px solid ${item.color}` : '3px solid transparent',
+                                    transform: isActive ? 'translateX(2px)' : 'none',
+                                  }}
                                   onMouseEnter={() => setHoveredSlice(i)}
                                   onMouseLeave={() => setHoveredSlice(null)}
                                 >
-                                  <div className="w-3 h-3 rounded-sm shrink-0 shadow-sm" style={{ backgroundColor: item.color }} />
+                                  <div
+                                    className="w-3.5 h-3.5 rounded-md shrink-0"
+                                    style={{
+                                      backgroundColor: item.color,
+                                      boxShadow: isActive ? `0 0 8px ${item.color}60` : `0 1px 2px ${item.color}30`,
+                                    }}
+                                  />
                                   <span className="font-medium text-foreground">{item.name}</span>
-                                  <span className="font-mono-amount ml-auto shrink-0 text-muted-foreground">{pct}%</span>
+                                  <div className="ml-auto flex items-center gap-2 shrink-0">
+                                    <span className="font-mono-amount text-muted-foreground">{formatAmount(item.value)}</span>
+                                    <span className="font-mono-amount font-semibold text-foreground w-8 text-right">{pct}%</span>
+                                  </div>
                                 </div>
                               );
                             })}
