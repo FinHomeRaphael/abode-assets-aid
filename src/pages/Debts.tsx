@@ -198,21 +198,22 @@ const Debts = () => {
   const totalRemaining = useMemo(() => scopeFilteredDebts.reduce((s, d) => s + convert(getRealRemaining(d), d.currency), 0), [scopeFilteredDebts, debtRemainingMap, convert]);
   const totalInitial = useMemo(() => scopeFilteredDebts.reduce((s, d) => s + convert(d.initialAmount, d.currency), 0), [scopeFilteredDebts, convert]);
   const totalPayment = useMemo(() => scopeFilteredDebts.reduce((s, d) => {
-    // Revolving: use minimum payment
+    const ppy = getPeriodsPerYear(d.paymentFrequency as PaymentFrequency);
+    const monthlyFactor = ppy / 12; // Convert to monthly equivalent
+    // Revolving: use minimum payment (already monthly)
     if (d.consumerType === 'revolving') return s + convert(d.minimumPayment || 0, d.currency);
     // Other without schedule: skip
     if (d.type === 'other' && d.hasSchedule === false) return s;
     const nextRow = debtNextPaymentMap.get(d.id);
-    if (nextRow) return s + convert(nextRow.total_amount, d.currency);
-    const ppy = getPeriodsPerYear(d.paymentFrequency as PaymentFrequency);
+    if (nextRow) return s + convert(nextRow.total_amount * monthlyFactor, d.currency);
     if (d.mortgageSystem === 'swiss') {
       const remaining = getRealRemaining(d);
       const interest = remaining * d.interestRate / 100 / ppy;
       const amort = d.swissAmortizationType !== 'none' && d.annualAmortization ? d.annualAmortization / ppy : 0;
       const maint = d.includeMaintenance && d.propertyValue ? d.propertyValue * 0.01 / ppy : 0;
-      return s + convert(interest + amort + maint, d.currency);
+      return s + convert((interest + amort + maint) * monthlyFactor, d.currency);
     }
-    return s + convert(d.paymentAmount, d.currency);
+    return s + convert(d.paymentAmount * monthlyFactor, d.currency);
   }, 0), [scopeFilteredDebts, debtNextPaymentMap, debtRemainingMap, convert]);
   const totalRepaid = useMemo(() => scopeFilteredDebts.reduce((s, d) => s + convert(d.initialAmount - getRealRemaining(d), d.currency), 0), [scopeFilteredDebts, debtRemainingMap, convert]);
 
@@ -266,8 +267,8 @@ const Debts = () => {
             <p className="font-mono-amount font-semibold text-destructive text-sm">{formatAmount(totalRemaining)}</p>
           </div>
           <div className="bg-card border border-border rounded-xl p-3 text-center">
-            <p className="text-[11px] text-muted-foreground mb-1">Échéance totale</p>
-            <p className="font-mono-amount font-semibold text-sm">{formatAmount(totalPayment)}</p>
+            <p className="text-[11px] text-muted-foreground mb-1">Échéance mensuelle</p>
+            <p className="font-mono-amount font-semibold text-sm">{formatAmount(totalPayment)}<span className="text-[10px] text-muted-foreground font-normal">/mois</span></p>
           </div>
           <div className="bg-card border border-border rounded-xl p-3 text-center">
             <p className="text-[11px] text-muted-foreground mb-1">Total remboursé</p>
