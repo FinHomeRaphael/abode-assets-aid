@@ -25,6 +25,7 @@ const Budgets = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [incomeExpanded, setIncomeExpanded] = useState(false);
   const [chartExpanded, setChartExpanded] = useState(false);
+  const [hoveredSlice, setHoveredSlice] = useState<number | null>(null);
 
   // Create modal state
   const [newCategory, setNewCategory] = useState('');
@@ -506,9 +507,18 @@ const Budgets = () => {
                                 outerRadius={80}
                                 paddingAngle={2}
                                 dataKey="value"
+                                onMouseEnter={(_, index) => setHoveredSlice(index)}
+                                onMouseLeave={() => setHoveredSlice(null)}
                               >
                                 {chartData.map((entry, index) => (
-                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                  <Cell
+                                    key={`cell-${index}`}
+                                    fill={entry.color}
+                                    opacity={hoveredSlice === null || hoveredSlice === index ? 1 : 0.3}
+                                    stroke={hoveredSlice === index ? entry.color : 'transparent'}
+                                    strokeWidth={hoveredSlice === index ? 3 : 0}
+                                    style={{ transition: 'opacity 0.2s, stroke-width 0.2s', cursor: 'pointer' }}
+                                  />
                                 ))}
                               </Pie>
                               <Tooltip
@@ -521,7 +531,13 @@ const Budgets = () => {
                             {chartData.map((item, i) => {
                               const pct = chartTotal > 0 ? Math.round((item.value / chartTotal) * 100) : 0;
                               return (
-                                <div key={i} className="flex items-center gap-3 text-xs bg-muted/50 rounded-lg px-3 py-2">
+                                <div
+                                  key={i}
+                                  className="flex items-center gap-3 text-xs rounded-lg px-3 py-2 cursor-pointer transition-all duration-200"
+                                  style={{ backgroundColor: hoveredSlice === i ? `${item.color}20` : undefined, opacity: hoveredSlice === null || hoveredSlice === i ? 1 : 0.4 }}
+                                  onMouseEnter={() => setHoveredSlice(i)}
+                                  onMouseLeave={() => setHoveredSlice(null)}
+                                >
                                   <div className="w-3 h-3 rounded-sm shrink-0 shadow-sm" style={{ backgroundColor: item.color }} />
                                   <span className="font-medium text-foreground">{item.name}</span>
                                   <span className="font-mono-amount ml-auto shrink-0 text-muted-foreground">{pct}%</span>
