@@ -517,14 +517,14 @@ const Budgets = () => {
                               />
                             </RechartsPieChart>
                           </ResponsiveContainer>
-                          <div className="grid grid-cols-2 gap-1.5">
+                          <div className="grid grid-cols-1 gap-2 mt-1">
                             {chartData.map((item, i) => {
                               const pct = chartTotal > 0 ? Math.round((item.value / chartTotal) * 100) : 0;
                               return (
-                                <div key={i} className="flex items-center gap-2 text-[11px]">
-                                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                                  <span className="truncate text-muted-foreground">{item.name}</span>
-                                  <span className="font-mono-amount ml-auto shrink-0">{pct}%</span>
+                                <div key={i} className="flex items-center gap-3 text-xs bg-muted/50 rounded-lg px-3 py-2">
+                                  <div className="w-3 h-3 rounded-sm shrink-0 shadow-sm" style={{ backgroundColor: item.color }} />
+                                  <span className="font-medium text-foreground">{item.name}</span>
+                                  <span className="font-mono-amount ml-auto shrink-0 text-muted-foreground">{pct}%</span>
                                 </div>
                               );
                             })}
