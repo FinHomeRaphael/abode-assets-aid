@@ -349,7 +349,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   const transactions = useMemo(() => getTransactionsForMonth(month), [month, getTransactionsForMonth]);
 
   // Savings accounts logic
-  const epargneAccountIds = new Set(accounts.filter(a => a.type === 'epargne').map(a => a.id));
+  const epargneAccountIds = new Set(accounts.filter(a => a.type === 'epargne' || a.type === 'pilier3a').map(a => a.id));
   const isEpargneTx = (t: typeof transactions[0]) => !!(t.accountId && epargneAccountIds.has(t.accountId));
 
   const transferIdRegex = /\[?Transfert\s+#([^\]\s]+)\]?/i;
@@ -536,8 +536,8 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   }, [accountsByType, getAccountBalanceAtMonth]);
 
   // Keep totals for legacy usage
-  const savingsAccounts = activeAccounts.filter(a => a.type === 'epargne');
-  const currentAccounts = activeAccounts.filter(a => a.type !== 'epargne');
+  const savingsAccounts = activeAccounts.filter(a => a.type === 'epargne' || a.type === 'pilier3a');
+  const currentAccounts = activeAccounts.filter(a => a.type !== 'epargne' && a.type !== 'pilier3a');
   const totalSavingsBalance = savingsAccounts.reduce((s, a) => s + getAccountBalanceAtMonth(a.id), 0);
   const totalCurrentBalance = currentAccounts.reduce((s, a) => s + getAccountBalanceAtMonth(a.id), 0);
 
