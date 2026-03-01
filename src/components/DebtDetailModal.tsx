@@ -203,7 +203,7 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
       base_currency: baseCurrency,
       exchange_rate: exchangeRate,
       converted_amount: convertedAmount,
-      category: debt.categoryId || 'Crédit',
+      category: 'Dettes',
       emoji: getDebtEmoji(debt.type),
       label: `${debt.name} — Échéance #${row.period_number}`,
       date: row.due_date,
