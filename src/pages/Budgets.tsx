@@ -11,10 +11,11 @@ import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
-import { Plus, X, ChevronDown, ChevronUp, TrendingUp, Wallet, AlertTriangle, CheckCircle, PieChart, Lightbulb, ArrowRight } from 'lucide-react';
+import { Plus, X, ChevronDown, ChevronUp, TrendingUp, Wallet, AlertTriangle, CheckCircle, PieChart, Lightbulb, ArrowRight, Target, Pencil, PartyPopper } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Budgets = () => {
-  const { scopedBudgets: budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth, getTransactionsForMonth, getMemberById, householdId, currentUser, customCategories, scopedAccounts: accounts } = useApp();
+  const { scopedBudgets: budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth, getTransactionsForMonth, getMemberById, householdId, currentUser, customCategories, scopedAccounts: accounts, household } = useApp();
   const { canAdd } = useSubscription(householdId, currentUser?.id);
   const { formatAmount } = useCurrency();
   const navigate = useNavigate();
@@ -35,6 +36,29 @@ const Budgets = () => {
   const [editIsRecurring, setEditIsRecurring] = useState(true);
   const [editAlerts, setEditAlerts] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<typeof budgets[0] | null>(null);
+
+  // Savings target state
+  const [showSavingsTargetEdit, setShowSavingsTargetEdit] = useState(false);
+  const [savingsTargetInput, setSavingsTargetInput] = useState('');
+
+  const savingsTarget = household.monthlySavingsTarget;
+
+  const handleSaveSavingsTarget = async () => {
+    const value = parseFloat(savingsTargetInput);
+    if (isNaN(value) || value <= 0) { toast.error('Montant invalide'); return; }
+    await supabase.from('households').update({ monthly_savings_target: value } as any).eq('id', householdId);
+    // Optimistic update via household reference
+    (household as any).monthlySavingsTarget = value;
+    setShowSavingsTargetEdit(false);
+    toast.success('Objectif d\'épargne mis à jour');
+  };
+
+  const handleRemoveSavingsTarget = async () => {
+    await supabase.from('households').update({ monthly_savings_target: null } as any).eq('id', householdId);
+    (household as any).monthlySavingsTarget = null;
+    setShowSavingsTargetEdit(false);
+    toast.success('Objectif supprimé');
+  };
 
   const currentMonthYear = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`;
   const monthTx = useMemo(() => getTransactionsForMonth(currentMonth), [currentMonth, getTransactionsForMonth]);
@@ -268,15 +292,48 @@ const Budgets = () => {
             <span className="font-mono-amount font-medium text-foreground">{formatAmount(totalIncome)}</span>
           </div>
 
-          {/* Total épargné */}
-          {monthSavingsNet !== 0 && (
+          {/* Total épargné + objectif */}
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Total épargné</span>
+              <div className="flex items-center gap-1.5">
+                <span>Total épargné</span>
+                <button
+                  onClick={() => { setSavingsTargetInput(savingsTarget ? String(savingsTarget) : ''); setShowSavingsTargetEdit(true); }}
+                  className="text-primary hover:text-primary/80 transition-colors"
+                  title="Définir un objectif d'épargne"
+                >
+                  {savingsTarget ? <Pencil className="w-3 h-3" /> : <Target className="w-3 h-3" />}
+                </button>
+              </div>
               <span className={`font-mono-amount font-medium ${monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'}`}>
                 {monthSavingsNet >= 0 ? '-' : '+'}{formatAmount(totalSavingsDeducted)}
               </span>
             </div>
-          )}
+
+            {/* Savings target progress */}
+            {savingsTarget && savingsTarget > 0 && (
+              <>
+                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min((monthSavingsNet / savingsTarget) * 100, 100)}%` }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }}
+                    className={`h-full rounded-full ${monthSavingsNet >= savingsTarget ? 'bg-success' : 'bg-primary'}`}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  <span>Objectif : <span className="font-mono-amount">{formatAmount(savingsTarget)}</span></span>
+                  <span className="font-mono-amount">{Math.round(Math.max((monthSavingsNet / savingsTarget) * 100, 0))}%</span>
+                </div>
+                {monthSavingsNet >= savingsTarget && (
+                  <div className="flex items-center gap-2 bg-success/10 border border-success/20 rounded-xl px-3 py-2">
+                    <PartyPopper className="w-4 h-4 text-success shrink-0" />
+                    <p className="text-[11px] text-success font-medium">Bravo ! Vous avez atteint votre objectif d'épargne ce mois-ci 🎉</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
 
           {monthSavingsNet < 0 && (
             <button
@@ -630,6 +687,38 @@ const Budgets = () => {
                     </div>
                   </div>
                 )}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Savings target modal */}
+        <AnimatePresence>
+          {showSavingsTargetEdit && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setShowSavingsTargetEdit(false)}>
+              <motion.div initial={{ scale: 0.92, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.92, opacity: 0, y: 20 }} transition={{ type: 'spring', damping: 25, stiffness: 300 }} onClick={e => e.stopPropagation()} className="bg-card w-full max-w-sm rounded-2xl border border-border/30 shadow-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-base font-bold flex items-center gap-2"><Target className="w-4 h-4 text-primary" /> Objectif d'épargne</h2>
+                  <button onClick={() => setShowSavingsTargetEdit(false)} className="w-8 h-8 rounded-xl bg-secondary/50 flex items-center justify-center"><X className="w-4 h-4 text-muted-foreground" /></button>
+                </div>
+                <p className="text-xs text-muted-foreground">Définis un objectif d'épargne mensuel pour suivre ta progression.</p>
+                <div>
+                  <label className="block text-xs font-medium mb-1">Montant mensuel</label>
+                  <input
+                    type="number"
+                    value={savingsTargetInput}
+                    onChange={e => setSavingsTargetInput(e.target.value)}
+                    placeholder="500"
+                    className="w-full px-3 py-2.5 rounded-xl border border-border/30 bg-secondary/20 text-sm font-mono-amount focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  {savingsTarget && (
+                    <button onClick={handleRemoveSavingsTarget} className="py-2.5 px-4 rounded-xl border border-destructive/20 text-destructive text-sm font-medium hover:bg-destructive/5 transition-colors">Supprimer</button>
+                  )}
+                  <button onClick={() => setShowSavingsTargetEdit(false)} className="flex-1 py-2.5 rounded-xl border border-border/30 text-sm font-medium hover:bg-secondary/30 transition-colors">Annuler</button>
+                  <button onClick={handleSaveSavingsTarget} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">Enregistrer</button>
+                </div>
               </motion.div>
             </motion.div>
           )}

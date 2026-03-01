@@ -603,6 +603,7 @@ export type Database = {
           created_at: string | null
           default_currency: string | null
           id: string
+          monthly_savings_target: number | null
           name: string
           plan: string
           stripe_customer_id: string | null
@@ -617,6 +618,7 @@ export type Database = {
           created_at?: string | null
           default_currency?: string | null
           id?: string
+          monthly_savings_target?: number | null
           name: string
           plan?: string
           stripe_customer_id?: string | null
@@ -631,6 +633,7 @@ export type Database = {
           created_at?: string | null
           default_currency?: string | null
           id?: string
+          monthly_savings_target?: number | null
           name?: string
           plan?: string
           stripe_customer_id?: string | null

@@ -116,6 +116,7 @@ export interface Household {
   currency: string;
   createdAt: string;
   plan: string;
+  monthlySavingsTarget: number | null;
   members: Member[];
 }
 
