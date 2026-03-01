@@ -497,7 +497,46 @@ const Budgets = () => {
           )}
         </div>
 
-        {/* Pie Chart - collapsible */}
+        {/* Section 4: Categories without budget — Smart suggestions */}
+        {categoriesWithoutBudget.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Lightbulb className="w-4 h-4 text-primary" />
+              <h2 className="text-base font-bold">Suggestions de budget</h2>
+            </div>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Basées sur vos dépenses moyennes des 3 derniers mois
+            </p>
+            <div className="space-y-2">
+              {categoriesWithoutBudget.map(({ category, spent, emoji, suggestedBudget }) => (
+                <div key={category} className="bg-card border border-border rounded-xl px-4 py-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium">{emoji} {category}</span>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <p className="text-xs text-muted-foreground">
+                          Ce mois : <span className="font-mono-amount font-medium text-foreground">{formatAmount(spent)}</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Moy. 3 mois : <span className="font-mono-amount font-medium text-primary">{formatAmount(suggestedBudget)}</span>
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleCreateFromSuggestion(category, suggestedBudget)}
+                      className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shrink-0 flex items-center gap-1.5"
+                    >
+                      <Target className="w-3 h-3" />
+                      {formatAmount(suggestedBudget)}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Pie Chart - collapsible (moved to bottom) */}
         {filteredBudgets.length > 0 && (
           <div className="bg-card border border-border rounded-2xl overflow-hidden">
             <button
@@ -681,45 +720,6 @@ const Budgets = () => {
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
-        )}
-
-        {/* Section 4: Categories without budget — Smart suggestions */}
-        {categoriesWithoutBudget.length > 0 && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Lightbulb className="w-4 h-4 text-primary" />
-              <h2 className="text-base font-bold">Suggestions de budget</h2>
-            </div>
-            <p className="text-xs text-muted-foreground -mt-1">
-              Basées sur vos dépenses moyennes des 3 derniers mois
-            </p>
-            <div className="space-y-2">
-              {categoriesWithoutBudget.map(({ category, spent, emoji, suggestedBudget }) => (
-                <div key={category} className="bg-card border border-border rounded-xl px-4 py-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium">{emoji} {category}</span>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <p className="text-xs text-muted-foreground">
-                          Ce mois : <span className="font-mono-amount font-medium text-foreground">{formatAmount(spent)}</span>
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Moy. 3 mois : <span className="font-mono-amount font-medium text-primary">{formatAmount(suggestedBudget)}</span>
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleCreateFromSuggestion(category, suggestedBudget)}
-                      className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shrink-0 flex items-center gap-1.5"
-                    >
-                      <Target className="w-3 h-3" />
-                      {formatAmount(suggestedBudget)}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
         )}
 
