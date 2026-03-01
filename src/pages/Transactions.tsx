@@ -398,13 +398,13 @@ const Transactions = () => {
             <p className={`font-mono-amount font-bold text-xs ${monthSavingsNet > 0 ? 'text-success' : monthSavingsNet < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>{monthSavingsNet > 0 ? '+' : monthSavingsNet < 0 ? '-' : ''}{formatAmount(Math.abs(monthSavingsNet))}</p>
             <ChevronDown className={`w-3 h-3 mx-auto mt-0.5 transition-transform ${expandedCard === 'savings' ? 'rotate-180' : ''} ${monthSavingsNet > 0 ? 'text-success' : monthSavingsNet < 0 ? 'text-destructive' : 'text-muted-foreground'}`} />
           </button>
-          <button onClick={() => setExpandedCard(expandedCard === 'balance' ? null : 'balance')} className={`border rounded-xl p-2 text-center transition-colors hover:bg-muted/30 ${monthIncome - monthExpense + Math.min(monthSavingsNet, 0) >= 0 ? 'bg-success/5 border-success/15' : 'bg-destructive/5 border-destructive/15'}`}>
-            <Wallet className={`w-3 h-3 mx-auto mb-0.5 ${monthIncome - monthExpense + Math.min(monthSavingsNet, 0) >= 0 ? 'text-success' : 'text-destructive'}`} />
+          <button onClick={() => setExpandedCard(expandedCard === 'balance' ? null : 'balance')} className={`border rounded-xl p-2 text-center transition-colors hover:bg-muted/30 ${monthIncome - monthExpense - monthSavingsNet >= 0 ? 'bg-success/5 border-success/15' : 'bg-destructive/5 border-destructive/15'}`}>
+            <Wallet className={`w-3 h-3 mx-auto mb-0.5 ${monthIncome - monthExpense - monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'}`} />
             <p className="text-[9px] text-muted-foreground mb-0.5">Solde</p>
-            <p className={`font-mono-amount font-bold text-xs ${monthIncome - monthExpense + Math.min(monthSavingsNet, 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
-              {monthIncome - monthExpense + Math.min(monthSavingsNet, 0) >= 0 ? '+' : ''}{formatAmount(monthIncome - monthExpense + Math.min(monthSavingsNet, 0))}
+            <p className={`font-mono-amount font-bold text-xs ${monthIncome - monthExpense - monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'}`}>
+              {monthIncome - monthExpense - monthSavingsNet >= 0 ? '+' : ''}{formatAmount(monthIncome - monthExpense - monthSavingsNet)}
             </p>
-            <ChevronDown className={`w-3 h-3 mx-auto mt-0.5 transition-transform ${expandedCard === 'balance' ? 'rotate-180' : ''} ${monthIncome - monthExpense + Math.min(monthSavingsNet, 0) >= 0 ? 'text-success' : 'text-destructive'}`} />
+            <ChevronDown className={`w-3 h-3 mx-auto mt-0.5 transition-transform ${expandedCard === 'balance' ? 'rotate-180' : ''} ${monthIncome - monthExpense - monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'}`} />
           </button>
         </div>
 
@@ -430,20 +430,18 @@ const Transactions = () => {
                       <span className="text-xs flex items-center gap-1.5">💸 Dépenses</span>
                       <span className="font-mono-amount text-xs font-semibold text-destructive">-{formatAmount(monthExpense)}</span>
                     </div>
-                    {monthSavingsNet < 0 ? (
+                    {monthSavingsNet !== 0 && (
                       <div className="flex items-center justify-between py-1 border-b border-border/30">
                         <span className="text-xs flex items-center gap-1.5">🏦 Épargne nette</span>
-                        <span className="font-mono-amount text-xs font-semibold text-destructive">-{formatAmount(Math.abs(monthSavingsNet))}</span>
+                        <span className={`font-mono-amount text-xs font-semibold ${monthSavingsNet > 0 ? 'text-amber-500' : 'text-success'}`}>
+                          {monthSavingsNet > 0 ? '-' : '+'}{formatAmount(Math.abs(monthSavingsNet))}
+                        </span>
                       </div>
-                    ) : monthSavingsNet > 0 ? (
-                      <p className="text-[10px] text-muted-foreground italic py-1 border-b border-border/30">
-                        L'épargne positive (+{formatAmount(monthSavingsNet)}) n'est pas déduite du solde car elle représente un transfert vers vos comptes épargne, pas une dépense réelle.
-                      </p>
-                    ) : null}
+                    )}
                     <div className={`flex items-center justify-between pt-2 mt-1 border-t-2 border-border`}>
                       <span className="text-xs font-bold">Solde</span>
-                      <span className={`font-mono-amount text-xs font-bold ${monthIncome - monthExpense + Math.min(monthSavingsNet, 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
-                        {monthIncome - monthExpense + Math.min(monthSavingsNet, 0) >= 0 ? '+' : ''}{formatAmount(monthIncome - monthExpense + Math.min(monthSavingsNet, 0))}
+                      <span className={`font-mono-amount text-xs font-bold ${monthIncome - monthExpense - monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {monthIncome - monthExpense - monthSavingsNet >= 0 ? '+' : ''}{formatAmount(monthIncome - monthExpense - monthSavingsNet)}
                       </span>
                     </div>
                   </>
@@ -525,7 +523,7 @@ const Transactions = () => {
           )}
         </AnimatePresence>
 
-        {monthIncome - monthExpense + Math.min(monthSavingsNet, 0) < 0 && (
+        {monthIncome - monthExpense - monthSavingsNet < 0 && (
           <div className="flex items-start gap-2 bg-destructive/5 border border-destructive/15 rounded-xl px-3 py-2.5">
             <TrendingDown className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
             <p className="text-xs text-destructive">

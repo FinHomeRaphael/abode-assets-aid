@@ -379,7 +379,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   // Income & Expenses (excluding transfers and savings)
   const income = transactions.filter(t => t.type === 'income' && t.category !== 'Transfert' && !isAnySavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
   const expenses = transactions.filter(t => t.type === 'expense' && !isAnySavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
-  const balance = income - expenses + Math.min(monthSavingsNet, 0);
+  const balance = income - expenses - monthSavingsNet;
 
   // Previous period
   const prevMonth = new Date(month);
