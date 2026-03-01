@@ -963,7 +963,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         baseCurrency,
         exchangeRate: rate,
         convertedAmount: sched.total_amount * rate,
-        category: debt.categoryId || 'Crédit',
+        category: 'Dettes',
         emoji: getDebtEmoji(debt.type),
         label: `${debt.name} — Échéance #${sched.period_number}`,
         date: sched.due_date,
