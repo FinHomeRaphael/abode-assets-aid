@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatDateLong } from '@/utils/format';
@@ -13,6 +13,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
 import { Plus, X, ChevronDown, ChevronUp, TrendingUp, Wallet, AlertTriangle, CheckCircle, PieChart, Lightbulb, ArrowRight, Target, Pencil, PartyPopper } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 const Budgets = () => {
   const { scopedBudgets: budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth, getTransactionsForMonth, getMemberById, householdId, currentUser, customCategories, scopedAccounts: accounts, household } = useApp();
@@ -23,6 +24,7 @@ const Budgets = () => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [incomeExpanded, setIncomeExpanded] = useState(false);
+  const [chartExpanded, setChartExpanded] = useState(false);
 
   // Create modal state
   const [newCategory, setNewCategory] = useState('');
@@ -456,6 +458,81 @@ const Budgets = () => {
             </div>
           )}
         </div>
+
+        {/* Pie Chart - collapsible */}
+        {filteredBudgets.length > 0 && (
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setChartExpanded(!chartExpanded)}
+              className="w-full px-5 py-3.5 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-2">
+                <PieChart className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">Répartition des budgets</span>
+              </div>
+              {chartExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+            </button>
+            <AnimatePresence>
+              {chartExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-5 pb-5">
+                    {(() => {
+                      const COLORS = ['hsl(var(--primary))', 'hsl(var(--success))', 'hsl(var(--warning))', 'hsl(var(--destructive))', '#6366f1', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16', '#a855f7'];
+                      const chartData = filteredBudgets.map((b, i) => ({
+                        name: `${b.emoji} ${b.category}`,
+                        value: b.limit,
+                        color: COLORS[i % COLORS.length],
+                      }));
+                      return (
+                        <div className="space-y-3">
+                          <ResponsiveContainer width="100%" height={200}>
+                            <RechartsPieChart>
+                              <Pie
+                                data={chartData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={50}
+                                outerRadius={80}
+                                paddingAngle={2}
+                                dataKey="value"
+                              >
+                                {chartData.map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <Tooltip
+                                formatter={(value: number) => formatAmount(value)}
+                                contentStyle={{ borderRadius: '12px', fontSize: '12px', border: '1px solid hsl(var(--border))' }}
+                              />
+                            </RechartsPieChart>
+                          </ResponsiveContainer>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {chartData.map((item, i) => {
+                              const pct = totalBudgeted > 0 ? Math.round((item.value / totalBudgeted) * 100) : 0;
+                              return (
+                                <div key={i} className="flex items-center gap-2 text-[11px]">
+                                  <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                                  <span className="truncate text-muted-foreground">{item.name}</span>
+                                  <span className="font-mono-amount ml-auto shrink-0">{pct}%</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
 
         {/* Section 4: Categories without budget */}
         {categoriesWithoutBudget.length > 0 && (
