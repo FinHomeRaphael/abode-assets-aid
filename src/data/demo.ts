@@ -11,6 +11,7 @@ export const demoHousehold: Household = {
   currency: 'EUR',
   createdAt: '2024-06-15',
   plan: 'free',
+  monthlySavingsTarget: null,
   members: demoMembers,
 };
 
