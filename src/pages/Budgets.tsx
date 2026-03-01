@@ -11,7 +11,7 @@ import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
-import { Plus, X, ChevronDown, ChevronUp, TrendingUp, Wallet, AlertTriangle, CheckCircle, PieChart, Lightbulb } from 'lucide-react';
+import { Plus, X, ChevronDown, ChevronUp, TrendingUp, Wallet, AlertTriangle, CheckCircle, PieChart, Lightbulb, ArrowRight } from 'lucide-react';
 
 const Budgets = () => {
   const { scopedBudgets: budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth, getTransactionsForMonth, getMemberById, householdId, currentUser, customCategories, scopedAccounts: accounts } = useApp();
@@ -279,10 +279,14 @@ const Budgets = () => {
           )}
 
           {monthSavingsNet < 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-600 dark:text-amber-400">
+            <button
+              onClick={() => navigate('/transactions')}
+              className="flex items-center gap-1.5 w-full px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors text-left"
+            >
               <span>⚠️</span>
-              <span>Vous puisez dans vos économies ce mois-ci. Pensez à faire un transfert vers votre épargne.</span>
-            </div>
+              <span className="flex-1">Vous puisez dans vos économies ce mois-ci. Pensez à faire un transfert vers votre épargne.</span>
+              <ArrowRight className="w-3 h-3 flex-shrink-0" />
+            </button>
           )}
 
           <div>
