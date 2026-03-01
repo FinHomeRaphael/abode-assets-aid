@@ -300,47 +300,43 @@ const Debts = () => {
             <p className="text-[11px] text-muted-foreground mb-1">Capital restant dû</p>
             <p className="font-mono-amount font-semibold text-destructive text-sm">{formatAmount(totalRemaining)}</p>
           </div>
-          <div
-            className="bg-card border border-border rounded-xl p-3 text-center cursor-pointer hover:bg-muted/50 transition-colors"
-            onClick={() => setShowPaymentBreakdown(!showPaymentBreakdown)}
-          >
-            <div className="flex items-center justify-center gap-1 mb-1">
-              <p className="text-[11px] text-muted-foreground">Échéance mensuelle</p>
-              {showPaymentBreakdown ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
+          <div className="bg-card border border-border rounded-xl p-3 text-center">
+            <div
+              className="cursor-pointer"
+              onClick={() => setShowPaymentBreakdown(!showPaymentBreakdown)}
+            >
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <p className="text-[11px] text-muted-foreground">Échéance mensuelle</p>
+                {showPaymentBreakdown ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
+              </div>
+              <p className="font-mono-amount font-semibold text-sm">{formatAmount(totalPayment)}<span className="text-[10px] text-muted-foreground font-normal">/mois</span></p>
             </div>
-            <p className="font-mono-amount font-semibold text-sm">{formatAmount(totalPayment)}<span className="text-[10px] text-muted-foreground font-normal">/mois</span></p>
+            <AnimatePresence>
+              {showPaymentBreakdown && paymentBreakdownList.length > 0 && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="border-t border-border mt-2 pt-2 space-y-1 text-left">
+                    {paymentBreakdownList.map((item, i) => (
+                      <div key={i} className="flex items-center justify-between text-[10px]">
+                        <span className="truncate text-muted-foreground">{item.emoji} {item.name}</span>
+                        <span className="font-mono-amount font-medium shrink-0 ml-2">{formatAmount(item.monthlyAmount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
           <div className="bg-card border border-border rounded-xl p-3 text-center">
             <p className="text-[11px] text-muted-foreground mb-1">Total remboursé</p>
             <p className="font-mono-amount font-semibold text-success text-sm">{formatAmount(totalRepaid)}</p>
           </div>
         </motion.div>
-
-        {/* Payment breakdown expandable */}
-        <AnimatePresence>
-          {showPaymentBreakdown && paymentBreakdownList.length > 0 && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="bg-card border border-border rounded-xl px-3 py-2.5 space-y-1.5">
-                {paymentBreakdownList.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between text-[11px]">
-                    <span className="truncate text-muted-foreground">{item.emoji} {item.name}</span>
-                    <span className="font-mono-amount font-medium shrink-0 ml-2">{formatAmount(item.monthlyAmount)}</span>
-                  </div>
-                ))}
-                <div className="border-t border-border pt-1.5 flex items-center justify-between text-[11px] font-semibold">
-                  <span>Total</span>
-                  <span className="font-mono-amount">{formatAmount(totalPayment)}/mois</span>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* Debt list */}
         {debts.length === 0 ? (
