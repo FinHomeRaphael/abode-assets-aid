@@ -14,7 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, X, ChevronDown, ChevronUp, TrendingUp, Wallet, AlertTriangle, CheckCircle, PieChart, Lightbulb } from 'lucide-react';
 
 const Budgets = () => {
-  const { scopedBudgets: budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth, getTransactionsForMonth, getMemberById, householdId, currentUser, customCategories } = useApp();
+  const { scopedBudgets: budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth, getTransactionsForMonth, getMemberById, householdId, currentUser, customCategories, scopedAccounts: accounts } = useApp();
   const { canAdd } = useSubscription(householdId, currentUser?.id);
   const { formatAmount } = useCurrency();
   const navigate = useNavigate();
@@ -62,6 +62,31 @@ const Budgets = () => {
   }, [incomeTransactions]);
 
   // === Budget calculations ===
+  // === Savings tracking (transfers to epargne/pilier3a accounts) ===
+  const savingsAccountIds = useMemo(() => {
+    return new Set(accounts.filter(a => (a.type === 'epargne' || a.type === 'pilier3a') && !a.isArchived).map(a => a.id));
+  }, [accounts]);
+
+  const transferIdRegex = /\[?Transfert\s+#([^\]\s]+)\]?/i;
+
+  const monthSavingsAmount = useMemo(() => {
+    // Sum of income transactions on savings accounts that are transfers (= money flowing into savings)
+    const savingsIncome = monthTx
+      .filter(t => t.type === 'income' && t.accountId && savingsAccountIds.has(t.accountId) && t.category === 'Transfert')
+      .reduce((s, t) => s + t.convertedAmount, 0);
+    return savingsIncome;
+  }, [monthTx, savingsAccountIds]);
+
+  const EPARGNE_CATEGORY = 'Épargne';
+
+  // Override getBudgetSpent for Épargne category
+  const getSpentForBudget = (b: typeof budgets[0]) => {
+    if (b.category === EPARGNE_CATEGORY) {
+      return monthSavingsAmount;
+    }
+    return getBudgetSpent(b, currentMonth);
+  };
+
   const totalBudgeted = useMemo(() => {
     return filteredBudgets.reduce((s, b) => s + b.limit, 0);
   }, [filteredBudgets]);
@@ -73,6 +98,10 @@ const Budgets = () => {
   const allExpenseCategories = useMemo(() => {
     const base = [...EXPENSE_CATEGORIES];
     const customs = customCategories.filter(c => c.type === 'expense').map(c => c.name);
+    // Ensure Épargne is included
+    if (!base.includes(EPARGNE_CATEGORY as any) && !customs.includes(EPARGNE_CATEGORY)) {
+      // It's already in EXPENSE_CATEGORIES via types, but let's ensure
+    }
     return [...base, ...customs];
   }, [customCategories]);
 
@@ -86,10 +115,14 @@ const Budgets = () => {
         catSpent.set(t.category, (catSpent.get(t.category) || 0) + t.convertedAmount);
       }
     });
+    // Add Épargne if there are savings transfers but no budget for it
+    if (monthSavingsAmount > 0 && !budgetedCategories.has(EPARGNE_CATEGORY)) {
+      catSpent.set(EPARGNE_CATEGORY, monthSavingsAmount);
+    }
     return Array.from(catSpent.entries())
       .sort((a, b) => b[1] - a[1])
       .map(([cat, spent]) => ({ category: cat, spent, emoji: CATEGORY_EMOJIS[cat] || '📌' }));
-  }, [monthTx, budgetedCategories]);
+  }, [monthTx, budgetedCategories, monthSavingsAmount]);
 
   // === Available categories for create modal (exclude already budgeted) ===
   const availableCategories = allExpenseCategories.filter(c => !budgetedCategories.has(c));
@@ -300,7 +333,7 @@ const Budgets = () => {
           ) : (
             <div className="space-y-2">
               {filteredBudgets.map(b => {
-                const spent = getBudgetSpent(b, currentMonth);
+                const spent = getSpentForBudget(b);
                 const pct = b.limit > 0 ? (spent / b.limit) * 100 : 0;
                 const clampedPct = Math.min(pct, 100);
                 const remaining = b.limit - spent;
@@ -454,7 +487,7 @@ const Budgets = () => {
                 <div className="p-5 overflow-y-auto flex-1">
                   {/* Stats */}
                   {(() => {
-                    const spent = getBudgetSpent(editTarget, currentMonth);
+                    const spent = getSpentForBudget(editTarget);
                     const pct = editTarget.limit > 0 ? (spent / editTarget.limit) * 100 : 0;
                     const clampedPct = Math.min(pct, 100);
                     const remaining = editTarget.limit - spent;
@@ -486,9 +519,14 @@ const Budgets = () => {
 
                   {/* Transaction list */}
                   {(() => {
-                    const budgetTx = monthTx
-                      .filter(t => t.type === 'expense' && t.category === editTarget.category)
-                      .sort((a, b) => b.date.localeCompare(a.date));
+                    const isEpargneBudget = editTarget.category === EPARGNE_CATEGORY;
+                    const budgetTx = isEpargneBudget
+                      ? monthTx
+                          .filter(t => t.type === 'income' && t.accountId && savingsAccountIds.has(t.accountId) && t.category === 'Transfert')
+                          .sort((a, b) => b.date.localeCompare(a.date))
+                      : monthTx
+                          .filter(t => t.type === 'expense' && t.category === editTarget.category)
+                          .sort((a, b) => b.date.localeCompare(a.date));
                     if (budgetTx.length === 0) return <div className="bg-secondary/20 rounded-xl p-3 mb-4 text-center text-[10px] text-muted-foreground">Aucune transaction ce mois</div>;
                     return (
                       <div className="mb-4">
@@ -501,7 +539,7 @@ const Budgets = () => {
                                 <span className="truncate font-medium">{t.label}</span>
                                 <span className="text-muted-foreground shrink-0">{formatDateLong(t.date)}</span>
                               </div>
-                              <span className="font-mono-amount font-medium text-destructive shrink-0 ml-2">-{formatAmount(t.convertedAmount)}</span>
+                              <span className={`font-mono-amount font-medium shrink-0 ml-2 ${isEpargneBudget ? 'text-success' : 'text-destructive'}`}>{isEpargneBudget ? '+' : '-'}{formatAmount(t.convertedAmount)}</span>
                             </div>
                           ))}
                         </div>
