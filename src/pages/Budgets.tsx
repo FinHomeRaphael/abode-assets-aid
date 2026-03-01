@@ -170,8 +170,19 @@ const Budgets = () => {
         catSpent.set(t.category, (catSpent.get(t.category) || 0) + t.convertedAmount);
       }
     });
+    // Also include categories from 3-month average that have no current spending but had past spending
+    avg3MonthByCategory.forEach((avg, cat) => {
+      if (!budgetedCategories.has(cat) && !catSpent.has(cat) && cat !== 'Transfert') {
+        catSpent.set(cat, 0);
+      }
+    });
     return Array.from(catSpent.entries())
-      .sort((a, b) => b[1] - a[1])
+      .sort((a, b) => {
+        // Sort by suggested budget (avg or spent) descending
+        const aSugg = avg3MonthByCategory.get(a[0]) || a[1];
+        const bSugg = avg3MonthByCategory.get(b[0]) || b[1];
+        return bSugg - aSugg;
+      })
       .map(([cat, spent]) => ({
         category: cat,
         spent,
