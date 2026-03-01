@@ -278,6 +278,13 @@ const Budgets = () => {
             </div>
           )}
 
+          {monthSavingsNet < 0 && (
+            <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-xl px-3 py-2">
+              <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />
+              <p className="text-[11px] text-destructive">Attention, vous avez réduit votre épargne ce mois. Corrigez cela pour ne pas détériorer votre fortune globale.</p>
+            </div>
+          )}
+
           <div>
             <div className="flex items-center justify-between text-xs mb-1.5">
               <span className="text-muted-foreground">Total budgété</span>
