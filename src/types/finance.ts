@@ -137,7 +137,7 @@ export const EXPENSE_CATEGORIES = [
   'Logement', 'Alimentation', 'Transport', 'Restaurants', 'Loisirs',
   'Shopping', 'Abonnements', 'Santé', 'Famille & Enfants', 'Éducation',
   'Voyages', 'Cadeaux', 'Impôts & Taxes', 'Assurances', 'Animaux',
-  'Frais bancaires', 'Autre'
+  'Frais bancaires', 'Dettes', 'Autre'
 ] as const;
 
 export const INCOME_CATEGORIES = [
@@ -242,6 +242,7 @@ export const CATEGORY_EMOJIS: Record<string, string> = {
   Assurances: '🛡️',
   Animaux: '🐾',
   'Frais bancaires': '💳',
+  Dettes: '🏦',
   'Épargne': '💰',
   Salaire: '💻',
   Freelance: '🏆',
