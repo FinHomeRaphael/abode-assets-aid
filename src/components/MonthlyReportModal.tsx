@@ -278,6 +278,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   const { getTransactionsForMonth, getBudgetsForMonth, getBudgetSpent, getMonthSavings, scopedSavingsGoals: savingsGoals, getGoalSaved, getActiveAccounts, scopedAccounts: accounts, scopedTransactions: allTransactions, householdId, financeScope, session } = useApp();
   const { formatAmount, currency } = useCurrency();
   const [month, setMonth] = useState(new Date());
+  const [reportPeriod, setReportPeriod] = useState<'monthly' | 'yearly'>('monthly');
 
   // Fetch debts + schedules
   interface DebtRow {
@@ -346,7 +347,14 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
     return debt.payment_amount / divisor;
   }, [debtSchedules, month]);
 
-  const transactions = useMemo(() => getTransactionsForMonth(month), [month, getTransactionsForMonth]);
+  const transactions = useMemo(() => {
+    if (reportPeriod === 'monthly') return getTransactionsForMonth(month);
+    // Yearly: filter all transactions for the selected year
+    const year = month.getFullYear();
+    const startStr = `${year}-01-01`;
+    const endStr = `${year}-12-31`;
+    return allTransactions.filter(t => t.date >= startStr && t.date <= endStr);
+  }, [month, reportPeriod, getTransactionsForMonth, allTransactions]);
 
   // Savings accounts logic
   const epargneAccountIds = new Set(accounts.filter(a => a.type === 'epargne' || a.type === 'pilier3a').map(a => a.id));
@@ -381,10 +389,20 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   const expenses = transactions.filter(t => t.type === 'expense' && !isAnySavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
   const balance = income - expenses + Math.min(monthSavingsNet, 0);
 
-  // Previous month
+  // Previous period
   const prevMonth = new Date(month);
-  prevMonth.setMonth(prevMonth.getMonth() - 1);
-  const prevTransactions = useMemo(() => getTransactionsForMonth(prevMonth), [prevMonth, getTransactionsForMonth]);
+  if (reportPeriod === 'monthly') {
+    prevMonth.setMonth(prevMonth.getMonth() - 1);
+  } else {
+    prevMonth.setFullYear(prevMonth.getFullYear() - 1);
+  }
+  const prevTransactions = useMemo(() => {
+    if (reportPeriod === 'monthly') return getTransactionsForMonth(prevMonth);
+    const year = prevMonth.getFullYear();
+    const startStr = `${year}-01-01`;
+    const endStr = `${year}-12-31`;
+    return allTransactions.filter(t => t.date >= startStr && t.date <= endStr);
+  }, [prevMonth, reportPeriod, getTransactionsForMonth, allTransactions]);
 
   // Previous month savings logic
   const prevSavingsTransferIds = new Set<string>();
@@ -485,10 +503,12 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
 
   const diffPct = (curr: number, prev: number) => prev === 0 ? null : ((curr - prev) / prev) * 100;
 
-  // Account balances at end of month
+  // Account balances at end of period
   const activeAccounts = getActiveAccounts();
-  const endOfMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0);
-  const endDateStr = `${endOfMonth.getFullYear()}-${String(endOfMonth.getMonth() + 1).padStart(2, '0')}-${String(endOfMonth.getDate()).padStart(2, '0')}`;
+  const endOfPeriod = reportPeriod === 'monthly'
+    ? new Date(month.getFullYear(), month.getMonth() + 1, 0)
+    : new Date(month.getFullYear(), 11, 31);
+  const endDateStr = `${endOfPeriod.getFullYear()}-${String(endOfPeriod.getMonth() + 1).padStart(2, '0')}-${String(endOfPeriod.getDate()).padStart(2, '0')}`;
 
   const getAccountBalanceAtMonth = (accId: string) => {
     const account = accounts.find(a => a.id === accId);
@@ -499,8 +519,10 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
     return account.startingBalance + incomeSum - expenseSum;
   };
 
-  const prevEndOfMonth = new Date(month.getFullYear(), month.getMonth(), 0);
-  const prevEndDateStr = `${prevEndOfMonth.getFullYear()}-${String(prevEndOfMonth.getMonth() + 1).padStart(2, '0')}-${String(prevEndOfMonth.getDate()).padStart(2, '0')}`;
+  const prevEndOfPeriod = reportPeriod === 'monthly'
+    ? new Date(month.getFullYear(), month.getMonth(), 0)
+    : new Date(month.getFullYear() - 1, 11, 31);
+  const prevEndDateStr = `${prevEndOfPeriod.getFullYear()}-${String(prevEndOfPeriod.getMonth() + 1).padStart(2, '0')}-${String(prevEndOfPeriod.getDate()).padStart(2, '0')}`;
   const getAccountBalanceAtPrevMonth = (accId: string) => {
     const account = accounts.find(a => a.id === accId);
     if (!account) return 0;
@@ -559,7 +581,17 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
 
   if (!open) return null;
 
-  const monthLabel = month.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const monthLabel = reportPeriod === 'monthly'
+    ? month.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+    : `Année ${month.getFullYear()}`;
+
+  const YearSelector = () => (
+    <div className="flex items-center gap-3">
+      <button onClick={() => { const d = new Date(month); d.setFullYear(d.getFullYear() - 1); setMonth(d); }} className="w-8 h-8 rounded-md border border-border flex items-center justify-center hover:bg-secondary transition-colors text-sm">←</button>
+      <span className="text-sm font-medium min-w-[160px] text-center">{month.getFullYear()}</span>
+      <button onClick={() => { const d = new Date(month); d.setFullYear(d.getFullYear() + 1); setMonth(d); }} className="w-8 h-8 rounded-md border border-border flex items-center justify-center hover:bg-secondary transition-colors text-sm">→</button>
+    </div>
+  );
 
   return (
     <AnimatePresence>
@@ -587,15 +619,19 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                 </div>
                 <div>
                   <h2 className="text-base font-bold capitalize">{monthLabel}</h2>
-                  <p className="text-[10px] text-muted-foreground">Rapport mensuel détaillé</p>
+                  <p className="text-[10px] text-muted-foreground">Rapport {reportPeriod === 'monthly' ? 'mensuel' : 'annuel'} détaillé</p>
                 </div>
               </div>
               <button onClick={onClose} className="w-8 h-8 rounded-xl bg-secondary/80 hover:bg-secondary flex items-center justify-center transition-colors">
                 <X className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
+            <div className="flex bg-muted rounded-xl p-1 mb-3">
+              <button onClick={() => setReportPeriod('monthly')} className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${reportPeriod === 'monthly' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}>Mensuel</button>
+              <button onClick={() => setReportPeriod('yearly')} className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${reportPeriod === 'yearly' ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'}`}>Annuel</button>
+            </div>
             <div className="flex justify-center">
-              <MonthSelector currentMonth={month} onChange={setMonth} />
+              {reportPeriod === 'monthly' ? <MonthSelector currentMonth={month} onChange={setMonth} /> : <YearSelector />}
             </div>
           </div>
 
@@ -611,7 +647,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
               >
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.08),transparent_70%)]" />
                 <div className="relative">
-                  <p className="text-xs text-muted-foreground mb-1.5 font-medium text-center">Patrimoine total fin de mois</p>
+                  <p className="text-xs text-muted-foreground mb-1.5 font-medium text-center">Patrimoine total fin {reportPeriod === 'monthly' ? 'de mois' : "d'année"}</p>
                   <p className={`text-2xl font-bold font-mono-amount tracking-tight text-center ${totalAccountsBalance >= 0 ? 'text-foreground' : 'text-destructive'}`}>
                     {formatAmount(totalAccountsBalance)}
                   </p>
@@ -642,11 +678,11 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
 
             {/* ===== 2. FLUX DU MOIS ===== */}
             <div>
-              <SectionTitle icon={Wallet} title="Flux du mois" subtitle={`${txCount} transactions`} />
+              <SectionTitle icon={Wallet} title={reportPeriod === 'monthly' ? 'Flux du mois' : "Flux de l'année"} subtitle={`${txCount} transactions`} />
 
               {/* Solde principal en hero */}
               <div className={`rounded-2xl p-4 text-center mb-3 border ${balance >= 0 ? 'bg-success/5 border-success/15' : 'bg-destructive/5 border-destructive/15'}`}>
-                <p className="text-[10px] text-muted-foreground mb-0.5">Solde du mois</p>
+                <p className="text-[10px] text-muted-foreground mb-0.5">Solde {reportPeriod === 'monthly' ? 'du mois' : "de l'année"}</p>
                 <p className={`font-mono-amount font-bold text-xl ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
                   {balance >= 0 ? '+' : ''}{formatAmount(balance)}
                 </p>
@@ -1047,7 +1083,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                                 <span className="font-mono-amount text-[10px] font-semibold">{formatAmount(totalMonthly)}</span>
                               </div>
                               <div className="flex justify-between items-center">
-                                <span className="text-[10px] text-muted-foreground">÷ Revenus du mois</span>
+                                <span className="text-[10px] text-muted-foreground">÷ Revenus {reportPeriod === 'monthly' ? 'du mois' : "de l'année"}</span>
                                 <span className="font-mono-amount text-[10px] font-semibold">{formatAmount(income)}</span>
                               </div>
                               <div className="flex justify-between items-center border-t border-border/30 pt-1">
