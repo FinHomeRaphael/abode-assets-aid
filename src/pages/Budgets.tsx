@@ -1,10 +1,11 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { formatDateLong } from '@/utils/format';
 import { getBudgetStatus } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CATEGORY_EMOJIS } from '@/types/finance';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CATEGORY_EMOJIS, DEFAULT_EXCHANGE_RATES } from '@/types/finance';
+import { getPeriodsPerYear, getDebtEmoji, PaymentFrequency } from '@/types/debt';
 import { toast } from 'sonner';
 import { PaywallModal } from '@/components/PremiumPaywall';
 import Layout from '@/components/Layout';
@@ -16,7 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 const Budgets = () => {
-  const { scopedBudgets: budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth, getTransactionsForMonth, getMemberById, householdId, currentUser, customCategories, scopedAccounts: accounts, household } = useApp();
+  const { scopedBudgets: budgets, addBudget, updateBudget, getBudgetSpent, deleteBudget, softDeleteBudget, getBudgetsForMonth, getTransactionsForMonth, getMemberById, householdId, currentUser, customCategories, scopedAccounts: accounts, household, financeScope, session } = useApp();
   const { canAdd } = useSubscription(householdId, currentUser?.id);
   const { formatAmount } = useCurrency();
   const navigate = useNavigate();
@@ -45,6 +46,70 @@ const Budgets = () => {
   const [savingsTargetInput, setSavingsTargetInput] = useState('');
 
   const savingsTarget = household.monthlySavingsTarget;
+
+  // === Debt monthly total for budget suggestion ===
+  const [debtMonthlyTotal, setDebtMonthlyTotal] = useState(0);
+
+  useEffect(() => {
+    if (!householdId) return;
+    const fetchDebtTotal = async () => {
+      const userId = session?.user?.id;
+      let query = supabase.from('debts').select('*');
+      if (financeScope === 'personal') {
+        query = query.eq('scope', 'personal').eq('created_by', userId);
+      } else {
+        query = query.eq('household_id', householdId).eq('scope', 'household');
+      }
+      const { data } = await query;
+      if (!data || data.length === 0) { setDebtMonthlyTotal(0); return; }
+
+      const baseCurrency = household.currency;
+      const convert = (amount: number, from: string) => {
+        if (from === baseCurrency) return amount;
+        const rate = DEFAULT_EXCHANGE_RATES[`${from}_${baseCurrency}`] || 1;
+        return amount * rate;
+      };
+
+      // Fetch next schedule rows for accurate amounts
+      const debtIds = data.map((d: any) => d.id);
+      const today = new Date().toISOString().split('T')[0];
+      const { data: schedules } = await supabase
+        .from('debt_schedules')
+        .select('*')
+        .in('debt_id', debtIds)
+        .in('status', ['prevu', 'ajuste'])
+        .gte('due_date', today)
+        .order('due_date', { ascending: true });
+
+      const nextScheduleMap = new Map<string, any>();
+      if (schedules) {
+        for (const s of schedules) {
+          if (!nextScheduleMap.has(s.debt_id)) nextScheduleMap.set(s.debt_id, s);
+        }
+      }
+
+      let total = 0;
+      for (const d of data) {
+        const ppy = getPeriodsPerYear((d.payment_frequency || 'monthly') as PaymentFrequency);
+        const monthlyFactor = ppy / 12;
+        if (d.consumer_type === 'revolving') { total += convert(d.minimum_payment || 0, d.currency); continue; }
+        if (d.type === 'other' && d.has_schedule === false) continue;
+        const nextRow = nextScheduleMap.get(d.id);
+        if (nextRow) { total += convert(Number(nextRow.total_amount) * monthlyFactor, d.currency); continue; }
+        if (d.mortgage_system === 'swiss') {
+          const remaining = d.remaining_amount;
+          const interest = remaining * (d.interest_rate || 0) / 100 / ppy;
+          const amort = d.swiss_amortization_type !== 'none' && d.annual_amortization ? d.annual_amortization / ppy : 0;
+          const maint = d.include_maintenance && d.property_value ? d.property_value * 0.01 / ppy : 0;
+          total += convert((interest + amort + maint) * monthlyFactor, d.currency);
+          continue;
+        }
+        total += convert(Number(d.payment_amount) * monthlyFactor, d.currency);
+      }
+      setDebtMonthlyTotal(Math.round(total));
+    };
+    fetchDebtTotal();
+  }, [householdId, financeScope, session?.user?.id, household.currency]);
 
   const handleSaveSavingsTarget = async () => {
     const value = parseFloat(savingsTargetInput);
@@ -496,6 +561,33 @@ const Budgets = () => {
             </div>
           )}
         </div>
+
+        {/* Debt budget suggestion */}
+        {debtMonthlyTotal > 0 && !budgetedCategories.has('Dettes') && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Lightbulb className="w-4 h-4 text-primary" />
+              <h2 className="text-base font-bold">Suggestion dette</h2>
+            </div>
+            <div className="bg-card border border-primary/30 rounded-xl px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium">💳 Dettes</span>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Échéance mensuelle totale
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleCreateFromSuggestion('Dettes', debtMonthlyTotal)}
+                  className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shrink-0 flex items-center gap-1.5"
+                >
+                  <Target className="w-3 h-3" />
+                  {formatAmount(debtMonthlyTotal)}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Section 4: Categories without budget — Smart suggestions */}
         {categoriesWithoutBudget.length > 0 && (
