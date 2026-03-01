@@ -433,7 +433,7 @@ const Transactions = () => {
                     {monthSavingsNet !== 0 && (
                       <div className="flex items-center justify-between py-1 border-b border-border/30">
                         <span className="text-xs flex items-center gap-1.5">🏦 Épargne nette</span>
-                        <span className={`font-mono-amount text-xs font-semibold ${monthSavingsNet > 0 ? 'text-amber-500' : 'text-success'}`}>
+                        <span className={`font-mono-amount text-xs font-semibold ${monthSavingsNet > 0 ? 'text-success' : 'text-destructive'}`}>
                           {monthSavingsNet > 0 ? '-' : '+'}{formatAmount(Math.abs(monthSavingsNet))}
                         </span>
                       </div>
