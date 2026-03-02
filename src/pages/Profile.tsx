@@ -13,7 +13,54 @@ import InviteMemberModal from '@/components/InviteMemberModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
-import { Crown } from 'lucide-react';
+import { Crown, Pencil, Check, X } from 'lucide-react';
+
+const HouseholdNameCard = ({ householdId, initialName, createdAt }: { householdId?: string; initialName: string; createdAt?: string }) => {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(initialName);
+
+  useEffect(() => { setName(initialName); }, [initialName]);
+
+  const save = async () => {
+    const trimmed = name.trim();
+    if (!trimmed || !householdId) return;
+    const { error } = await supabase.from('households').update({ name: trimmed }).eq('id', householdId);
+    if (error) { toast.error('Erreur lors du renommage'); return; }
+    toast.success('Foyer renommé');
+    setEditing(false);
+  };
+
+  return (
+    <div className="card-elevated p-5">
+      <div className="flex items-center justify-between">
+        {editing ? (
+          <div className="flex items-center gap-2 flex-1 mr-2">
+            <span className="text-lg">🏠</span>
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && save()}
+              className="flex-1 px-3 py-1.5 rounded-lg border border-input bg-background text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-ring"
+              autoFocus
+            />
+            <button onClick={save} className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors"><Check className="w-4 h-4" /></button>
+            <button onClick={() => { setName(initialName); setEditing(false); }} className="w-8 h-8 rounded-lg bg-muted text-muted-foreground flex items-center justify-center hover:bg-muted/80 transition-colors"><X className="w-4 h-4" /></button>
+          </div>
+        ) : (
+          <>
+            <div>
+              <h2 className="font-semibold mb-1">🏠 {initialName}</h2>
+              <p className="text-sm text-muted-foreground">Créé le {createdAt ? formatDateLong(createdAt) : '—'}</p>
+            </div>
+            <button onClick={() => setEditing(true)} className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors">
+              <Pencil className="w-4 h-4" />
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const Profile = () => {
   const { household, currentUser, logout, resetDemo, customCategories, deleteCustomCategory, getRecurringTransactions, deleteRecurring, getMemberById, changeCurrency, addMember, removeMember, updateMemberRole, householdId, budgets, savingsGoals } = useApp();
@@ -147,10 +194,7 @@ const Profile = () => {
         )}
 
         {/* Household */}
-        <div className="card-elevated p-5">
-          <h2 className="font-semibold mb-3">🏠 {household.name}</h2>
-          <p className="text-sm text-muted-foreground">Créé le {household.createdAt ? formatDateLong(household.createdAt) : '—'}</p>
-        </div>
+        <HouseholdNameCard householdId={householdId} initialName={household.name} createdAt={household.createdAt} />
 
         {/* Currency */}
         <div className="card-elevated p-5">
