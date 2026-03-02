@@ -15,7 +15,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
 import { Crown, Pencil, Check, X } from 'lucide-react';
 
-const HouseholdNameCard = ({ householdId, initialName, createdAt }: { householdId?: string; initialName: string; createdAt?: string }) => {
+const HouseholdNameCard = ({ initialName, createdAt, onRename }: { initialName: string; createdAt?: string; onRename: (name: string) => Promise<void> }) => {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(initialName);
 
@@ -23,10 +23,8 @@ const HouseholdNameCard = ({ householdId, initialName, createdAt }: { householdI
 
   const save = async () => {
     const trimmed = name.trim();
-    if (!trimmed || !householdId) return;
-    const { error } = await supabase.from('households').update({ name: trimmed }).eq('id', householdId);
-    if (error) { toast.error('Erreur lors du renommage'); return; }
-    toast.success('Foyer renommé');
+    if (!trimmed) return;
+    await onRename(trimmed);
     setEditing(false);
   };
 
@@ -63,7 +61,7 @@ const HouseholdNameCard = ({ householdId, initialName, createdAt }: { householdI
 };
 
 const Profile = () => {
-  const { household, currentUser, logout, resetDemo, customCategories, deleteCustomCategory, getRecurringTransactions, deleteRecurring, getMemberById, changeCurrency, addMember, removeMember, updateMemberRole, householdId, budgets, savingsGoals } = useApp();
+  const { household, currentUser, logout, resetDemo, customCategories, deleteCustomCategory, getRecurringTransactions, deleteRecurring, getMemberById, changeCurrency, addMember, removeMember, updateMemberRole, householdId, budgets, savingsGoals, renameHousehold } = useApp();
   const { formatAmount, currency } = useCurrency();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -194,7 +192,7 @@ const Profile = () => {
         )}
 
         {/* Household */}
-        <HouseholdNameCard householdId={householdId} initialName={household.name} createdAt={household.createdAt} />
+        <HouseholdNameCard initialName={household.name} createdAt={household.createdAt} onRename={renameHousehold} />
 
         {/* Currency */}
         <div className="card-elevated p-5">
