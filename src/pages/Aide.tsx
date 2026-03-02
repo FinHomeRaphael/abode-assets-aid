@@ -132,8 +132,8 @@ const Aide = () => {
             <Section emoji="🔍" title="Filtrer et rechercher">
               <p>Sur la page Transactions, utilisez la <strong>barre de recherche</strong> pour filtrer par libellé. Vous pouvez aussi filtrer par <strong>catégorie</strong>, <strong>type</strong> (dépense/revenu) et <strong>compte</strong>.</p>
             </Section>
-            <Section emoji="📥" title="Importer un relevé CSV">
-              <p>Vous pouvez importer vos relevés bancaires au format CSV. L'application détecte automatiquement les colonnes et catégorise vos transactions grâce à l'IA.</p>
+            <Section emoji="📥" title="Importer un relevé bancaire">
+              <p>Vous pouvez importer vos relevés bancaires au format <strong>CSV</strong> ou <strong>PDF</strong>. L'application détecte automatiquement les colonnes (CSV) ou extrait les transactions (PDF) et les catégorise grâce à l'IA.</p>
             </Section>
             <Section emoji="💰" title="Détail du solde">
               <p>La page Transactions affiche aussi le <strong>détail du solde du mois</strong> avec le même calcul que le Dashboard (Revenus − Dépenses − Épargne). Un message vous félicite si vous avez épargné, ou vous alerte si l'épargne est négative.</p>
