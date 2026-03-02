@@ -113,7 +113,7 @@ interface AppContextType {
   getAccountBalance: (accountId: string) => number;
   getActiveAccounts: () => Account[];
   getAccountTransactions: (accountId: string) => Transaction[];
-  renameHousehold: (newName: string) => Promise<void>;
+  renameHousehold: (newName: string) => Promise<boolean>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -1304,13 +1304,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [householdId, session?.user?.id]);
 
-  const renameHousehold = async (newName: string) => {
+  const renameHousehold = async (newName: string): Promise<boolean> => {
     const trimmed = newName.trim();
-    if (!trimmed || !householdId) return;
-    const { error } = await supabase.from('households').update({ name: trimmed }).eq('id', householdId);
-    if (error) { toast.error('Erreur lors du renommage'); return; }
-    setHouseholdData(prev => ({ ...prev, name: trimmed }));
+    if (!trimmed || !householdId) return false;
+
+    const { data, error } = await supabase
+      .from('households')
+      .update({ name: trimmed })
+      .eq('id', householdId)
+      .select('id, name')
+      .single();
+
+    if (error || !data) {
+      toast.error('Impossible de renommer le foyer (droits insuffisants ou erreur).');
+      return false;
+    }
+
+    setHouseholdData(prev => ({ ...prev, name: data.name ?? trimmed }));
     toast.success('Foyer renommé');
+    return true;
   };
 
   return (
