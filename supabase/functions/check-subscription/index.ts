@@ -31,18 +31,12 @@ serve(async (req) => {
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      // Session expired or invalid - return graceful fallback
-      return new Response(JSON.stringify({ subscribed: false }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    }
-
-    // Get full user for email
+    
+    // Use getUser which handles token validation gracefully
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError || !userData?.user?.email) {
+      // Session expired or invalid - return graceful fallback instead of 500
+      console.log("Auth validation failed (possibly expired JWT):", userError?.message);
       return new Response(JSON.stringify({ subscribed: false }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
