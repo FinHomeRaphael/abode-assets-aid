@@ -3,7 +3,7 @@ import Layout from '@/components/Layout';
 import BackHeader from '@/components/BackHeader';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Home, CreditCard, Target, PiggyBank, Landmark, Lightbulb, BarChart3, MessageSquare, Users, Settings } from 'lucide-react';
+import { Home, CreditCard, Target, PiggyBank, Landmark, Heart, Users, Settings, BarChart3, MessageSquare } from 'lucide-react';
 
 const Section = ({ emoji, title, children }: { emoji: string; title: string; children: React.ReactNode }) => (
   <Card className="mb-4">
@@ -40,7 +40,7 @@ const Aide = () => {
             <TabsTrigger value="budgets" className="text-xs gap-1"><Target className="w-3.5 h-3.5" />Budgets</TabsTrigger>
             <TabsTrigger value="comptes" className="text-xs gap-1"><PiggyBank className="w-3.5 h-3.5" />Comptes</TabsTrigger>
             <TabsTrigger value="dettes" className="text-xs gap-1"><Landmark className="w-3.5 h-3.5" />Dettes</TabsTrigger>
-            <TabsTrigger value="insights" className="text-xs gap-1"><Lightbulb className="w-3.5 h-3.5" />Insights</TabsTrigger>
+            <TabsTrigger value="sante" className="text-xs gap-1"><Heart className="w-3.5 h-3.5" />Santé</TabsTrigger>
             <TabsTrigger value="foyer" className="text-xs gap-1"><Users className="w-3.5 h-3.5" />Foyer</TabsTrigger>
             <TabsTrigger value="profil" className="text-xs gap-1"><Settings className="w-3.5 h-3.5" />Profil</TabsTrigger>
           </TabsList>
@@ -62,6 +62,14 @@ const Aide = () => {
             <Section emoji="💱" title="Multi-devises">
               <p>L'application supporte plusieurs devises (CHF, EUR, USD…). Chaque compte et transaction peut avoir sa propre devise, et les montants sont automatiquement convertis dans la devise de référence de votre foyer.</p>
             </Section>
+            <Section emoji="💎" title="Modèle Freemium & Premium">
+              <p>L'application est gratuite avec certaines limites (1 compte, 1 objectif d'épargne, 2 budgets). L'abonnement <strong>Premium</strong> débloque :</p>
+              <Step n={1}>Comptes, budgets et objectifs d'épargne <strong>illimités</strong>.</Step>
+              <Step n={2}>Section <strong>Dettes</strong> complète avec tableaux d'amortissement.</Step>
+              <Step n={3}><strong>Rapport mensuel</strong> détaillé.</Step>
+              <Step n={4}><strong>Coach IA</strong> illimité.</Step>
+              <Step n={5}><strong>Scanner de tickets</strong> illimité.</Step>
+            </Section>
           </TabsContent>
 
           {/* ACCUEIL / DASHBOARD */}
@@ -73,8 +81,8 @@ const Aide = () => {
               <p>En haut de la page, la carte principale affiche votre <strong>solde du mois</strong> :</p>
               <Step n={1}><strong>Revenus</strong> : total de vos entrées d'argent (hors transferts et comptes épargne).</Step>
               <Step n={2}><strong>Dépenses</strong> : total de vos sorties d'argent (hors transferts et comptes épargne).</Step>
-              <Step n={3}><strong>Épargne</strong> : montant mis de côté ce mois-ci via vos objectifs d'épargne.</Step>
-              <p>Le solde est calculé ainsi : <strong>Revenus − Dépenses − Épargne</strong>. Un solde positif signifie qu'il vous reste de l'argent disponible.</p>
+              <Step n={3}><strong>Épargne nette</strong> : montant mis de côté ce mois-ci. Affiché en <strong>vert</strong> si positif (vous avez épargné), en <strong>rouge</strong> si négatif (retrait d'épargne).</Step>
+              <p>Le solde est calculé ainsi : <strong>Revenus − Dépenses − |Épargne|</strong>. L'épargne est toujours déduite du solde disponible, qu'il s'agisse d'un versement ou d'un retrait.</p>
             </Section>
             <Section emoji="💡" title="Conseils intelligents">
               <p>Juste en dessous du solde, un <strong>carrousel de conseils</strong> analyse automatiquement vos données et vous donne des recommandations :</p>
@@ -83,7 +91,7 @@ const Aide = () => {
               <Step n={3}><strong>Astuces épargne</strong> : encouragements et suggestions personnalisées.</Step>
             </Section>
             <Section emoji="❤️" title="Score de santé financière">
-              <p>Le widget <strong>Santé Financière</strong> affiche votre score sur 100, calculé à partir de 5 critères : taux d'épargne, fonds d'urgence, patrimoine, ratio dettes/patrimoine et taux d'endettement. Cliquez dessus pour voir le détail.</p>
+              <p>Le widget <strong>Santé Financière</strong> affiche votre score sur 100. Cliquez dessus pour voir le détail et l'historique.</p>
             </Section>
             <Section emoji="⚡" title="Actions rapides">
               <p>Les <strong>4 boutons d'action rapide</strong> vous donnent un accès direct aux fonctionnalités clés :</p>
@@ -127,6 +135,9 @@ const Aide = () => {
             <Section emoji="📥" title="Importer un relevé CSV">
               <p>Vous pouvez importer vos relevés bancaires au format CSV. L'application détecte automatiquement les colonnes et catégorise vos transactions grâce à l'IA.</p>
             </Section>
+            <Section emoji="💰" title="Détail du solde">
+              <p>La page Transactions affiche aussi le <strong>détail du solde du mois</strong> avec le même calcul que le Dashboard (Revenus − Dépenses − Épargne). Un message vous félicite si vous avez épargné, ou vous alerte si l'épargne est négative.</p>
+            </Section>
           </TabsContent>
 
           {/* BUDGETS */}
@@ -161,15 +172,19 @@ const Aide = () => {
               <Step n={1}>Appuyez sur <strong>+</strong> → <strong>Compte épargne</strong>.</Step>
               <Step n={2}>Définissez un <strong>nom</strong> (ex: "Vacances"), un <strong>objectif</strong> et une <strong>date cible</strong> optionnelle.</Step>
               <Step n={3}>Ajoutez des <strong>dépôts</strong> régulièrement pour suivre votre progression.</Step>
+              <p>Les dépôts positifs augmentent votre épargne, les dépôts négatifs représentent des retraits.</p>
             </Section>
             <Section emoji="🔀" title="Transferts entre comptes">
               <p>Vous pouvez effectuer des <strong>transferts</strong> entre vos comptes directement depuis la page d'un compte. Cela crée automatiquement les transactions correspondantes.</p>
+            </Section>
+            <Section emoji="📦" title="Archiver un compte">
+              <p>Vous pouvez <strong>archiver</strong> un compte que vous n'utilisez plus. Il ne sera plus affiché mais ses transactions resteront dans l'historique.</p>
             </Section>
           </TabsContent>
 
           {/* DETTES */}
           <TabsContent value="dettes" className="mt-4 space-y-4">
-            <Section emoji="💸" title="Ajouter une dette">
+            <Section emoji="💸" title="Ajouter une dette (Premium)">
               <Step n={1}>Allez dans <strong>Dettes</strong> ou appuyez sur <strong>+</strong> → <strong>Dette</strong>.</Step>
               <Step n={2}>Choisissez le <strong>type</strong> : Hypothèque, Prêt auto, Crédit conso, Leasing, etc.</Step>
               <Step n={3}>Renseignez le montant, le taux d'intérêt, la durée et la mensualité.</Step>
@@ -186,14 +201,8 @@ const Aide = () => {
             </Section>
           </TabsContent>
 
-          {/* INSIGHTS */}
-          <TabsContent value="insights" className="mt-4 space-y-4">
-            <Section emoji="📈" title="Graphiques et analyses">
-              <p>La page <strong>Insights</strong> vous offre une vue d'ensemble de vos finances avec des graphiques interactifs :</p>
-              <Step n={1}><strong>Répartition des dépenses</strong> par catégorie (camembert).</Step>
-              <Step n={2}><strong>Évolution</strong> des revenus et dépenses mois par mois.</Step>
-              <Step n={3}><strong>Tendances</strong> et comparaisons avec les mois précédents.</Step>
-            </Section>
+          {/* SANTÉ FINANCIÈRE */}
+          <TabsContent value="sante" className="mt-4 space-y-4">
             <Section emoji="🏥" title="Score de santé financière">
               <p>Votre <strong>Health Score</strong> est calculé automatiquement sur 100 points, basé sur <strong>5 critères</strong> avec redistribution automatique des poids (si vous n'avez pas de dettes, les points sont redistribués) :</p>
               <Step n={1}><strong>Taux d'épargne (25 pts)</strong> : pourcentage de vos revenus épargnés ce mois-ci. Score maximal à partir de 20%.</Step>
@@ -203,8 +212,12 @@ const Aide = () => {
               <Step n={5}><strong>Patrimoine total (10 pts)</strong> : comparaison avec la médiane européenne (~205 000 €). Inclut vos comptes bancaires + valeurs immobilières, véhicules et autres biens.</Step>
               <p>Chaque critère est <strong>cliquable</strong> pour voir le détail du calcul (formules, montants réels) et un conseil personnalisé.</p>
             </Section>
-            <Section emoji="✨" title="Coach IA">
-              <p>Le <strong>Coach IA</strong> analyse vos données financières et vous donne des conseils personnalisés. Accédez-y via le bouton <strong>+</strong> → <strong>Coach IA</strong> ou depuis la page Insights.</p>
+            <Section emoji="📈" title="Historique du score">
+              <p>Consultez l'<strong>évolution de votre score</strong> mois par mois grâce au graphique d'historique. Cela vous permet de voir vos progrès sur le long terme.</p>
+            </Section>
+            <Section emoji="✨" title="Coach IA (Premium)">
+              <p>Le <strong>Coach IA</strong> analyse vos données financières et vous donne des conseils personnalisés. Accédez-y via le bouton <strong>+</strong> → <strong>Coach IA</strong> ou depuis le Dashboard.</p>
+              <p>Posez-lui vos questions sur vos finances, votre budget, vos investissements… Il s'adapte à votre situation.</p>
             </Section>
           </TabsContent>
 
@@ -212,6 +225,7 @@ const Aide = () => {
           <TabsContent value="foyer" className="mt-4 space-y-4">
             <Section emoji="👨‍👩‍👧‍👦" title="Gestion du foyer">
               <p>L'application fonctionne autour du concept de <strong>foyer</strong>. Un foyer peut contenir un ou plusieurs membres qui partagent leurs finances.</p>
+              <p>Un seul abonnement Premium suffit pour tout le foyer : si un membre s'abonne, tous les autres en bénéficient.</p>
             </Section>
             <Section emoji="📩" title="Inviter un membre">
               <Step n={1}>Allez dans votre <strong>Profil</strong>.</Step>
@@ -231,14 +245,11 @@ const Aide = () => {
               <Step n={1}>Modifier votre <strong>prénom</strong> et <strong>nom</strong>.</Step>
               <Step n={2}>Changer la <strong>devise par défaut</strong> de votre foyer.</Step>
               <Step n={3}>Gérer les <strong>membres</strong> de votre foyer.</Step>
-              <Step n={4}>Voir et gérer votre <strong>abonnement</strong>.</Step>
+              <Step n={4}>Voir et gérer votre <strong>abonnement</strong> Premium.</Step>
+              <Step n={5}>Gérer vos <strong>catégories</strong> personnalisées.</Step>
             </Section>
-            <Section emoji="💎" title="Abonnement Premium">
-              <p>L'abonnement Premium débloque des fonctionnalités avancées :</p>
-              <Step n={1}>Accès aux <strong>Dettes</strong> et au tableau d'amortissement.</Step>
-              <Step n={2}>Page <strong>Insights</strong> complète avec tous les graphiques.</Step>
-              <Step n={3}><strong>Coach IA</strong> illimité.</Step>
-              <Step n={4}><strong>Scanner de tickets</strong> illimité.</Step>
+            <Section emoji="🏷️" title="Catégories personnalisées">
+              <p>Vous pouvez créer vos propres catégories de dépenses et de revenus en plus des catégories par défaut. Allez dans <strong>Profil</strong> pour les gérer.</p>
             </Section>
             <Section emoji="🚪" title="Déconnexion">
               <p>Appuyez sur le bouton <strong>Se déconnecter</strong> en bas de la page Profil pour vous déconnecter de votre compte.</p>
