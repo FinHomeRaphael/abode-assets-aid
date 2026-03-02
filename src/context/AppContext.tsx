@@ -113,6 +113,7 @@ interface AppContextType {
   getAccountBalance: (accountId: string) => number;
   getActiveAccounts: () => Account[];
   getAccountTransactions: (accountId: string) => Transaction[];
+  renameHousehold: (newName: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -1280,6 +1281,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [householdId, session?.user?.id]);
 
+  const renameHousehold = async (newName: string) => {
+    const trimmed = newName.trim();
+    if (!trimmed || !householdId) return;
+    const { error } = await supabase.from('households').update({ name: trimmed }).eq('id', householdId);
+    if (error) { toast.error('Erreur lors du renommage'); return; }
+    setHouseholdData(prev => ({ ...prev, name: trimmed }));
+    toast.success('Foyer renommé');
+  };
+
   return (
     <AppContext.Provider value={{
       isLoggedIn, loading, session, householdId, currentUser, household,
@@ -1301,6 +1311,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       resetDemo,
       addAccount, updateAccount, archiveAccount, deleteAccount,
       getAccountBalance, getActiveAccounts, getAccountTransactions,
+      renameHousehold,
     }}>
       {children}
     </AppContext.Provider>
