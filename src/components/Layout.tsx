@@ -23,7 +23,6 @@ const navItems = [
   { path: '/budgets', label: 'Budgets', icon: Target },
   { path: '/savings', label: 'Comptes bancaires', icon: PiggyBank },
   { path: '/debts', label: 'Dettes', icon: Landmark },
-  { path: '/insights', label: 'Insights', icon: Lightbulb },
 ];
 
 // Mobile nav: all 6 items, icon-only to fit
@@ -33,7 +32,7 @@ const mobileNavItems = [
   { path: '/budgets', label: 'Budgets', icon: Target },
   { path: '/savings', label: 'Comptes', icon: PiggyBank },
   { path: '/debts', label: 'Dettes', icon: Landmark },
-  { path: '/insights', label: 'Insights', icon: Lightbulb },
+  
 ];
 
 const fabActions = [
