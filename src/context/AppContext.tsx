@@ -1062,8 +1062,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setMembers(prev => prev.filter(m => m.id !== id));
   };
 
-  const updateMemberRole = (id: string, role: 'admin' | 'member') => {
+  const updateMemberRole = async (id: string, role: 'admin' | 'member') => {
+    const { error } = await supabase
+      .from('household_members')
+      .update({ role })
+      .eq('user_id', id)
+      .eq('household_id', householdId);
+    if (error) {
+      console.error('Update role error:', error);
+      toast.error('Erreur lors du changement de rôle');
+      return;
+    }
     setMembers(prev => prev.map(m => m.id === id ? { ...m, role } : m));
+    toast.success(`Rôle mis à jour avec succès`);
   };
 
   const resetDemo = () => {
