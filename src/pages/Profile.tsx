@@ -15,7 +15,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
 import { Crown, Pencil, Check, X } from 'lucide-react';
 
-const HouseholdNameCard = ({ initialName, createdAt, onRename }: { initialName: string; createdAt?: string; onRename: (name: string) => Promise<void> }) => {
+const HouseholdNameCard = ({ initialName, createdAt, onRename }: { initialName: string; createdAt?: string; onRename: (name: string) => Promise<boolean> }) => {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(initialName);
 
@@ -24,8 +24,8 @@ const HouseholdNameCard = ({ initialName, createdAt, onRename }: { initialName: 
   const save = async () => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    await onRename(trimmed);
-    setEditing(false);
+    const success = await onRename(trimmed);
+    if (success) setEditing(false);
   };
 
   return (
