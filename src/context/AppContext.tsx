@@ -1058,8 +1058,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // silent
   };
 
-  const removeMember = (id: string) => {
+  const removeMember = async (id: string) => {
+    const { error } = await supabase
+      .from('household_members')
+      .delete()
+      .eq('user_id', id)
+      .eq('household_id', householdId);
+    if (error) {
+      console.error('Remove member error:', error);
+      toast.error('Erreur lors de la suppression du membre');
+      return;
+    }
     setMembers(prev => prev.filter(m => m.id !== id));
+    toast.success('Membre retiré avec succès');
   };
 
   const updateMemberRole = async (id: string, role: 'admin' | 'member') => {
