@@ -963,6 +963,10 @@ export type Database = {
         Args: { _household_id: string; _user_id: string }
         Returns: boolean
       }
+      remove_member_from_household: {
+        Args: { _household_id: string; _user_id: string }
+        Returns: undefined
+      }
       validate_invitation_token: { Args: { _token: string }; Returns: Json }
     }
     Enums: {
