@@ -150,6 +150,29 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ...householdData,
     members,
   }), [householdData, members]);
+  // ===== Realtime: sync household changes across members =====
+  useEffect(() => {
+    if (!householdId) return;
+    const channel = supabase
+      .channel(`household-sync-${householdId}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'households',
+        filter: `id=eq.${householdId}`,
+      }, (payload) => {
+        const d = payload.new as any;
+        setHouseholdData(prev => ({
+          ...prev,
+          name: d.name ?? prev.name,
+          currency: d.default_currency ?? prev.currency,
+          plan: d.plan ?? prev.plan,
+          monthlySavingsTarget: d.monthly_savings_target ?? prev.monthlySavingsTarget,
+        }));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [householdId]);
 
   // ===== Fetch user data from Supabase =====
   const fetchUserData = useCallback(async (userId: string) => {
