@@ -192,7 +192,14 @@ const Profile = () => {
         )}
 
         {/* Household */}
-        <HouseholdNameCard initialName={household.name} createdAt={household.createdAt} onRename={renameHousehold} />
+        {currentUser?.role === 'admin' ? (
+          <HouseholdNameCard initialName={household.name} createdAt={household.createdAt} onRename={renameHousehold} />
+        ) : (
+          <div className="card-elevated p-5">
+            <h2 className="font-semibold mb-1">🏠 {household.name}</h2>
+            <p className="text-sm text-muted-foreground">Créé le {household.createdAt ? formatDateLong(household.createdAt) : '—'}</p>
+          </div>
+        )}
 
         {/* Currency */}
         <div className="card-elevated p-5">
@@ -218,7 +225,9 @@ const Profile = () => {
             <h2 className="font-semibold">
               Membres ({household.members.length})
             </h2>
-            <button onClick={() => setShowInviteModal(true)} className="text-sm text-primary font-medium hover:underline">+ Inviter un membre</button>
+            {currentUser?.role === 'admin' && (
+              <button onClick={() => setShowInviteModal(true)} className="text-sm text-primary font-medium hover:underline">+ Inviter un membre</button>
+            )}
           </div>
           <div className="space-y-3">
             {household.members.map(m => (
@@ -230,22 +239,26 @@ const Profile = () => {
                     <p className="text-xs text-muted-foreground">{m.email}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <select
-                    value={m.role}
-                    onChange={e => { updateMemberRole(m.id, e.target.value as 'admin' | 'member'); }}
-                    className="text-xs px-2.5 py-1 rounded-lg border border-border bg-card font-medium"
-                    disabled={m.id === currentUser?.id}
-                  >
-                    <option value="admin">Admin</option>
-                    <option value="member">Membre</option>
-                  </select>
-                  {m.id !== currentUser?.id && (
-                    <button onClick={() => handleRemoveMember(m.id, m.name)} className="text-xs text-destructive font-medium hover:underline">
-                      Retirer
-                    </button>
-                  )}
-                </div>
+                {currentUser?.role === 'admin' ? (
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={m.role}
+                      onChange={e => { updateMemberRole(m.id, e.target.value as 'admin' | 'member'); }}
+                      className="text-xs px-2.5 py-1 rounded-lg border border-border bg-card font-medium"
+                      disabled={m.id === currentUser?.id}
+                    >
+                      <option value="admin">Admin</option>
+                      <option value="member">Membre</option>
+                    </select>
+                    {m.id !== currentUser?.id && (
+                      <button onClick={() => handleRemoveMember(m.id, m.name)} className="text-xs text-destructive font-medium hover:underline">
+                        Retirer
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-xs px-2.5 py-1 rounded-lg bg-muted text-muted-foreground font-medium">{m.role === 'admin' ? 'Admin' : 'Membre'}</span>
+                )}
               </div>
             ))}
           </div>
