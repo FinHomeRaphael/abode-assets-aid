@@ -407,6 +407,12 @@ const Budgets = () => {
                       <span className="flex items-center gap-1.5"><Minus className="w-3 h-3" /> Épargne nette</span>
                       <span className="font-mono-amount font-semibold">- {formatAmount(totalSavingsDeducted)}</span>
                     </div>
+                    {effectiveSavingsTarget > 0 && (
+                      <div className="flex items-center justify-between text-xs text-primary-foreground/80">
+                        <span className="flex items-center gap-1.5"><Target className="w-3 h-3" /> Objectif d'épargne</span>
+                        <span className="font-mono-amount font-semibold">- {formatAmount(effectiveSavingsTarget)}</span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between text-xs text-primary-foreground/80">
                       <span className="flex items-center gap-1.5"><Minus className="w-3 h-3" /> Budgété</span>
                       <span className="font-mono-amount font-semibold">- {formatAmount(totalBudgeted)}</span>

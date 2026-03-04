@@ -433,6 +433,12 @@ const StartOfMonth = () => {
                 <span className="text-muted-foreground">Revenus - Épargne</span>
                 <span className="font-mono-amount font-medium">{formatAmount(availableAfterSavings)}</span>
               </div>
+              {savingsTarget > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Objectif d'épargne</span>
+                  <span className="font-mono-amount font-medium text-primary">-{formatAmount(savingsTarget)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Budgété</span>
                 <span className="font-mono-amount font-medium text-primary">-{formatAmount(totalBudgetLimit)}</span>
