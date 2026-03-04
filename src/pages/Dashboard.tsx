@@ -446,48 +446,20 @@ const Dashboard = () => {
                 <span className="text-xs text-muted-foreground">Total restant dû</span>
                 <span className="font-mono-amount text-xs font-semibold text-destructive">{formatAmount(debts.reduce((s, d) => s + d.remainingAmount, 0))}</span>
               </div>
-              {(() => {
-                const nextPayments = debts
-                  .filter(d => d.remainingAmount > 0)
-                  .map(d => ({ date: d.nextPaymentDate || calculateNextPaymentDate(d), amount: d.paymentAmount, name: d.name, emoji: getDebtEmoji(d.type) }))
-                  .filter(p => p.date)
-                  .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-                const next = nextPayments[0];
-                if (!next) return null;
+              {debts.filter(d => d.remainingAmount > 0).slice(0, 3).map(d => {
+                const nextDate = d.nextPaymentDate || calculateNextPaymentDate(d);
                 return (
-                  <div className="flex items-center justify-between px-4 py-3">
-                    <span className="text-xs text-muted-foreground">{next.emoji} {next.name}</span>
-                    <span className="font-mono-amount text-xs">{formatAmount(next.amount)} · {formatDate(next.date!)}</span>
+                  <div key={d.id} className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-base flex-shrink-0">{getDebtEmoji(d.type)}</span>
+                      <span className="text-xs font-medium truncate">{d.name}</span>
+                    </div>
+                    <span className="font-mono-amount text-xs text-muted-foreground flex-shrink-0">
+                      {formatAmount(d.paymentAmount)}{nextDate ? ` · ${formatDate(nextDate)}` : ''}
+                    </span>
                   </div>
                 );
-              })()}
-            </div>
-          </motion.div>
-        )}
-        {/* Dettes */}
-        {debts.length > 0 && (
-          <motion.div variants={fade}>
-            <SectionHeader title="Dettes" action="Voir" onAction={() => navigate('/debts')} />
-            <div className="rounded-xl bg-card border border-border/50 px-4 py-3 space-y-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Total restant dû</span>
-                <span className="font-mono-amount font-semibold text-destructive">{formatAmount(debts.reduce((s, d) => s + d.remainingAmount, 0))}</span>
-              </div>
-              {(() => {
-                const nextPayments = debts
-                  .filter(d => d.remainingAmount > 0)
-                  .map(d => ({ date: d.nextPaymentDate || calculateNextPaymentDate(d), amount: d.paymentAmount, name: d.name, emoji: getDebtEmoji(d.type) }))
-                  .filter(p => p.date)
-                  .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-                const next = nextPayments[0];
-                if (!next) return null;
-                return (
-                  <div className="flex items-center justify-between text-xs pt-2 border-t border-border/50">
-                    <span className="text-muted-foreground">{next.emoji} {next.name}</span>
-                    <span className="font-mono-amount">{formatAmount(next.amount)} · {formatDate(next.date!)}</span>
-                  </div>
-                );
-              })()}
+              })}
             </div>
           </motion.div>
         )}
