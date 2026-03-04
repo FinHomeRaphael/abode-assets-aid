@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
@@ -10,24 +10,8 @@ import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
-import { Wallet, X, Plus } from 'lucide-react';
+import { Wallet, X, Plus, TrendingUp, TrendingDown, ChevronDown, ChevronUp, Landmark, PiggyBank, CreditCard, ChevronRight } from 'lucide-react';
 import { AccountIcon } from '@/utils/categoryIcons';
-
-const SectionTitle = ({ icon: Icon, title, actions }: { icon: React.ElementType; title: string; actions?: { label: string; onClick: () => void }[] }) => (
-  <div className="flex items-center justify-between mb-2">
-    <div className="flex items-center gap-2">
-      <Icon className="w-4 h-4 text-muted-foreground" />
-      <h2 className="font-semibold text-sm">{title}</h2>
-    </div>
-    {actions && actions.length > 0 && (
-      <div className="flex items-center gap-1.5">
-        {actions.map((a, i) => (
-          <button key={i} onClick={a.onClick} className="text-[11px] px-3 py-1.5 rounded-lg border border-border bg-card hover:bg-muted transition-colors font-medium">{a.label}</button>
-        ))}
-      </div>
-    )}
-  </div>
-);
 
 const Savings = () => {
   const {
@@ -43,6 +27,8 @@ const Savings = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showCreateAccount, setShowCreateAccount] = useState(() => searchParams.get('create') === 'account');
   const [showPaywall, setShowPaywall] = useState(false);
+  const [showAccountBreakdown, setShowAccountBreakdown] = useState(false);
+
   React.useEffect(() => {
     if (searchParams.get('create') === 'account') {
       setShowCreateAccount(true);
@@ -67,6 +53,28 @@ const Savings = () => {
   const totalSavings = getTotalSavings();
   const activeAccounts = accounts.filter(acc => !acc.isArchived);
   const totalAccountsBalance = activeAccounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
+
+  // Group accounts by type
+  const accountsByType = useMemo(() => {
+    const groups: Record<string, typeof activeAccounts> = {};
+    activeAccounts.forEach(acc => {
+      const typeInfo = allAccountTypes.find(t => t.value === acc.type);
+      const label = typeInfo?.label || acc.type;
+      if (!groups[label]) groups[label] = [];
+      groups[label].push(acc);
+    });
+    return groups;
+  }, [activeAccounts, allAccountTypes]);
+
+  // Positive vs negative balance
+  const positiveBalance = activeAccounts.reduce((sum, acc) => {
+    const bal = getAccountBalance(acc.id);
+    return bal > 0 ? sum + bal : sum;
+  }, 0);
+  const negativeBalance = activeAccounts.reduce((sum, acc) => {
+    const bal = getAccountBalance(acc.id);
+    return bal < 0 ? sum + Math.abs(bal) : sum;
+  }, 0);
 
   const handleCreateAccount = () => {
     if (!accName.trim()) { toast.error('Donnez un nom au compte'); return; }
@@ -97,73 +105,150 @@ const Savings = () => {
   return (
     <Layout>
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-primary/5 via-transparent to-transparent h-64" />
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative space-y-5">
-        <div className="space-y-3">
-          <h1 className="text-xl font-bold">Épargne</h1>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold">Comptes bancaires</h1>
+          <button
+            onClick={() => {
+              if (!canAdd('accounts', accounts.length)) { setShowPaywall(true); return; }
+              setShowCreateAccount(true);
+            }}
+            className="h-9 px-3.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4" /> Nouveau
+          </button>
         </div>
 
+        {/* Hero Card */}
+        <div className="bg-primary rounded-2xl p-5 shadow-lg shadow-primary/20 relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary-foreground)/0.08),transparent_70%)]" />
+          <div className="relative">
+            <p className="text-xs text-primary-foreground/70 mb-1">Solde total</p>
+            <p className={`text-3xl font-bold font-mono-amount text-primary-foreground`}>
+              {formatAmount(totalAccountsBalance)}
+            </p>
+            <div className="flex items-center gap-4 mt-3 text-xs text-primary-foreground/60">
+              <span>{activeAccounts.length} compte{activeAccounts.length > 1 ? 's' : ''} actif{activeAccounts.length > 1 ? 's' : ''}</span>
+              {Object.keys(accountsByType).length > 1 && (
+                <span>{Object.keys(accountsByType).length} types</span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-3 gap-2">
+          {/* Épargne ce mois */}
+          <div className="bg-card border border-border/40 rounded-xl p-3">
+            <p className="text-[10px] text-muted-foreground mb-1">Épargne du mois</p>
+            <p className={`font-mono-amount font-bold text-sm ${monthSavings >= 0 ? 'text-success' : 'text-destructive'}`}>
+              {monthSavings >= 0 ? '+' : ''}{formatAmount(monthSavings)}
+            </p>
+          </div>
+
+          {/* Total épargne */}
+          <div className="bg-card border border-border/40 rounded-xl p-3">
+            <p className="text-[10px] text-muted-foreground mb-1">Total épargné</p>
+            <p className="font-mono-amount font-bold text-sm">{formatAmount(totalSavings)}</p>
+          </div>
+
+          {/* Actifs / Passifs */}
+          <div 
+            className="bg-card border border-border/40 rounded-xl p-3 cursor-pointer hover:bg-muted/30 transition-colors"
+            onClick={() => setShowAccountBreakdown(!showAccountBreakdown)}
+          >
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] text-muted-foreground mb-1">Actifs</p>
+              {activeAccounts.length > 0 && (
+                showAccountBreakdown ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />
+              )}
+            </div>
+            <p className="font-mono-amount font-bold text-sm text-success">{formatAmount(positiveBalance)}</p>
+            {negativeBalance > 0 && (
+              <p className="text-[9px] text-destructive font-mono-amount mt-0.5">-{formatAmount(negativeBalance)}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Account breakdown dropdown */}
+        <AnimatePresence>
+          {showAccountBreakdown && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden -mt-2"
+            >
+              <div className="bg-card border border-border/40 rounded-xl divide-y divide-border/30">
+                {activeAccounts.map(acc => {
+                  const bal = getAccountBalance(acc.id);
+                  return (
+                    <div key={acc.id} className="px-3 py-2 flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground flex items-center gap-2">
+                        <AccountIcon type={acc.type} size="sm" />
+                        {acc.name}
+                      </span>
+                      <span className={`font-mono-amount text-xs font-semibold ${bal >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {formatAmount(bal, acc.currency)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Month Selector */}
         <div className="flex justify-center">
           <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} />
         </div>
 
-        {/* Résumé épargne */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-card border border-border rounded-xl p-3 text-center">
-            <p className="text-[11px] text-muted-foreground mb-1">Épargne ce mois</p>
-            <p className={`font-mono-amount font-semibold text-sm ${monthSavings >= 0 ? 'text-primary' : 'text-destructive'}`}>{formatAmount(monthSavings)}</p>
+        {/* Accounts List */}
+        {activeAccounts.length === 0 ? (
+          <div className="bg-card border border-border/40 rounded-2xl p-8 text-center">
+            <Wallet className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground mb-2">Aucun compte créé</p>
+            <button onClick={() => setShowCreateAccount(true)} className="text-primary text-sm font-medium hover:underline">
+              Créer mon premier compte
+            </button>
           </div>
-          <div className="bg-card border border-border rounded-xl p-3 text-center">
-            <p className="text-[11px] text-muted-foreground mb-1">Total épargne</p>
-            <p className="font-mono-amount font-semibold text-sm">{formatAmount(totalSavings)}</p>
-          </div>
-        </div>
-
-        {/* Comptes */}
-        <div>
-          <SectionTitle icon={Wallet} title="Comptes bancaires" actions={[{
-            label: '+ Nouveau',
-            onClick: () => {
-              if (!canAdd('accounts', accounts.length)) { setShowPaywall(true); return; }
-              setShowCreateAccount(true);
-            }
-          }]} />
-
-          <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent rounded-2xl p-4 text-center mb-2 relative overflow-hidden">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.08),transparent_70%)]" />
-            <div className="relative">
-              <p className="text-[10px] text-muted-foreground mb-1">Total tous comptes</p>
-              <p className={`text-xl font-bold font-mono-amount ${totalAccountsBalance >= 0 ? 'text-foreground' : 'text-destructive'}`}>
-                {formatAmount(totalAccountsBalance)}
-              </p>
-            </div>
-          </div>
-
-          {activeAccounts.length === 0 ? (
-            <div className="bg-card border border-border rounded-xl p-6 text-center text-muted-foreground text-sm">
-              Aucun compte créé.
-              <button onClick={() => setShowCreateAccount(true)} className="block mx-auto mt-2 text-primary underline text-xs">Créer mon premier compte</button>
-            </div>
-          ) : (
-            <div className="grid sm:grid-cols-2 gap-2">
-              {activeAccounts.map(acc => {
-                const bal = getAccountBalance(acc.id);
-                const typeInfo = allAccountTypes.find(t => t.value === acc.type);
-                return (
-                  <div key={acc.id} onClick={() => navigate(`/account/${acc.id}`)} className="bg-card border border-border rounded-xl p-3.5 cursor-pointer hover:bg-muted/50 transition-colors active:scale-[0.98]">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-sm flex items-center gap-2"><AccountIcon type={acc.type} size="sm" /> {acc.name}</span>
-                      <span className="text-[9px] px-1.5 py-0.5 rounded-lg bg-secondary/50 text-muted-foreground font-medium">{acc.currency}</span>
+        ) : (
+          <div className="bg-card border border-border/40 rounded-2xl overflow-hidden divide-y divide-border/30">
+            {activeAccounts.map(acc => {
+              const bal = getAccountBalance(acc.id);
+              const typeInfo = allAccountTypes.find(t => t.value === acc.type);
+              return (
+                <div
+                  key={acc.id}
+                  onClick={() => navigate(`/account/${acc.id}`)}
+                  className="px-4 py-3.5 flex items-center gap-3 cursor-pointer hover:bg-muted/30 transition-colors active:scale-[0.99]"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <AccountIcon type={acc.type} size="sm" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{acc.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] text-muted-foreground">{typeInfo?.label || acc.type}</span>
+                      {acc.currency !== household.currency && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-secondary/50 text-muted-foreground font-medium">{acc.currency}</span>
+                      )}
                     </div>
-                    <p className={`font-mono-amount font-bold ${bal >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                  </div>
+                  <div className="text-right flex items-center gap-2">
+                    <p className={`font-mono-amount font-bold text-sm ${bal >= 0 ? '' : 'text-destructive'}`}>
                       {formatAmount(bal, acc.currency)}
                     </p>
-                    <p className="text-[9px] text-muted-foreground mt-1">{typeInfo?.label || acc.type}</p>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground/40" />
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Create Account Modal */}
         <AnimatePresence>
