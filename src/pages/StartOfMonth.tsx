@@ -201,38 +201,55 @@ const StartOfMonth = () => {
       }));
   }, [monthTx, budgetedCategories, totalDebtPayments]);
 
-  const fade = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
-  const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
+  const fade = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
+  const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 
   const Checkbox = ({ checked, cancelled, onClick, disabled }: { checked: boolean; cancelled?: boolean; onClick: () => void; disabled?: boolean }) => (
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
-        checked ? 'bg-primary border-primary text-primary-foreground' : cancelled ? 'border-destructive/40 bg-destructive/10' : 'border-border hover:border-primary/50'
+      className={`w-[18px] h-[18px] rounded-[5px] border-[1.5px] flex items-center justify-center shrink-0 transition-all ${
+        checked ? 'bg-primary border-primary text-primary-foreground' : cancelled ? 'border-destructive/40 bg-destructive/10' : 'border-border hover:border-primary/40'
       }`}
     >
-      {checked && <Check className="w-3 h-3" />}
-      {cancelled && <X className="w-3 h-3 text-destructive" />}
+      {checked && <Check className="w-2.5 h-2.5" />}
+      {cancelled && <X className="w-2.5 h-2.5 text-destructive" />}
     </button>
   );
 
-  const StepHeader = ({ stepNum, title, subtitle, icon: Icon, done, total }: { stepNum: number; title: string; subtitle: string; icon: any; done: boolean; total: string }) => (
-    <div className={`flex items-center justify-between px-4 py-3 border-b border-border/50 ${done ? 'bg-primary/5' : ''}`}>
-      <div className="flex items-center gap-3">
-        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${done ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-          {done ? <Check className="w-3.5 h-3.5" /> : stepNum}
+  const StepCard = ({ stepNum, title, subtitle, icon: Icon, done, total, children }: {
+    stepNum: number; title: string; subtitle: string; icon: any; done: boolean; total: string; children: React.ReactNode;
+  }) => (
+    <motion.div variants={fade} className="rounded-2xl bg-card border border-border/50 overflow-hidden shadow-sm">
+      {/* Step header */}
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${
+            done ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+          }`}>
+            {done ? <Check className="w-3 h-3" /> : stepNum}
+          </div>
+          <div>
+            <p className="font-semibold text-[13px] flex items-center gap-1.5">
+              <Icon className={`w-3.5 h-3.5 ${done ? 'text-primary' : 'text-muted-foreground'}`} />
+              {title}
+            </p>
+            <p className="text-[10px] text-muted-foreground leading-tight">{subtitle}</p>
+          </div>
         </div>
-        <div>
-          <p className="font-semibold text-sm flex items-center gap-1.5">
-            <Icon className="w-3.5 h-3.5 text-primary" />
-            {title}
-          </p>
-          <p className="text-[11px] text-muted-foreground">{subtitle}</p>
-        </div>
+        <span className={`text-xs font-mono-amount font-semibold ${done ? 'text-primary' : 'text-muted-foreground'}`}>{total}</span>
       </div>
-      <span className="text-xs font-mono-amount font-semibold text-muted-foreground">{total}</span>
-    </div>
+      {/* Divider */}
+      <div className="h-px bg-border/40 mx-4" />
+      {/* Content */}
+      {children}
+      {/* Done footer */}
+      {done && (
+        <div className="px-4 py-1.5 bg-primary/[0.04]">
+          <p className="text-[10px] font-medium text-primary text-center">✓ Vérifié</p>
+        </div>
+      )}
+    </motion.div>
   );
 
   const renderRecurringItem = (t: typeof recurringIncomes[0], type: 'income' | 'expense') => {
@@ -242,8 +259,8 @@ const StartOfMonth = () => {
     const isConfirmingCancel = confirmCancel === t.id;
 
     return (
-      <div key={t.id} className={`px-4 py-2.5 transition-colors ${cancelled ? 'opacity-50' : ''}`}>
-        <div className="flex items-center gap-3">
+      <div key={t.id} className={`px-4 py-2.5 transition-all ${cancelled ? 'opacity-40' : ''}`}>
+        <div className="flex items-center gap-2.5">
           <Checkbox
             checked={checked}
             cancelled={cancelled}
@@ -252,23 +269,23 @@ const StartOfMonth = () => {
           />
           <CategoryIcon category={t.category} size="sm" />
           <div className="flex-1 min-w-0">
-            <p className={`text-sm font-medium truncate ${cancelled ? 'line-through text-muted-foreground' : ''}`}>{t.label}</p>
-            <p className="text-[11px] text-muted-foreground">Le {t.recurrenceDay || parseInt(t.date.split('-')[2])} · {t.category}{member ? ` · ${member.name}` : ''}</p>
+            <p className={`text-[13px] font-medium truncate ${cancelled ? 'line-through text-muted-foreground' : ''}`}>{t.label}</p>
+            <p className="text-[10px] text-muted-foreground">Le {t.recurrenceDay || parseInt(t.date.split('-')[2])} · {t.category}{member ? ` · ${member.name}` : ''}</p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <span className={`text-sm font-semibold font-mono-amount ${type === 'income' ? 'text-success' : 'text-destructive'}`}>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <span className={`text-[13px] font-semibold font-mono-amount ${type === 'income' ? 'text-success' : 'text-destructive'}`}>
               {type === 'income' ? '+' : '-'}{formatAmount(t.convertedAmount)}
             </span>
             {!cancelled && !checked && (
               <button
                 onClick={() => setConfirmCancel(isConfirmingCancel ? null : t.id)}
-                className="text-[10px] font-medium px-1.5 py-1 rounded-md border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors"
+                className="text-[9px] font-medium px-1.5 py-0.5 rounded-md text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors"
               >
-                Annuler
+                ✕
               </button>
             )}
             {cancelled && (
-              <span className="text-[10px] text-destructive font-medium px-1.5 py-0.5 rounded-md bg-destructive/10">Annulé</span>
+              <span className="text-[9px] text-destructive/70 font-medium px-1 py-0.5 rounded bg-destructive/5">Annulé</span>
             )}
           </div>
         </div>
@@ -276,11 +293,11 @@ const StartOfMonth = () => {
         <AnimatePresence>
           {isConfirmingCancel && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-              <div className="mt-2 ml-8 p-2.5 rounded-lg border border-destructive/30 bg-destructive/5 space-y-2">
-                <p className="text-xs text-destructive font-medium">Arrêter cette récurrence à partir de ce mois ?</p>
+              <div className="mt-2 ml-7 p-2.5 rounded-xl border border-destructive/20 bg-destructive/[0.03] space-y-2">
+                <p className="text-[11px] text-destructive/80 font-medium">Arrêter cette récurrence pour ce mois ?</p>
                 <div className="flex gap-2">
-                  <button onClick={() => setConfirmCancel(null)} className="flex-1 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors">Non</button>
-                  <button onClick={() => handleCancelRecurring(t.id, type)} className="flex-1 py-1.5 rounded-lg bg-destructive text-destructive-foreground text-xs font-semibold hover:bg-destructive/90 transition-colors">Oui, arrêter</button>
+                  <button onClick={() => setConfirmCancel(null)} className="flex-1 py-1.5 rounded-lg border border-border text-[11px] font-medium hover:bg-muted transition-colors">Non</button>
+                  <button onClick={() => handleCancelRecurring(t.id, type)} className="flex-1 py-1.5 rounded-lg bg-destructive text-destructive-foreground text-[11px] font-semibold hover:bg-destructive/90 transition-colors">Oui</button>
                 </div>
               </div>
             </motion.div>
@@ -290,202 +307,194 @@ const StartOfMonth = () => {
     );
   };
 
+  const disponible = totalRecurringIncome - totalRecurringExpense - totalDebtPayments - totalBudgetLimit;
+
   return (
     <Layout>
-      <motion.div variants={stagger} initial="hidden" animate="show" className="max-w-2xl mx-auto space-y-4 pb-6">
+      <motion.div variants={stagger} initial="hidden" animate="show" className="max-w-2xl mx-auto space-y-3 pb-8">
         {/* Header */}
         <motion.div variants={fade}>
-          <BackHeader title="🗓️ Préparer mon mois" />
-          <p className="text-sm text-muted-foreground capitalize -mt-2">{monthLabel}</p>
+          <BackHeader title="Préparer mon mois" />
         </motion.div>
 
-        {/* Progress */}
-        <motion.div variants={fade} className="rounded-2xl bg-card border border-border p-4">
-          <div className="flex items-center justify-between text-sm mb-2">
-            <span className="font-medium">Progression</span>
-            <span className="font-bold text-primary">{completedSteps}/{totalSteps} étapes</span>
+        {/* Hero progress card */}
+        <motion.div variants={fade} className="rounded-2xl bg-card border border-border/50 p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-medium">Préparation</p>
+              <p className="text-base font-bold capitalize mt-0.5">{monthLabel}</p>
+            </div>
+            <div className={`px-3 py-1.5 rounded-full text-[11px] font-bold ${
+              allDone ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+            }`}>
+              {completedSteps}/{totalSteps}
+            </div>
           </div>
-          <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-            <motion.div className="h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${progressPct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} />
+
+          {/* Step indicators */}
+          <div className="flex gap-1.5">
+            {steps.map((done, i) => (
+              <div key={i} className="flex-1 h-1.5 rounded-full overflow-hidden bg-muted">
+                <motion.div
+                  className={`h-full rounded-full ${done ? 'bg-primary' : 'bg-transparent'}`}
+                  initial={{ width: 0 }}
+                  animate={{ width: done ? '100%' : '0%' }}
+                  transition={{ duration: 0.5, delay: i * 0.1 }}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Summary row */}
+          <div className="mt-3 pt-3 border-t border-border/30 grid grid-cols-3 gap-2 text-center">
+            <div>
+              <p className="text-[10px] text-muted-foreground">Revenus</p>
+              <p className="text-[13px] font-bold font-mono-amount text-success">+{formatAmount(totalRecurringIncome)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground">Sorties</p>
+              <p className="text-[13px] font-bold font-mono-amount text-destructive">-{formatAmount(totalRecurringExpense + totalDebtPayments)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-muted-foreground">Disponible</p>
+              <p className={`text-[13px] font-bold font-mono-amount ${disponible >= 0 ? 'text-foreground' : 'text-destructive'}`}>{formatAmount(disponible)}</p>
+            </div>
           </div>
         </motion.div>
 
-        {/* Success */}
+        {/* Success banner */}
         <AnimatePresence>
           {allDone && (
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="rounded-2xl bg-primary/5 border-2 border-primary/30 p-5 text-center">
-              <p className="text-3xl mb-2">🚀</p>
-              <p className="font-bold text-lg">Mois bien préparé !</p>
-              <p className="text-sm text-muted-foreground mt-1">Tout est vérifié pour {monthLabel}.</p>
-              <div className="mt-3 p-3 rounded-xl bg-card border border-border">
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div className="text-left">
-                    <p className="text-[11px] text-muted-foreground">Revenus attendus</p>
-                    <p className="font-semibold text-success font-mono-amount">+{formatAmount(totalRecurringIncome)}</p>
-                  </div>
-                  <div className="text-left">
-                    <p className="text-[11px] text-muted-foreground">Sorties prévues</p>
-                    <p className="font-semibold text-destructive font-mono-amount">-{formatAmount(totalRecurringExpense + totalDebtPayments)}</p>
-                  </div>
-                </div>
-                <div className="mt-2 pt-2 border-t border-border/50 flex justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">Disponible estimé</span>
-                  <span className={`text-sm font-bold font-mono-amount ${(totalRecurringIncome - totalRecurringExpense - totalDebtPayments - totalBudgetLimit) >= 0 ? 'text-success' : 'text-destructive'}`}>
-                    {formatAmount(totalRecurringIncome - totalRecurringExpense - totalDebtPayments - totalBudgetLimit)}
-                  </span>
-                </div>
-              </div>
+            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="rounded-2xl bg-primary/[0.06] border border-primary/20 px-4 py-3 text-center">
+              <p className="text-sm font-semibold text-primary">🚀 Mois bien préparé !</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Tout est vérifié et budgété pour {monthLabel}.</p>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Step 1: Revenus récurrents */}
-        <motion.div variants={fade} className="rounded-2xl bg-card border border-border overflow-hidden">
-          <StepHeader stepNum={1} title="Revenus récurrents" subtitle="Confirme tes revenus attendus ce mois" icon={TrendingUp} done={step1Done} total={`+${formatAmount(totalRecurringIncome)}`} />
-          <div className="divide-y divide-border/30">
+        {/* Step 1: Revenus */}
+        <StepCard stepNum={1} title="Revenus récurrents" subtitle="Confirme tes revenus attendus" icon={TrendingUp} done={step1Done} total={`+${formatAmount(totalRecurringIncome)}`}>
+          <div className="divide-y divide-border/20">
             {recurringIncomes.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Aucun revenu récurrent configuré</p>
+              <p className="text-[12px] text-muted-foreground text-center py-4">Aucun revenu récurrent</p>
             ) : recurringIncomes.map(t => renderRecurringItem(t, 'income'))}
           </div>
-          {step1Done && recurringIncomes.length > 0 && (
-            <div className="px-4 py-2 bg-primary/5 text-center">
-              <p className="text-xs font-medium text-primary">✓ Revenus vérifiés</p>
-            </div>
-          )}
-        </motion.div>
+        </StepCard>
 
-        {/* Step 2: Charges fixes */}
-        <motion.div variants={fade} className="rounded-2xl bg-card border border-border overflow-hidden">
-          <StepHeader stepNum={2} title="Charges fixes" subtitle="Vérifie tes dépenses récurrentes" icon={TrendingDown} done={step2Done} total={`-${formatAmount(totalRecurringExpense)}`} />
-          <div className="divide-y divide-border/30">
+        {/* Step 2: Charges */}
+        <StepCard stepNum={2} title="Charges fixes" subtitle="Vérifie tes dépenses récurrentes" icon={TrendingDown} done={step2Done} total={`-${formatAmount(totalRecurringExpense)}`}>
+          <div className="divide-y divide-border/20">
             {recurringExpenses.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Aucune charge récurrente configurée</p>
+              <p className="text-[12px] text-muted-foreground text-center py-4">Aucune charge récurrente</p>
             ) : recurringExpenses.map(t => renderRecurringItem(t, 'expense'))}
           </div>
-          {step2Done && recurringExpenses.length > 0 && (
-            <div className="px-4 py-2 bg-primary/5 text-center">
-              <p className="text-xs font-medium text-primary">✓ Charges vérifiées</p>
-            </div>
-          )}
-        </motion.div>
+        </StepCard>
 
-        {/* Step 3: Échéances dettes */}
-        <motion.div variants={fade} className="rounded-2xl bg-card border border-border overflow-hidden">
-          <StepHeader stepNum={3} title="Échéances dettes" subtitle="Confirme les paiements prévus ce mois" icon={CreditCard} done={step3Done} total={debts.length > 0 ? `-${formatAmount(totalDebtPayments)}` : '—'} />
-          <div className="divide-y divide-border/30">
+        {/* Step 3: Dettes */}
+        <StepCard stepNum={3} title="Échéances dettes" subtitle="Confirme les paiements prévus" icon={CreditCard} done={step3Done} total={debts.length > 0 ? `-${formatAmount(totalDebtPayments)}` : '—'}>
+          <div className="divide-y divide-border/20">
             {debts.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Aucune dette enregistrée</p>
+              <p className="text-[12px] text-muted-foreground text-center py-4">Aucune dette enregistrée</p>
             ) : debts.map(d => {
               const checked = checkedDebts.has(d.id);
               const pctPaid = d.initialAmount > 0 ? Math.round(((d.initialAmount - d.remainingAmount) / d.initialAmount) * 100) : 0;
               return (
                 <div key={d.id} className="px-4 py-2.5">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5">
                     <Checkbox checked={checked} onClick={() => toggle(checkedDebts, setCheckedDebts, d.id)} />
-                    <span className="text-base shrink-0">{getDebtEmoji(d.type)}</span>
+                    <span className="text-sm shrink-0">{getDebtEmoji(d.type)}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{d.name}</p>
-                      <p className="text-[11px] text-muted-foreground">Le {d.paymentDay} · {d.lender || d.type} · {pctPaid}% remboursé</p>
+                      <p className="text-[13px] font-medium truncate">{d.name}</p>
+                      <p className="text-[10px] text-muted-foreground">Le {d.paymentDay} · {d.lender || d.type} · {pctPaid}%</p>
                     </div>
-                    <span className="text-sm font-semibold text-destructive font-mono-amount shrink-0">-{formatAmount(d.paymentAmount, d.currency)}</span>
+                    <span className="text-[13px] font-semibold text-destructive font-mono-amount shrink-0">-{formatAmount(d.paymentAmount, d.currency)}</span>
                   </div>
-                  <div className="ml-8 mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div className="ml-7 mt-1.5 h-1 bg-muted rounded-full overflow-hidden">
                     <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pctPaid}%` }} />
                   </div>
                 </div>
               );
             })}
           </div>
-          {step3Done && debts.length > 0 && (
-            <div className="px-4 py-2 bg-primary/5 text-center">
-              <p className="text-xs font-medium text-primary">✓ Échéances confirmées</p>
-            </div>
-          )}
-        </motion.div>
+        </StepCard>
 
-        <motion.div variants={fade} className="rounded-2xl bg-card border border-border overflow-hidden">
-          <StepHeader stepNum={4} title="Budgets variables" subtitle="Alloue ton disponible à des budgets" icon={BarChart3} done={step4Done} total={budgetData.length > 0 ? formatAmount(totalBudgetLimit) : '—'} />
-          
-          {/* Unbudgeted warning */}
+        {/* Step 4: Budgets */}
+        <StepCard stepNum={4} title="Budgets variables" subtitle="Alloue ton disponible à des budgets" icon={BarChart3} done={step4Done} total={budgetData.length > 0 ? formatAmount(totalBudgetLimit) : '—'}>
+          {/* Status banner */}
           {!isFullyCovered && availableAfterSavings > 0 && (
-            <div className="px-4 py-3 bg-warning/10 border-b border-warning/20">
-              <div className="flex items-start gap-2.5">
-                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-warning">
-                    {formatAmount(remainingToBudget)} reste à budgéter
-                  </p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    Tes budgets couvrent {budgetCoverage}% de ton disponible ({formatAmount(availableAfterSavings)}).
-                  </p>
+            <div className="mx-4 mt-2 mb-1 px-3 py-2 rounded-xl bg-warning/[0.08] border border-warning/15">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-[12px] font-medium text-warning">{formatAmount(remainingToBudget)} non budgété</p>
+                  <p className="text-[10px] text-muted-foreground">{budgetCoverage}% du disponible couvert</p>
                 </div>
               </div>
             </div>
           )}
           {isFullyCovered && budgetData.length > 0 && (
-            <div className="px-4 py-3 bg-success/10 border-b border-success/20">
-              <div className="flex items-center gap-2.5">
-                <Check className="w-4 h-4 text-success shrink-0" />
-                <p className="text-sm font-medium text-success">Budget complet ! Tout ton disponible est alloué.</p>
+            <div className="mx-4 mt-2 mb-1 px-3 py-2 rounded-xl bg-primary/[0.06] border border-primary/15">
+              <div className="flex items-center gap-2">
+                <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                <p className="text-[12px] font-medium text-primary">Budget complet</p>
               </div>
             </div>
           )}
 
-          {/* Existing budgets (read-only, no checkboxes) */}
-          {budgetData.length > 0 && (
-            <div className="divide-y divide-border/30">
+          {/* Budget list */}
+          {budgetData.length > 0 ? (
+            <div className="px-4 py-2 space-y-2">
               {budgetData.map(b => {
                 const pct = Math.min(Math.round((b.spent / b.limit) * 100), 100);
                 const status = getBudgetStatus(b.spent, b.limit);
                 return (
-                  <div key={b.id} className="px-4 py-2.5">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-medium">{b.emoji} {b.category}</p>
-                      <span className="text-xs text-muted-foreground font-mono-amount">{formatAmount(b.spent)} / {formatAmount(b.limit)}</span>
+                  <div key={b.id} className="py-1.5">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[12px] font-medium">{b.emoji} {b.category}</p>
+                      <span className="text-[11px] text-muted-foreground font-mono-amount">{formatAmount(b.spent)} / {formatAmount(b.limit)}</span>
                     </div>
-                    <div className="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-1 bg-muted rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all ${status === 'over' ? 'bg-destructive' : status === 'warning' ? 'bg-warning' : 'bg-primary'}`}
                         style={{ width: `${pct}%` }}
                       />
                     </div>
                     {status === 'over' && (
-                      <p className="text-[10px] text-destructive mt-1">⚠️ Dépassé de {formatAmount(b.spent - b.limit)}</p>
+                      <p className="text-[9px] text-destructive mt-0.5">Dépassé de {formatAmount(b.spent - b.limit)}</p>
                     )}
                   </div>
                 );
               })}
             </div>
-          )}
-
-          {budgetData.length === 0 && (
+          ) : (
             <div className="text-center py-4 px-4">
-              <p className="text-sm text-muted-foreground">Aucun budget configuré</p>
-              <p className="text-xs text-muted-foreground mt-1">Crée des budgets pour suivre tes dépenses variables</p>
+              <p className="text-[12px] text-muted-foreground">Aucun budget configuré</p>
             </div>
           )}
 
-          {/* Budget suggestions */}
+          {/* Suggestions */}
           {budgetSuggestions.length > 0 && !isFullyCovered && (
-            <div className="px-4 py-3 border-t border-border/50">
-              <div className="flex items-center gap-2 mb-2">
-                <Lightbulb className="w-3.5 h-3.5 text-primary" />
-                <p className="text-xs font-semibold text-muted-foreground">Suggestions</p>
+            <div className="mx-4 mb-2 p-3 rounded-xl bg-muted/40 border border-border/30">
+              <div className="flex items-center gap-1.5 mb-2">
+                <Lightbulb className="w-3 h-3 text-primary" />
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Suggestions</p>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {budgetSuggestions.map(s => (
                   <button
                     key={s.category}
                     onClick={() => setShowAddBudget(true)}
-                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-muted/50 hover:bg-primary/5 transition-colors text-left"
+                    className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg hover:bg-card transition-colors text-left group"
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-sm">{s.emoji}</span>
-                      <span className="text-xs font-medium truncate">{s.category}</span>
+                      <span className="text-[12px]">{s.emoji}</span>
+                      <span className="text-[11px] font-medium truncate">{s.category}</span>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-[11px] text-muted-foreground font-mono-amount">~{formatAmount(s.suggestedAmount)}</span>
-                      <Plus className="w-3.5 h-3.5 text-primary" />
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[10px] text-muted-foreground font-mono-amount">~{formatAmount(s.suggestedAmount)}</span>
+                      <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                        <Plus className="w-3 h-3 text-primary" />
+                      </div>
                     </div>
                   </button>
                 ))}
@@ -493,56 +502,17 @@ const StartOfMonth = () => {
             </div>
           )}
 
-          {/* Add budget button */}
-          <div className="px-4 py-3 border-t border-border/50">
+          {/* Add button */}
+          <div className="px-4 py-2.5 border-t border-border/30">
             <button
               onClick={() => setShowAddBudget(true)}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-primary/40 text-primary text-sm font-medium hover:bg-primary/5 transition-colors"
+              className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-primary text-[12px] font-medium hover:bg-primary/[0.04] transition-colors"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
               Créer un budget
             </button>
           </div>
-
-          {step4Done && (
-            <div className="px-4 py-2 bg-primary/5 text-center border-t border-border/30">
-              <p className="text-xs font-medium text-primary">✓ Budgets complets</p>
-            </div>
-          )}
-        </motion.div>
-
-        {/* Summary card */}
-        <motion.div variants={fade} className="rounded-2xl bg-muted/50 border border-border p-4">
-          <p className="text-sm font-semibold mb-3">📊 Résumé prévisionnel</p>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Revenus récurrents</span>
-              <span className="font-medium text-success font-mono-amount">+{formatAmount(totalRecurringIncome)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Charges fixes</span>
-              <span className="font-medium text-destructive font-mono-amount">-{formatAmount(totalRecurringExpense)}</span>
-            </div>
-            {debts.length > 0 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Échéances dettes</span>
-                <span className="font-medium text-destructive font-mono-amount">-{formatAmount(totalDebtPayments)}</span>
-              </div>
-            )}
-            {budgetData.length > 0 && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Budgets variables</span>
-                <span className="font-medium font-mono-amount">-{formatAmount(totalBudgetLimit)}</span>
-              </div>
-            )}
-            <div className="pt-2 border-t border-border/50 flex justify-between">
-              <span className="font-semibold">Disponible estimé</span>
-              <span className={`font-bold font-mono-amount ${(totalRecurringIncome - totalRecurringExpense - totalDebtPayments - totalBudgetLimit) >= 0 ? 'text-success' : 'text-destructive'}`}>
-                {formatAmount(totalRecurringIncome - totalRecurringExpense - totalDebtPayments - totalBudgetLimit)}
-              </span>
-            </div>
-          </div>
-        </motion.div>
+        </StepCard>
       </motion.div>
       <AddBudgetModal open={showAddBudget} onClose={() => setShowAddBudget(false)} />
     </Layout>
