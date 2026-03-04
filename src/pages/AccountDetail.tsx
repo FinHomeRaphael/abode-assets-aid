@@ -8,6 +8,7 @@ import { ACCOUNT_TYPES, CURRENCIES, CURRENCY_SYMBOLS } from '@/types/finance';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import BackHeader from '@/components/BackHeader';
+import { AccountIcon, CategoryIcon } from '@/utils/categoryIcons';
 
 const AccountDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -85,7 +86,7 @@ const AccountDetail = () => {
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
         <div className="flex items-center gap-3">
           <BackHeader fallback="/savings" />
-          <h1 className="text-xl font-bold flex-1">{typeInfo?.emoji} {account.name}</h1>
+          <h1 className="text-xl font-bold flex-1 flex items-center gap-2"><AccountIcon type={account.type} /> {account.name}</h1>
           <button onClick={openEdit} className="h-9 px-3 rounded-xl border border-border text-sm hover:bg-muted transition-colors">Modifier</button>
         </div>
 
@@ -138,7 +139,7 @@ const AccountDetail = () => {
                 return (
                   <div key={t.id} className="card-elevated p-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="text-lg">{t.emoji}</span>
+                      <CategoryIcon category={t.category} size="sm" />
                       <div>
                         <p className="text-sm font-medium">{t.label}</p>
                         <p className="text-xs text-muted-foreground">{formatDateLong(t.date)}{member ? ` • ${member.name}` : ''}</p>

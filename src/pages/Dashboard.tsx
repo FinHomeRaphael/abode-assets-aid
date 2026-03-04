@@ -15,7 +15,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
 import { Calendar, Sparkles, Camera, BarChart3, ArrowRight, ChevronRight, ChevronDown, Lock, HeartPulse, TrendingUp, TrendingDown, Plus, MoreHorizontal, Wallet, Receipt, PiggyBank, CheckCircle2, AlertTriangle } from 'lucide-react';
 import HealthScoreGauge from '@/components/HealthScoreGauge';
-import { CategoryIcon } from '@/utils/categoryIcons';
+import { CategoryIcon, DebtIcon } from '@/utils/categoryIcons';
 import { useHealthScore, useSaveHealthScore } from '@/hooks/useHealthScore';
 
 function generateAIAdvices(
@@ -457,7 +457,7 @@ const Dashboard = () => {
                   <div key={d.id} className="px-4 py-3">
                     <div className="flex items-center justify-between mb-1">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-base flex-shrink-0">{getDebtEmoji(d.type)}</span>
+                        <DebtIcon type={d.type} size="sm" />
                         <span className="text-xs font-medium truncate">{d.name}</span>
                       </div>
                       <span className="font-mono-amount text-[11px] text-muted-foreground flex-shrink-0">

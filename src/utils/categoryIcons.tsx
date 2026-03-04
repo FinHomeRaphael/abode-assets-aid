@@ -6,9 +6,12 @@ import {
   Landmark, CreditCard, MoreHorizontal,
   Briefcase, Laptop, Award, Building, TrendingUp,
   Banknote, Clock, Heart, DollarSign, RotateCcw, Store,
-  ArrowLeftRight,
+  ArrowLeftRight, PiggyBank, Mountain, Smartphone, Timer,
+  FolderOpen, Wallet, Package, Palmtree,
   type LucideIcon,
 } from 'lucide-react';
+
+// ── Category Icons ──────────────────────────────────────────
 
 const CATEGORY_ICON_MAP: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
   // Expenses
@@ -51,20 +54,95 @@ export function getCategoryIcon(category: string) {
   return CATEGORY_ICON_MAP[category] || DEFAULT_ICON;
 }
 
-interface CategoryIconProps {
-  category: string;
-  size?: 'sm' | 'md';
+// ── Account Type Icons ──────────────────────────────────────
+
+const ACCOUNT_ICON_MAP: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
+  'courant':      { icon: Landmark,     color: 'text-blue-600',    bg: 'bg-blue-100 dark:bg-blue-900/30' },
+  'epargne':      { icon: PiggyBank,    color: 'text-emerald-600', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
+  'pilier3a':     { icon: Mountain,     color: 'text-sky-600',     bg: 'bg-sky-100 dark:bg-sky-900/30' },
+  'carte_credit': { icon: CreditCard,   color: 'text-purple-600',  bg: 'bg-purple-100 dark:bg-purple-900/30' },
+  'cash':         { icon: Wallet,       color: 'text-green-600',   bg: 'bg-green-100 dark:bg-green-900/30' },
+  'prepaye':      { icon: Smartphone,   color: 'text-orange-600',  bg: 'bg-orange-100 dark:bg-orange-900/30' },
+  'pilier2':      { icon: Building,     color: 'text-indigo-600',  bg: 'bg-indigo-100 dark:bg-indigo-900/30' },
+  'vacances':     { icon: Palmtree,     color: 'text-teal-600',    bg: 'bg-teal-100 dark:bg-teal-900/30' },
+  'terme':        { icon: Timer,        color: 'text-amber-600',   bg: 'bg-amber-100 dark:bg-amber-900/30' },
+  'autre':        { icon: FolderOpen,   color: 'text-gray-500',    bg: 'bg-gray-100 dark:bg-gray-900/30' },
+};
+
+const DEFAULT_ACCOUNT_ICON = { icon: Landmark, color: 'text-muted-foreground', bg: 'bg-muted/50' };
+
+export function getAccountIcon(type: string) {
+  return ACCOUNT_ICON_MAP[type] || DEFAULT_ACCOUNT_ICON;
+}
+
+// ── Debt Type Icons ─────────────────────────────────────────
+
+const DEBT_ICON_MAP: Record<string, { icon: LucideIcon; color: string; bg: string }> = {
+  'mortgage': { icon: Home,          color: 'text-orange-600',  bg: 'bg-orange-100 dark:bg-orange-900/30' },
+  'auto':     { icon: Car,           color: 'text-blue-600',    bg: 'bg-blue-100 dark:bg-blue-900/30' },
+  'consumer': { icon: CreditCard,    color: 'text-purple-600',  bg: 'bg-purple-100 dark:bg-purple-900/30' },
+  'student':  { icon: GraduationCap, color: 'text-amber-600',   bg: 'bg-amber-100 dark:bg-amber-900/30' },
+  'other':    { icon: Package,       color: 'text-gray-600',    bg: 'bg-gray-100 dark:bg-gray-900/30' },
+};
+
+const DEFAULT_DEBT_ICON = { icon: CreditCard, color: 'text-muted-foreground', bg: 'bg-muted/50' };
+
+export function getDebtIcon(type: string) {
+  return DEBT_ICON_MAP[type] || DEFAULT_DEBT_ICON;
+}
+
+// ── Shared Icon Component ───────────────────────────────────
+
+interface IconBadgeProps {
+  iconData: { icon: LucideIcon; color: string; bg: string };
+  size?: 'sm' | 'md' | 'lg';
   className?: string;
 }
 
-export const CategoryIcon: React.FC<CategoryIconProps> = ({ category, size = 'md', className = '' }) => {
-  const { icon: Icon, color, bg } = getCategoryIcon(category);
-  const sizeClasses = size === 'sm' ? 'w-7 h-7' : 'w-9 h-9';
-  const iconSize = size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4';
+export const IconBadge: React.FC<IconBadgeProps> = ({ iconData, size = 'md', className = '' }) => {
+  const { icon: Icon, color, bg } = iconData;
+  const sizeClasses = size === 'sm' ? 'w-7 h-7' : size === 'lg' ? 'w-11 h-11' : 'w-9 h-9';
+  const iconSize = size === 'sm' ? 'w-3.5 h-3.5' : size === 'lg' ? 'w-5 h-5' : 'w-4 h-4';
 
   return (
     <div className={`${sizeClasses} rounded-xl ${bg} flex items-center justify-center flex-shrink-0 ${className}`}>
       <Icon className={`${iconSize} ${color}`} />
     </div>
   );
+};
+
+// ── Category Icon (convenience wrapper) ─────────────────────
+
+interface CategoryIconProps {
+  category: string;
+  size?: 'sm' | 'md' | 'lg';
+  className?: string;
+}
+
+export const CategoryIcon: React.FC<CategoryIconProps> = ({ category, size = 'md', className = '' }) => {
+  return <IconBadge iconData={getCategoryIcon(category)} size={size} className={className} />;
+};
+
+// ── Account Icon (convenience wrapper) ──────────────────────
+
+interface AccountIconProps {
+  type: string;
+  size?: 'sm' | 'md' | 'lg';
+  className?: string;
+}
+
+export const AccountIcon: React.FC<AccountIconProps> = ({ type, size = 'md', className = '' }) => {
+  return <IconBadge iconData={getAccountIcon(type)} size={size} className={className} />;
+};
+
+// ── Debt Icon (convenience wrapper) ─────────────────────────
+
+interface DebtIconProps {
+  type: string;
+  size?: 'sm' | 'md' | 'lg';
+  className?: string;
+}
+
+export const DebtIcon: React.FC<DebtIconProps> = ({ type, size = 'md', className = '' }) => {
+  return <IconBadge iconData={getDebtIcon(type)} size={size} className={className} />;
 };

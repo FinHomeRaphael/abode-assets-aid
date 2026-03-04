@@ -11,6 +11,7 @@ import MonthSelector from '@/components/MonthSelector';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
 import { Wallet, X, Plus } from 'lucide-react';
+import { AccountIcon } from '@/utils/categoryIcons';
 
 const SectionTitle = ({ icon: Icon, title, actions }: { icon: React.ElementType; title: string; actions?: { label: string; onClick: () => void }[] }) => (
   <div className="flex items-center justify-between mb-2">
@@ -150,7 +151,7 @@ const Savings = () => {
                 return (
                   <div key={acc.id} onClick={() => navigate(`/account/${acc.id}`)} className="bg-card border border-border rounded-xl p-3.5 cursor-pointer hover:bg-muted/50 transition-colors active:scale-[0.98]">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-sm">{typeInfo?.emoji} {acc.name}</span>
+                      <span className="font-medium text-sm flex items-center gap-2"><AccountIcon type={acc.type} size="sm" /> {acc.name}</span>
                       <span className="text-[9px] px-1.5 py-0.5 rounded-lg bg-secondary/50 text-muted-foreground font-medium">{acc.currency}</span>
                     </div>
                     <p className={`font-mono-amount font-bold ${bal >= 0 ? 'text-primary' : 'text-destructive'}`}>
