@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useApp } from '@/context/AppContext';
 import { Debt, DEBT_TYPES, getDebtEmoji, getPeriodsPerYear, calculateNextPaymentDate, PaymentFrequency } from '@/types/debt';
 import { DEFAULT_EXCHANGE_RATES } from '@/types/finance';
+import { DebtIcon } from '@/utils/categoryIcons';
 
 const getFrequencySuffix = (freq: string) => {
   switch (freq) { case 'quarterly': return '/trim.'; case 'semi-annual': return '/sem.'; case 'annual': return '/an'; default: return '/mois'; }
@@ -213,14 +214,14 @@ const Debts = () => {
 
   // Per-debt breakdown for current month
   const paymentBreakdownList = useMemo(() => {
-    const map = new Map<string, { name: string; emoji: string; monthlyAmount: number }>();
+    const map = new Map<string, { name: string; emoji: string; debtType: string; monthlyAmount: number }>();
     for (const p of currentMonthPayments) {
       const existing = map.get(p.debt_id);
       const amount = convert(p.total_amount, p.debtCurrency);
       if (existing) {
         existing.monthlyAmount += amount;
       } else {
-        map.set(p.debt_id, { name: p.debtName, emoji: p.debtEmoji, monthlyAmount: amount });
+        map.set(p.debt_id, { name: p.debtName, emoji: p.debtEmoji, debtType: p.debtType, monthlyAmount: amount });
       }
     }
     return Array.from(map.values()).filter(item => item.monthlyAmount > 0).sort((a, b) => b.monthlyAmount - a.monthlyAmount);
@@ -300,7 +301,7 @@ const Debts = () => {
                   <div className="border-t border-border mt-2 pt-2 space-y-1 text-left">
                     {paymentBreakdownList.map((item, i) => (
                       <div key={i} className="flex items-center justify-between text-[10px]">
-                        <span className="truncate text-muted-foreground">{item.emoji} {item.name}</span>
+                        <span className="truncate text-muted-foreground flex items-center gap-1"><DebtIcon type={item.debtType || ''} size="sm" /> {item.name}</span>
                         <span className="font-mono-amount font-medium shrink-0 ml-2">{formatAmount(item.monthlyAmount)}</span>
                       </div>
                     ))}
@@ -383,7 +384,7 @@ const Debts = () => {
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">{getDebtEmoji(d.type)}</span>
+                      <DebtIcon type={d.type} />
                       <div>
                         <div className="flex items-center gap-1.5">
                           <p className="font-semibold text-sm">{d.vehicleName || d.name}</p>
@@ -689,7 +690,7 @@ const Debts = () => {
                   onClick={() => setSelectedDebtId(p.debt_id)}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                    <span className="text-base shrink-0">{p.debtEmoji}</span>
+                    <DebtIcon type={p.debtType || ''} />
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{formatDateLong(p.due_date)}</p>
                       <p className="text-[10px] text-muted-foreground truncate">

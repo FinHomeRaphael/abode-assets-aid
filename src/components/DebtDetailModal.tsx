@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Debt, DEBT_TYPES, getDebtEmoji, getPeriodsPerYear, PAYMENT_FREQUENCIES, PaymentFrequency, VehicleType, ConsumerType, DeferralType } from '@/types/debt';
+import { DebtIcon } from '@/utils/categoryIcons';
 import { useCurrency } from '@/hooks/useCurrency';
 import { formatDateLong, formatAmount as formatAmountRaw } from '@/utils/format';
 import { DEFAULT_EXCHANGE_RATES } from '@/types/finance';
@@ -301,7 +302,7 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-2 flex-1">
-          <span className="text-xl">{getDebtEmoji(debt.type)}</span>
+          <DebtIcon type={debt.type} size="lg" />
           <div>
             <div className="flex items-center gap-1.5">
               <h1 className="text-lg font-bold">{debt.vehicleName || debt.name}</h1>
@@ -767,7 +768,7 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-muted/50 rounded-xl p-3">
             <p className="text-xs text-muted-foreground">Type</p>
-            <p className="text-sm font-medium">{typeInfo?.emoji} {typeInfo?.label}</p>
+            <p className="text-sm font-medium flex items-center gap-1.5"><DebtIcon type={debt.type} size="sm" /> {typeInfo?.label}</p>
           </div>
           <div className="bg-muted/50 rounded-xl p-3">
             <p className="text-xs text-muted-foreground">Montant emprunté</p>
