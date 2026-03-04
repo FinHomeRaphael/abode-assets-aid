@@ -461,7 +461,7 @@ const Transactions = () => {
         </div>
 
         {/* Pill filter tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <div className="grid grid-cols-4 gap-2">
           {filterTabs.map(tab => (
             <button
               key={tab.key}
