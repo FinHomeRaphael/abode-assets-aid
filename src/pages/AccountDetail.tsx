@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { useCurrency } from '@/hooks/useCurrency';
-import { formatDateLong } from '@/utils/format';
+import { formatDateLong, formatDate } from '@/utils/format';
 import { ACCOUNT_TYPES, CURRENCIES, CURRENCY_SYMBOLS } from '@/types/finance';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import BackHeader from '@/components/BackHeader';
 import { AccountIcon, CategoryIcon } from '@/utils/categoryIcons';
+import { ArrowUpRight, ArrowDownLeft, Pencil, Archive, Trash2, TrendingUp, TrendingDown, Calendar, ChevronDown } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 
 const AccountDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +21,7 @@ const AccountDetail = () => {
   const account = accounts.find(a => a.id === id);
   const [showEdit, setShowEdit] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [showAllTransactions, setShowAllTransactions] = useState(false);
 
   // Edit state
   const [editName, setEditName] = useState('');
@@ -43,6 +46,12 @@ const AccountDetail = () => {
   const allAccountTypes = [...ACCOUNT_TYPES, ...customAccountTypes.map(t => ({ value: t.value, label: t.label, emoji: t.emoji }))];
   const typeInfo = allAccountTypes.find(t => t.value === account.type);
 
+  const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+  const totalExpense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+  const netChange = balance - account.startingBalance;
+
+  const displayedTransactions = showAllTransactions ? transactions : transactions.slice(0, 10);
+
   const openEdit = () => {
     setEditName(account.name);
     setEditType(account.type);
@@ -61,20 +70,17 @@ const AccountDetail = () => {
       startingBalance: parseFloat(editBalance) || 0,
       startingDate: editDate,
     });
-    // silent
     setShowEdit(false);
   };
 
   const handleArchive = () => {
     archiveAccount(account.id);
-    // silent
     navigate('/savings');
   };
 
   const handleDelete = () => {
     const success = deleteAccount(account.id);
     if (success) {
-      // silent
       navigate('/savings');
     } else {
       toast.error('Impossible de supprimer : des transactions sont liées à ce compte. Archivez-le plutôt.');
@@ -84,35 +90,91 @@ const AccountDetail = () => {
   return (
     <Layout>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
-        <div className="flex items-center gap-3">
-          <BackHeader fallback="/savings" />
-          <h1 className="text-xl font-bold flex-1 flex items-center gap-2"><AccountIcon type={account.type} /> {account.name}</h1>
-          <button onClick={openEdit} className="h-9 px-3 rounded-xl border border-border text-sm hover:bg-muted transition-colors">Modifier</button>
-        </div>
+        <BackHeader fallback="/savings" />
 
-        {/* Balance card */}
-        <div className="card-elevated p-5">
-          <p className="text-xs text-muted-foreground mb-1">Solde actuel</p>
-          <p className={`text-2xl font-bold font-mono-amount ${balance >= 0 ? 'text-primary' : 'text-destructive'}`}>
+        {/* Hero Card */}
+        <div className="bg-primary rounded-2xl p-5 shadow-lg shadow-primary/20">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-primary-foreground/20 flex items-center justify-center">
+              <AccountIcon type={account.type} className="text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-primary-foreground">{account.name}</h1>
+              <p className="text-xs text-primary-foreground/70">{typeInfo?.label || account.type} • {account.currency}</p>
+            </div>
+          </div>
+
+          <p className="text-xs text-primary-foreground/60 mb-1">Solde actuel</p>
+          <p className="text-3xl font-bold font-mono-amount text-primary-foreground">
             {formatAmount(balance, account.currency)}
           </p>
-          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-            <span>Type : {typeInfo?.label || account.type}</span>
-            <span>Devise : {account.currency}</span>
+
+          <div className="flex items-center gap-1.5 mt-2">
+            {netChange >= 0 ? (
+              <TrendingUp className="w-3.5 h-3.5 text-primary-foreground/80" />
+            ) : (
+              <TrendingDown className="w-3.5 h-3.5 text-primary-foreground/80" />
+            )}
+            <span className="text-xs text-primary-foreground/70">
+              {netChange >= 0 ? '+' : ''}{formatAmount(netChange, account.currency)} depuis l'ouverture
+            </span>
           </div>
-          <div className="mt-2 text-xs text-muted-foreground">
-            Solde de base : {formatAmount(account.startingBalance, account.currency)} au {formatDateLong(account.startingDate)}
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-card rounded-xl border border-border/40 p-3 text-center">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <ArrowDownLeft className="w-3.5 h-3.5 text-primary" />
+              <p className="text-[10px] text-muted-foreground font-medium">Entrées</p>
+            </div>
+            <p className="text-sm font-bold font-mono-amount text-primary">
+              +{formatAmount(totalIncome, account.currency)}
+            </p>
+          </div>
+
+          <div className="bg-card rounded-xl border border-border/40 p-3 text-center">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <ArrowUpRight className="w-3.5 h-3.5 text-destructive" />
+              <p className="text-[10px] text-muted-foreground font-medium">Sorties</p>
+            </div>
+            <p className="text-sm font-bold font-mono-amount text-destructive">
+              -{formatAmount(totalExpense, account.currency)}
+            </p>
+          </div>
+
+          <div className="bg-card rounded-xl border border-border/40 p-3 text-center">
+            <div className="flex items-center justify-center gap-1 mb-1">
+              <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+              <p className="text-[10px] text-muted-foreground font-medium">Ouverture</p>
+            </div>
+            <p className="text-xs font-semibold text-foreground">
+              {formatDate(account.startingDate)}
+            </p>
+            <p className="text-[9px] text-muted-foreground mt-0.5">
+              {formatAmount(account.startingBalance, account.currency)}
+            </p>
           </div>
         </div>
 
         {/* Actions */}
         <div className="flex gap-2">
+          <button
+            onClick={openEdit}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border/40 bg-card text-sm font-medium hover:bg-muted transition-colors"
+          >
+            <Pencil className="w-4 h-4" />
+            Modifier
+          </button>
           {!showArchiveConfirm ? (
-            <button onClick={() => setShowArchiveConfirm(true)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">
-              📦 Archiver
+            <button
+              onClick={() => setShowArchiveConfirm(true)}
+              className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-border/40 bg-card text-sm font-medium hover:bg-muted transition-colors"
+            >
+              <Archive className="w-4 h-4" />
             </button>
           ) : (
-            <div className="flex-1 p-3 rounded-xl border border-destructive bg-destructive/5 space-y-2">
+            <div className="flex-1 p-3 rounded-xl border border-destructive/40 bg-destructive/5 space-y-2">
               <p className="text-sm text-center">Archiver ce compte ?</p>
               <div className="flex gap-2">
                 <button onClick={() => setShowArchiveConfirm(false)} className="flex-1 py-2 rounded-lg border border-border text-xs hover:bg-muted">Non</button>
@@ -121,36 +183,57 @@ const AccountDetail = () => {
             </div>
           )}
           {transactions.length === 0 && (
-            <button onClick={handleDelete} className="py-2.5 px-4 rounded-xl border border-destructive text-destructive text-sm font-medium hover:bg-destructive/10 transition-colors">
-              🗑 Supprimer
+            <button
+              onClick={handleDelete}
+              className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border border-destructive/30 text-destructive text-sm font-medium hover:bg-destructive/10 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
             </button>
           )}
         </div>
 
         {/* Transactions list */}
         <div>
-          <h2 className="text-sm font-semibold text-muted-foreground mb-2">Transactions ({transactions.length})</h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-foreground">Transactions</h2>
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{transactions.length}</span>
+          </div>
+
           {transactions.length === 0 ? (
-            <div className="card-elevated p-6 text-center text-sm text-muted-foreground">Aucune transaction liée</div>
+            <div className="bg-card rounded-xl border border-border/40 p-8 text-center">
+              <p className="text-sm text-muted-foreground">Aucune transaction liée à ce compte</p>
+            </div>
           ) : (
-            <div className="space-y-1.5">
-              {transactions.map(t => {
+            <div className="bg-card rounded-xl border border-border/40 overflow-hidden divide-y divide-border/30">
+              {displayedTransactions.map(t => {
                 const member = getMemberById(t.memberId);
                 return (
-                  <div key={t.id} className="card-elevated p-3 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                  <div key={t.id} className="px-4 py-3 flex items-center justify-between hover:bg-muted/30 transition-colors">
+                    <div className="flex items-center gap-3 min-w-0">
                       <CategoryIcon category={t.category} size="sm" />
-                      <div>
-                        <p className="text-sm font-medium">{t.label}</p>
-                        <p className="text-xs text-muted-foreground">{formatDateLong(t.date)}{member ? ` • ${member.name}` : ''}</p>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{t.label}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {formatDate(t.date)}{member ? ` • ${member.name}` : ''}
+                        </p>
                       </div>
                     </div>
-                    <span className={`font-mono-amount font-semibold text-sm ${t.type === 'income' ? 'text-primary' : 'text-destructive'}`}>
+                    <span className={`font-mono-amount font-semibold text-sm whitespace-nowrap ml-3 ${t.type === 'income' ? 'text-primary' : 'text-destructive'}`}>
                       {t.type === 'income' ? '+' : '-'}{formatAmount(t.amount, t.currency)}
                     </span>
                   </div>
                 );
               })}
+
+              {transactions.length > 10 && !showAllTransactions && (
+                <button
+                  onClick={() => setShowAllTransactions(true)}
+                  className="w-full py-3 text-xs text-primary font-medium hover:bg-muted/30 transition-colors flex items-center justify-center gap-1"
+                >
+                  Voir toutes les transactions ({transactions.length})
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           )}
         </div>
