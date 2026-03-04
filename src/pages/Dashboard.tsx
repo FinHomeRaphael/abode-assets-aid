@@ -402,7 +402,7 @@ const Dashboard = () => {
                 return (
                   <div key={b.id} className="px-4 py-3">
                     <div className="flex items-center justify-between text-xs mb-2">
-                      <span className="font-medium">{b.emoji} {b.category}</span>
+                      <span className="font-medium flex items-center gap-1.5"><CategoryIcon category={b.category} size="sm" /> {b.category}</span>
                       <span className="font-mono-amount text-muted-foreground">{formatAmount(b.spent)} / {formatAmount(b.limit)}</span>
                     </div>
                     <div className="h-1.5 bg-muted rounded-full overflow-hidden">

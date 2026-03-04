@@ -5,6 +5,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import BackHeader from '@/components/BackHeader';
+import { CategoryIcon } from '@/utils/categoryIcons';
 
 const STORAGE_KEY_PREFIX = 'finehome_start_month_';
 
@@ -139,7 +140,7 @@ const StartOfMonth = () => {
               {checked && <span className="text-xs">✓</span>}
               {cancelled && <span className="text-xs">✕</span>}
             </button>
-            <span className="text-lg">{t.emoji}</span>
+            <CategoryIcon category={t.category} size="sm" />
             <div className="min-w-0">
               <p className={`text-sm font-medium truncate ${cancelled ? 'line-through text-muted-foreground' : ''}`}>{t.label}</p>
               <p className="text-xs text-muted-foreground">{t.category}{member ? ` · ${member.name}` : ''} · Le {t.recurrenceDay || parseInt(t.date.split('-')[2])}</p>

@@ -13,6 +13,7 @@ import InviteMemberModal from '@/components/InviteMemberModal';
 import { supabase } from '@/integrations/supabase/client';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
+import { CategoryIcon } from '@/utils/categoryIcons';
 import { Crown, Pencil, Check, X } from 'lucide-react';
 
 const HouseholdNameCard = ({ initialName, createdAt, onRename }: { initialName: string; createdAt?: string; onRename: (name: string) => Promise<boolean> }) => {
@@ -309,7 +310,7 @@ const Profile = () => {
                 return (
                   <div key={t.id} className="flex items-center justify-between py-2.5 border-b border-border/50 last:border-0">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-muted flex items-center justify-center">{t.emoji}</div>
+                      <CategoryIcon category={t.category} />
                       <div>
                         <p className="text-sm font-medium">{t.label}</p>
                         <p className="text-xs text-muted-foreground">{t.category} · {member?.name} · Le {t.recurrenceDay} de chaque mois</p>

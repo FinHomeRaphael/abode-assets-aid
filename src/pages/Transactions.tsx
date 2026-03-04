@@ -17,32 +17,10 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { TrendingUp, TrendingDown, Wallet, Search, Plus, ArrowLeftRight, Download, CheckSquare, X, Trash2, Eye, ChevronDown, CalendarDays } from 'lucide-react';
+import { CategoryIcon } from '@/utils/categoryIcons';
 import { recalculateScheduleFromRow } from '@/utils/recalculateSchedule';
 import { getPeriodsPerYear } from '@/types/debt';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-
-// Emoji background color mapping
-const emojiColors: Record<string, string> = {
-  '🍽️': 'bg-blue-100 dark:bg-blue-900/30',
-  '🛒': 'bg-amber-100 dark:bg-amber-900/30',
-  '🚗': 'bg-purple-100 dark:bg-purple-900/30',
-  '🏠': 'bg-orange-100 dark:bg-orange-900/30',
-  '💼': 'bg-green-100 dark:bg-green-900/30',
-  '💰': 'bg-green-100 dark:bg-green-900/30',
-  '🎮': 'bg-indigo-100 dark:bg-indigo-900/30',
-  '👕': 'bg-pink-100 dark:bg-pink-900/30',
-  '💊': 'bg-red-100 dark:bg-red-900/30',
-  '📱': 'bg-orange-100 dark:bg-orange-900/30',
-  '🎓': 'bg-cyan-100 dark:bg-cyan-900/30',
-  '✈️': 'bg-sky-100 dark:bg-sky-900/30',
-  '🎁': 'bg-rose-100 dark:bg-rose-900/30',
-  '📊': 'bg-teal-100 dark:bg-teal-900/30',
-  '⚡': 'bg-yellow-100 dark:bg-yellow-900/30',
-  '📞': 'bg-violet-100 dark:bg-violet-900/30',
-  '🔄': 'bg-slate-100 dark:bg-slate-900/30',
-};
-
-const getEmojiColor = (emoji: string) => emojiColors[emoji] || 'bg-muted';
 
 const Transactions = () => {
   const { scopedTransactions: transactions, getMemberById, household, householdId, getTransactionsForMonth, deleteTransaction, updateTransaction, softDeleteRecurringTransaction, scopedAccounts: accounts, financeScope, customAccountTypes } = useApp();
@@ -527,9 +505,7 @@ const Transactions = () => {
                         )}
 
                         {/* Colored emoji circle */}
-                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-lg shrink-0 ${getEmojiColor(t.emoji)}`}>
-                          {t.emoji}
-                        </div>
+                        <CategoryIcon category={t.category} size="md" className="w-11 h-11 rounded-2xl" />
 
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold truncate flex items-center gap-1">
@@ -605,7 +581,7 @@ const Transactions = () => {
               <div className="p-5">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg ${getEmojiColor(editTarget.emoji)}`}>{editTarget.emoji}</div>
+                    <CategoryIcon category={editTarget.category} size="md" className="w-10 h-10 rounded-2xl" />
                     <h2 className="text-base font-bold">Modifier</h2>
                   </div>
                   <button onClick={() => setEditTarget(null)} className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center"><X className="w-4 h-4 text-muted-foreground" /></button>
@@ -700,7 +676,7 @@ const Transactions = () => {
                 <div className="p-5">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg ${getEmojiColor(t.emoji)}`}>{t.emoji}</div>
+                      <CategoryIcon category={t.category} size="md" className="w-10 h-10 rounded-2xl" />
                       <div><h2 className="text-base font-bold">Détail échéance</h2><p className="text-[10px] text-muted-foreground">Consultation uniquement</p></div>
                     </div>
                     <button onClick={() => setViewDebtTarget(null)} className="w-8 h-8 rounded-xl bg-muted flex items-center justify-center"><X className="w-4 h-4 text-muted-foreground" /></button>
