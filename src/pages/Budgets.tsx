@@ -12,7 +12,7 @@ import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
-import { Plus, X, ChevronDown, ChevronUp, TrendingUp, Wallet, AlertTriangle, CheckCircle, PieChart, Lightbulb, ArrowRight, Target, Pencil, PartyPopper, CircleAlert, CircleCheck, Clock, Trash2, StopCircle, CreditCard } from 'lucide-react';
+import { Plus, X, ChevronDown, ChevronUp, TrendingUp, Wallet, AlertTriangle, CheckCircle, PieChart, Lightbulb, ArrowRight, Target, Pencil, PartyPopper, CircleAlert, CircleCheck, Clock, Trash2, StopCircle, CreditCard, Info, Minus, Equal } from 'lucide-react';
 import { CategoryIcon, getCategoryIcon } from '@/utils/categoryIcons';
 import { supabase } from '@/integrations/supabase/client';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
@@ -27,6 +27,7 @@ const Budgets = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [incomeExpanded, setIncomeExpanded] = useState(false);
   const [chartExpanded, setChartExpanded] = useState(false);
+  const [formulaExpanded, setFormulaExpanded] = useState(false);
   const [hoveredSlice, setHoveredSlice] = useState<number | null>(null);
 
   // Create modal state
@@ -377,6 +378,45 @@ const Budgets = () => {
               </div>
               <span className="text-xs text-primary-foreground/60 font-mono-amount">{Math.round(budgetPercentage)}%</span>
             </div>
+            {/* Formula breakdown toggle */}
+            <button
+              onClick={() => setFormulaExpanded(!formulaExpanded)}
+              className="flex items-center gap-1 mt-3 text-primary-foreground/60 hover:text-primary-foreground/80 transition-colors"
+            >
+              <Info className="w-3 h-3" />
+              <span className="text-[10px]">Comment c'est calculé ?</span>
+              {formulaExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+            <AnimatePresence>
+              {formulaExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="mt-2 bg-primary-foreground/10 rounded-xl p-3 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs text-primary-foreground/80">
+                      <span className="flex items-center gap-1.5"><TrendingUp className="w-3 h-3" /> Revenus</span>
+                      <span className="font-mono-amount font-semibold">{formatAmount(totalIncome)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-primary-foreground/80">
+                      <span className="flex items-center gap-1.5"><Minus className="w-3 h-3" /> Épargne nette</span>
+                      <span className="font-mono-amount font-semibold">- {formatAmount(totalSavingsDeducted)}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs text-primary-foreground/80">
+                      <span className="flex items-center gap-1.5"><Minus className="w-3 h-3" /> Budgété</span>
+                      <span className="font-mono-amount font-semibold">- {formatAmount(totalBudgeted)}</span>
+                    </div>
+                    <div className="border-t border-primary-foreground/20 pt-1.5 flex items-center justify-between text-xs text-primary-foreground font-bold">
+                      <span className="flex items-center gap-1.5"><Equal className="w-3 h-3" /> Disponible</span>
+                      <span className="font-mono-amount">{formatAmount(remainingToBudget)}</span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
             {remainingToBudget < 0 && totalIncome > 0 && (
               <div className="flex items-center gap-1.5 mt-2">
                 <AlertTriangle className="w-3.5 h-3.5 text-primary-foreground/80" />
