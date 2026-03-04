@@ -109,8 +109,9 @@ const StartOfMonth = () => {
     monthTx.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0),
     [monthTx]);
 
-  // Available to budget = income - |savings net| - budgeted (same formula as Budgets page)
+  // Available to budget = income - |savings net| - savings target - budgeted (same formula as Budgets page)
   const totalSavingsDeducted = Math.abs(monthSavingsNet);
+  const savingsTarget = household.monthlySavingsTarget ?? 0;
   const availableAfterSavings = totalIncome - totalSavingsDeducted;
 
   // Budgets — use getBudgetsForMonth to only get budgets active for current month

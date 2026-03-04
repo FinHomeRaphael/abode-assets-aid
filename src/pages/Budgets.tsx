@@ -197,11 +197,13 @@ const Budgets = () => {
     return filteredBudgets.reduce((s, b) => s + b.limit, 0);
   }, [filteredBudgets]);
 
-  // Available to budget = income - abs(savings net) - budgeted
+  // Available to budget = income - abs(savings net) - savings target - budgeted
   const totalSavingsDeducted = Math.abs(monthSavingsNet);
+  const effectiveSavingsTarget = savingsTarget ?? 0;
+  const totalAllocated = totalBudgeted + effectiveSavingsTarget;
   const availableAfterSavings = totalIncome - totalSavingsDeducted;
-  const remainingToBudget = availableAfterSavings - totalBudgeted;
-  const budgetPercentage = availableAfterSavings > 0 ? Math.min((totalBudgeted / availableAfterSavings) * 100, 100) : 0;
+  const remainingToBudget = availableAfterSavings - totalAllocated;
+  const budgetPercentage = availableAfterSavings > 0 ? Math.min((totalAllocated / availableAfterSavings) * 100, 100) : 0;
 
   // === 3-month average spending per category ===
   const avg3MonthByCategory = useMemo(() => {
