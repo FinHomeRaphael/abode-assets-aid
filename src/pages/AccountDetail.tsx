@@ -10,7 +10,6 @@ import Layout from '@/components/Layout';
 import BackHeader from '@/components/BackHeader';
 import { AccountIcon, CategoryIcon } from '@/utils/categoryIcons';
 import { ArrowUpRight, ArrowDownLeft, Pencil, Archive, Trash2, TrendingUp, TrendingDown, Calendar, ChevronDown, BarChart3 } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const AccountDetail = () => {
@@ -25,42 +24,27 @@ const AccountDetail = () => {
   const [showAllTransactions, setShowAllTransactions] = useState(false);
   const [showChart, setShowChart] = useState(false);
 
-  // Edit state
   const [editName, setEditName] = useState('');
   const [editType, setEditType] = useState<string>('');
   const [editCurrency, setEditCurrency] = useState('');
   const [editBalance, setEditBalance] = useState('');
   const [editDate, setEditDate] = useState('');
 
-  if (!account) {
-    return (
-      <Layout>
-        <div className="p-8 text-center text-muted-foreground">
-          <p>Compte introuvable</p>
-          <button onClick={() => navigate('/savings')} className="mt-4 text-primary underline">Retour aux comptes bancaires</button>
-        </div>
-      </Layout>
-    );
-  }
-
-  const balance = getAccountBalance(account.id);
-  const transactions = getAccountTransactions(account.id);
+  const balance = account ? getAccountBalance(account.id) : 0;
+  const transactions = account ? getAccountTransactions(account.id) : [];
   const allAccountTypes = [...ACCOUNT_TYPES, ...customAccountTypes.map(t => ({ value: t.value, label: t.label, emoji: t.emoji }))];
-  const typeInfo = allAccountTypes.find(t => t.value === account.type);
+  const typeInfo = account ? allAccountTypes.find(t => t.value === account.type) : null;
 
   const totalIncome = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const totalExpense = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-  const netChange = balance - account.startingBalance;
-
+  const netChange = account ? balance - account.startingBalance : 0;
   const displayedTransactions = showAllTransactions ? transactions : transactions.slice(0, 10);
 
-  // Build monthly balance evolution data
   const chartData = useMemo(() => {
-    if (!account) return [];
+    if (!account || transactions.length === 0) return [];
     const sorted = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
     const monthMap = new Map<string, number>();
-    
-    // Start with the starting balance month
+
     const startDate = new Date(account.startingDate);
     const startKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
     monthMap.set(startKey, account.startingBalance);
@@ -73,10 +57,9 @@ const AccountDetail = () => {
       monthMap.set(key, runningBalance);
     }
 
-    // Fill gaps and build array
     const keys = Array.from(monthMap.keys()).sort();
     if (keys.length === 0) return [];
-    
+
     const result: { month: string; solde: number }[] = [];
     const first = keys[0];
     const last = keys[keys.length - 1];
@@ -95,6 +78,18 @@ const AccountDetail = () => {
     }
     return result;
   }, [account, transactions]);
+
+  if (!account) {
+    return (
+      <Layout>
+        <div className="p-8 text-center text-muted-foreground">
+          <p>Compte introuvable</p>
+          <button onClick={() => navigate('/savings')} className="mt-4 text-primary underline">Retour aux comptes bancaires</button>
+        </div>
+      </Layout>
+    );
+  }
+
   const openEdit = () => {
     setEditName(account.name);
     setEditType(account.type);
@@ -199,6 +194,75 @@ const AccountDetail = () => {
             </p>
           </div>
         </div>
+
+        {/* Chart toggle button + collapsible chart */}
+        {chartData.length > 1 && (
+          <div>
+            <button
+              onClick={() => setShowChart(!showChart)}
+              className="w-full flex items-center justify-between py-3 px-4 rounded-xl border border-border/40 bg-card text-sm font-medium hover:bg-muted/50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-primary" />
+                <span>Évolution du solde</span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${showChart ? 'rotate-180' : ''}`} />
+            </button>
+
+            <AnimatePresence>
+              {showChart && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden"
+                >
+                  <div className="bg-card rounded-b-xl border border-t-0 border-border/40 p-4">
+                    <ResponsiveContainer width="100%" height={200}>
+                      <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="soldeGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <XAxis
+                          dataKey="month"
+                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                          axisLine={false}
+                          tickLine={false}
+                          tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: 'hsl(var(--card))',
+                            border: '1px solid hsl(var(--border))',
+                            borderRadius: '0.75rem',
+                            fontSize: '12px',
+                          }}
+                          formatter={(value: number) => [formatAmount(value, account.currency), 'Solde']}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="solde"
+                          stroke="hsl(var(--primary))"
+                          strokeWidth={2}
+                          fill="url(#soldeGradient)"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-2">
