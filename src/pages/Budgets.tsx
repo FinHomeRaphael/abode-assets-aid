@@ -112,7 +112,7 @@ const Budgets = () => {
         }
       }
 
-      setDebtMonthlyTotal(Math.round(total));
+      setDebtMonthlyTotal(Math.round(total * 100) / 100);
     };
     fetchDebtTotal();
   }, [householdId, financeScope, session?.user?.id, household.currency]);
