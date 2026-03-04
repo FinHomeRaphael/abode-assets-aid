@@ -230,7 +230,7 @@ const Dashboard = () => {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="bg-card border border-t-0 border-border rounded-b-2xl -mt-3 pt-5 px-5 pb-4 space-y-2">
+                <div className="bg-primary/10 border border-t-0 border-primary/15 rounded-b-2xl -mt-3 pt-5 px-5 pb-4 space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">💰 Revenus</span>
                     <span className="font-mono-amount font-semibold text-success">+{formatAmount(totalIncome)}</span>
