@@ -197,7 +197,7 @@ const Dashboard = () => {
         <motion.div variants={fade}>
           <button
             onClick={() => setBalanceExpanded(!balanceExpanded)}
-            className="w-full text-left rounded-2xl bg-primary p-6 shadow-lg shadow-primary/20 transition-transform active:scale-[0.99]"
+            className={`w-full text-left bg-primary p-6 shadow-lg shadow-primary/20 transition-all active:scale-[0.99] ${balanceExpanded ? 'rounded-t-2xl' : 'rounded-2xl'}`}
           >
             <div className="flex items-center justify-between mb-1">
               <span className="text-sm text-primary-foreground/70">Solde du mois</span>
