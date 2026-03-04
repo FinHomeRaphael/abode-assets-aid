@@ -113,10 +113,11 @@ const StartOfMonth = () => {
   const totalSavingsDeducted = Math.abs(monthSavingsNet);
   const availableAfterSavings = totalIncome - totalSavingsDeducted;
 
-  // Budgets
+  // Budgets — use getBudgetsForMonth to only get budgets active for current month
+  const { getBudgetsForMonth } = useApp();
   const budgetData = useMemo(() =>
-    budgets.filter(b => b.period === 'monthly').map(b => ({ ...b, spent: getBudgetSpent(b) })),
-    [budgets, getBudgetSpent]);
+    getBudgetsForMonth(now).filter(b => b.period === 'monthly').map(b => ({ ...b, spent: getBudgetSpent(b) })),
+    [getBudgetsForMonth, getBudgetSpent]);
 
   // Checklist state
   const initial = useMemo(() => loadChecklist(monthYear), [monthYear]);
