@@ -316,7 +316,7 @@ const Transactions = () => {
         </div>
 
         {/* Summary cards */}
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
           <button onClick={() => setExpandedCard(expandedCard === 'income' ? null : 'income')} className="bg-success/5 border border-success/15 rounded-xl p-2 text-center transition-colors hover:bg-success/10">
             <TrendingUp className="w-3 h-3 text-success mx-auto mb-0.5" />
             <p className="text-[9px] text-muted-foreground mb-0.5">Revenus</p>
