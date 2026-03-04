@@ -39,7 +39,7 @@ function saveChecklist(monthYear: string, state: ChecklistState) {
 const StartOfMonth = () => {
   const {
     scopedTransactions: transactions, household, session,
-    scopedBudgets: budgets, getBudgetSpent, addBudget,
+    scopedBudgets: budgets, getBudgetSpent, addBudget, getTransactionsForMonth,
     scopedAccounts: accounts,
     householdId, financeScope, getMemberById,
     softDeleteRecurringTransaction,
