@@ -161,6 +161,11 @@ const StartOfMonth = () => {
   const totalDebtPayments = debts.reduce((s, d) => s + d.paymentAmount, 0);
   const totalBudgetLimit = budgetData.reduce((s, b) => s + b.limit, 0);
 
+  // Month-level totals (all transactions, for hero summary)
+  const totalMonthExpenses = useMemo(() =>
+    monthTx.filter(t => t.type === 'expense' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0),
+    [monthTx]);
+
   // Step completion
   const step1Done = recurringIncomes.length === 0 || recurringIncomes.every(t => checkedIncomes.has(t.id) || cancelledIncomes.has(t.id));
   const step2Done = recurringExpenses.length === 0 || recurringExpenses.every(t => checkedExpenses.has(t.id) || cancelledExpenses.has(t.id));
@@ -349,15 +354,15 @@ const StartOfMonth = () => {
           <div className="mt-3 pt-3 border-t border-border/30 grid grid-cols-3 gap-2 text-center">
             <div>
               <p className="text-[10px] text-muted-foreground">Revenus</p>
-              <p className="text-[13px] font-bold font-mono-amount text-success">+{formatAmount(totalRecurringIncome)}</p>
+              <p className="text-[13px] font-bold font-mono-amount text-success">+{formatAmount(totalIncome)}</p>
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground">Sorties fixes</p>
-              <p className="text-[13px] font-bold font-mono-amount text-destructive">-{formatAmount(totalRecurringExpense + totalDebtPayments)}</p>
+              <p className="text-[10px] text-muted-foreground">Dépenses</p>
+              <p className="text-[13px] font-bold font-mono-amount text-destructive">-{formatAmount(totalMonthExpenses)}</p>
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground">Reste à vivre</p>
-              <p className={`text-[13px] font-bold font-mono-amount ${(totalRecurringIncome - totalRecurringExpense - totalDebtPayments) >= 0 ? 'text-foreground' : 'text-destructive'}`}>{formatAmount(totalRecurringIncome - totalRecurringExpense - totalDebtPayments)}</p>
+              <p className={`text-[13px] font-bold font-mono-amount ${(totalIncome - totalMonthExpenses - totalSavingsDeducted) >= 0 ? 'text-foreground' : 'text-destructive'}`}>{formatAmount(totalIncome - totalMonthExpenses - totalSavingsDeducted)}</p>
             </div>
           </div>
         </motion.div>
