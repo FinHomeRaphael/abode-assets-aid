@@ -54,6 +54,47 @@ const AccountDetail = () => {
 
   const displayedTransactions = showAllTransactions ? transactions : transactions.slice(0, 10);
 
+  // Build monthly balance evolution data
+  const chartData = useMemo(() => {
+    if (!account) return [];
+    const sorted = [...transactions].sort((a, b) => a.date.localeCompare(b.date));
+    const monthMap = new Map<string, number>();
+    
+    // Start with the starting balance month
+    const startDate = new Date(account.startingDate);
+    const startKey = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+    monthMap.set(startKey, account.startingBalance);
+
+    let runningBalance = account.startingBalance;
+    for (const t of sorted) {
+      const d = new Date(t.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      runningBalance += t.type === 'income' ? t.amount : -t.amount;
+      monthMap.set(key, runningBalance);
+    }
+
+    // Fill gaps and build array
+    const keys = Array.from(monthMap.keys()).sort();
+    if (keys.length === 0) return [];
+    
+    const result: { month: string; solde: number }[] = [];
+    const first = keys[0];
+    const last = keys[keys.length - 1];
+    let [y, m] = first.split('-').map(Number);
+    const [ly, lm] = last.split('-').map(Number);
+    let prevBalance = account.startingBalance;
+
+    while (y < ly || (y === ly && m <= lm)) {
+      const key = `${y}-${String(m).padStart(2, '0')}`;
+      const bal = monthMap.get(key) ?? prevBalance;
+      const label = new Date(y, m - 1).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+      result.push({ month: label, solde: Math.round(bal * 100) / 100 });
+      prevBalance = bal;
+      m++;
+      if (m > 12) { m = 1; y++; }
+    }
+    return result;
+  }, [account, transactions]);
   const openEdit = () => {
     setEditName(account.name);
     setEditType(account.type);
