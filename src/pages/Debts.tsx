@@ -232,6 +232,25 @@ const Debts = () => {
 
   const totalRepaid = useMemo(() => scopeFilteredDebts.reduce((s, d) => s + convert(d.initialAmount - getRealRemaining(d), d.currency), 0), [scopeFilteredDebts, debtRemainingMap, convert]);
 
+  // Asset values (property, vehicle, purchase)
+  const assetBreakdownList = useMemo(() => {
+    const list: { name: string; emoji: string; type: string; value: number }[] = [];
+    for (const d of scopeFilteredDebts) {
+      const assetValue = d.propertyValue || d.vehiclePrice || d.purchasePrice;
+      if (assetValue && assetValue > 0) {
+        list.push({
+          name: d.vehicleName || d.name,
+          emoji: getDebtEmoji(d.type),
+          type: d.type,
+          value: convert(assetValue, d.currency),
+        });
+      }
+    }
+    return list.sort((a, b) => b.value - a.value);
+  }, [scopeFilteredDebts, convert]);
+
+  const totalAssetValue = useMemo(() => assetBreakdownList.reduce((s, a) => s + a.value, 0), [assetBreakdownList]);
+
   const selectedDebt = useMemo(() => debts.find(d => d.id === selectedDebtId) || null, [debts, selectedDebtId]);
 
   const handleDebtAdded = async () => { await fetchDebts(); await refreshDebtSchedules(); setShowAdd(false); };
