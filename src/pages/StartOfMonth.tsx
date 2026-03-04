@@ -352,12 +352,12 @@ const StartOfMonth = () => {
               <p className="text-[13px] font-bold font-mono-amount text-success">+{formatAmount(totalRecurringIncome)}</p>
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground">Sorties</p>
+              <p className="text-[10px] text-muted-foreground">Sorties fixes</p>
               <p className="text-[13px] font-bold font-mono-amount text-destructive">-{formatAmount(totalRecurringExpense + totalDebtPayments)}</p>
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground">Disponible</p>
-              <p className={`text-[13px] font-bold font-mono-amount ${disponible >= 0 ? 'text-foreground' : 'text-destructive'}`}>{formatAmount(disponible)}</p>
+              <p className="text-[10px] text-muted-foreground">Reste à vivre</p>
+              <p className={`text-[13px] font-bold font-mono-amount ${(totalRecurringIncome - totalRecurringExpense - totalDebtPayments) >= 0 ? 'text-foreground' : 'text-destructive'}`}>{formatAmount(totalRecurringIncome - totalRecurringExpense - totalDebtPayments)}</p>
             </div>
           </div>
         </motion.div>
