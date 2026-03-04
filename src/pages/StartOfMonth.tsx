@@ -39,7 +39,7 @@ function saveChecklist(monthYear: string, state: ChecklistState) {
 const StartOfMonth = () => {
   const {
     scopedTransactions: transactions, household, session,
-    scopedBudgets: budgets, getBudgetSpent, addBudget,
+    scopedBudgets: budgets, getBudgetSpent, addBudget, getTransactionsForMonth,
     scopedAccounts: accounts,
     householdId, financeScope, getMemberById,
     softDeleteRecurringTransaction,
@@ -87,6 +87,31 @@ const StartOfMonth = () => {
   const recurringExpenses = useMemo(() =>
     transactions.filter(t => t.isRecurring && !t.recurringSourceId && t.type === 'expense' && (!t.recurringEndMonth || t.recurringEndMonth > monthYear)),
     [transactions, monthYear]);
+
+  // Month transactions (for budget calculation matching Budgets page)
+  const monthTx = useMemo(() => getTransactionsForMonth(now), [getTransactionsForMonth]);
+
+  // Savings calculation (same as Budgets page)
+  const savingsAccountIds = useMemo(() =>
+    new Set(accounts.filter(a => (a.type === 'epargne' || a.type === 'pilier3a') && !a.isArchived).map(a => a.id)),
+    [accounts]);
+  const isSavingsTx = (t: typeof monthTx[0]) => !!(t.accountId && savingsAccountIds.has(t.accountId));
+  const monthSavingsNet = useMemo(() => {
+    const savingsTransferIn = monthTx.filter(t => t.type === 'income' && isSavingsTx(t) && t.category === 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+    const savingsTransferOut = monthTx.filter(t => t.type === 'expense' && isSavingsTx(t) && t.category === 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+    const savingsDirectIncome = monthTx.filter(t => t.type === 'income' && isSavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+    const savingsDirectExpenses = monthTx.filter(t => t.type === 'expense' && isSavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+    return (savingsTransferIn + savingsDirectIncome) - (savingsTransferOut + savingsDirectExpenses);
+  }, [monthTx, savingsAccountIds]);
+
+  // Total income (same as Budgets page)
+  const totalIncome = useMemo(() =>
+    monthTx.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0),
+    [monthTx]);
+
+  // Available to budget = income - |savings net| - budgeted (same formula as Budgets page)
+  const totalSavingsDeducted = Math.abs(monthSavingsNet);
+  const availableAfterSavings = totalIncome - totalSavingsDeducted;
 
   // Budgets
   const budgetData = useMemo(() =>
@@ -352,9 +377,9 @@ const StartOfMonth = () => {
 
         {/* Step 4: Budgets */}
         {(() => {
-          const unbudgeted = totalRecurringIncome - totalRecurringExpense - totalDebtPayments - totalBudgetLimit;
-          const budgetCoverage = totalRecurringIncome > 0 ? Math.round((totalBudgetLimit / (totalRecurringIncome - totalRecurringExpense - totalDebtPayments)) * 100) : 0;
-          const isFullyCovered = unbudgeted <= 0 || budgetCoverage >= 95;
+          const remainingToBudget = availableAfterSavings - totalBudgetLimit;
+          const budgetCoverage = availableAfterSavings > 0 ? Math.round((totalBudgetLimit / availableAfterSavings) * 100) : 0;
+          const isFullyCovered = remainingToBudget <= 0 || budgetCoverage >= 95;
           const budgetedCategories = new Set(budgetData.map(b => b.category));
 
           return (
@@ -362,16 +387,16 @@ const StartOfMonth = () => {
               <StepHeader stepNum={4} title="Budgets variables" subtitle="Vérifie et complète tes budgets" icon={BarChart3} done={step4Done} total={budgetData.length > 0 ? formatAmount(totalBudgetLimit) : '—'} />
               
               {/* Unbudgeted warning */}
-              {!isFullyCovered && totalRecurringIncome > 0 && (
+              {!isFullyCovered && availableAfterSavings > 0 && (
                 <div className="px-4 py-3 bg-warning/10 border-b border-warning/20">
                   <div className="flex items-start gap-2.5">
                     <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-warning">
-                        {formatAmount(unbudgeted)} non budgété
+                        {formatAmount(remainingToBudget)} reste à budgéter
                       </p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Tes budgets couvrent {budgetCoverage}% de ton disponible. Crée des budgets pour mieux contrôler tes dépenses.
+                        Tes budgets couvrent {budgetCoverage}% de ton disponible ({formatAmount(availableAfterSavings)}). Crée des budgets pour mieux contrôler tes dépenses.
                       </p>
                     </div>
                   </div>
