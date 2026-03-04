@@ -40,7 +40,7 @@ const StartOfMonth = () => {
   const {
     scopedTransactions: transactions, household, session,
     scopedBudgets: budgets, getBudgetSpent, addBudget, getTransactionsForMonth,
-    scopedAccounts: accounts,
+    getBudgetsForMonth, scopedAccounts: accounts,
     householdId, financeScope, getMemberById,
     softDeleteRecurringTransaction,
   } = useApp();
@@ -114,7 +114,6 @@ const StartOfMonth = () => {
   const availableAfterSavings = totalIncome - totalSavingsDeducted;
 
   // Budgets — use getBudgetsForMonth to only get budgets active for current month
-  const { getBudgetsForMonth } = useApp();
   const budgetData = useMemo(() =>
     getBudgetsForMonth(now).filter(b => b.period === 'monthly').map(b => ({ ...b, spent: getBudgetSpent(b) })),
     [getBudgetsForMonth, getBudgetSpent]);
