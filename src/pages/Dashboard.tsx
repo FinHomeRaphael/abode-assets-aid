@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Debt, getDebtEmoji, calculateNextPaymentDate } from '@/types/debt';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
-import { Calendar, Sparkles, Camera, BarChart3, ArrowRight, ChevronRight, ChevronDown, Lock, HeartPulse, TrendingUp, TrendingDown, Plus, MoreHorizontal } from 'lucide-react';
+import { Calendar, Sparkles, Camera, BarChart3, ArrowRight, ChevronRight, ChevronDown, Lock, HeartPulse, TrendingUp, TrendingDown, Plus, MoreHorizontal, Wallet, Receipt, PiggyBank, CheckCircle2, AlertTriangle } from 'lucide-react';
 import HealthScoreGauge from '@/components/HealthScoreGauge';
 import { useHealthScore, useSaveHealthScore } from '@/hooks/useHealthScore';
 
@@ -231,32 +231,35 @@ const Dashboard = () => {
                 className="overflow-hidden"
               >
                 <div className="bg-primary/10 border border-t-0 border-primary/15 rounded-b-2xl -mt-3 pt-5 px-5 pb-4 space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">💰 Revenus</span>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground flex items-center gap-1.5"><Wallet className="w-3.5 h-3.5 text-success" /> Revenus</span>
                     <span className="font-mono-amount font-semibold text-success">+{formatAmount(totalIncome)}</span>
                   </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">💸 Dépenses</span>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground flex items-center gap-1.5"><Receipt className="w-3.5 h-3.5 text-destructive" /> Dépenses</span>
                     <span className="font-mono-amount font-semibold text-destructive">-{formatAmount(totalExpense)}</span>
                   </div>
                   {monthSavingsNet !== 0 && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">🏦 Épargne nette</span>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-muted-foreground flex items-center gap-1.5"><PiggyBank className="w-3.5 h-3.5 text-primary" /> Épargne nette</span>
                       <span className={`font-mono-amount font-semibold ${monthSavingsNet > 0 ? 'text-success' : 'text-destructive'}`}>
                         -{formatAmount(Math.abs(monthSavingsNet))}
                       </span>
                     </div>
                   )}
-                  <div className="flex justify-between text-xs pt-2 border-t border-border">
+                  <div className="flex justify-between items-center text-xs pt-2 border-t border-border">
                     <span className="font-semibold">Solde</span>
                     <span className={`font-mono-amount font-bold ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
                       {balance >= 0 ? '+' : ''}{formatAmount(balance)}
                     </span>
                   </div>
                   {monthSavings > 0 && (
-                    <p className="text-[10px] text-success/80 italic pt-1">
-                      ✅ Vous avez épargné {formatAmount(monthSavingsNet)} ce mois — bravo !
-                    </p>
+                    <div className="flex items-center gap-1.5 pt-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                      <p className="text-[10px] text-success/80 italic">
+                        Vous avez épargné {formatAmount(monthSavingsNet)} ce mois — bravo !
+                      </p>
+                    </div>
                   )}
                 </div>
               </motion.div>
@@ -268,7 +271,7 @@ const Dashboard = () => {
               onClick={() => navigate('/transactions')}
               className="flex items-center gap-1.5 mt-2 w-full px-3 py-2 rounded-xl bg-warning/10 border border-warning/20 text-[11px] text-warning hover:bg-warning/15 transition-colors"
             >
-              <span>⚠️</span>
+              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
               <span className="flex-1 text-left">Vous puisez dans vos économies ce mois-ci.</span>
               <ArrowRight className="w-3 h-3 flex-shrink-0" />
             </button>
