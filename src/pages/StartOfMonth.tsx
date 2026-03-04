@@ -40,7 +40,7 @@ const StartOfMonth = () => {
   const {
     scopedTransactions: transactions, household, session,
     scopedBudgets: budgets, getBudgetSpent, addBudget, getTransactionsForMonth,
-    scopedAccounts: accounts,
+    getBudgetsForMonth, scopedAccounts: accounts,
     householdId, financeScope, getMemberById,
     softDeleteRecurringTransaction,
   } = useApp();
@@ -113,10 +113,10 @@ const StartOfMonth = () => {
   const totalSavingsDeducted = Math.abs(monthSavingsNet);
   const availableAfterSavings = totalIncome - totalSavingsDeducted;
 
-  // Budgets
+  // Budgets — use getBudgetsForMonth to only get budgets active for current month
   const budgetData = useMemo(() =>
-    budgets.filter(b => b.period === 'monthly').map(b => ({ ...b, spent: getBudgetSpent(b) })),
-    [budgets, getBudgetSpent]);
+    getBudgetsForMonth(now).filter(b => b.period === 'monthly').map(b => ({ ...b, spent: getBudgetSpent(b) })),
+    [getBudgetsForMonth, getBudgetSpent]);
 
   // Checklist state
   const initial = useMemo(() => loadChecklist(monthYear), [monthYear]);
@@ -425,24 +425,40 @@ const StartOfMonth = () => {
 
         {/* Step 4: Budgets */}
         <StepCard stepNum={4} title="Budgets variables" subtitle="Alloue ton disponible à des budgets" icon={BarChart3} done={step4Done} total={budgetData.length > 0 ? formatAmount(totalBudgetLimit) : '—'}>
-          {/* Status banner */}
-          {!isFullyCovered && availableAfterSavings > 0 && (
-            <div className="mx-4 mt-2 mb-1 px-3 py-2 rounded-xl bg-warning/[0.08] border border-warning/15">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="w-3.5 h-3.5 text-warning shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-[12px] font-medium text-warning">{formatAmount(remainingToBudget)} non budgété</p>
-                  <p className="text-[10px] text-muted-foreground">{budgetCoverage}% du disponible couvert</p>
-                </div>
+          {/* Budget summary breakdown */}
+          <div className="mx-4 mt-2 mb-1 px-3 py-2.5 rounded-xl bg-muted/40 border border-border/30">
+            <div className="space-y-1.5 text-[11px]">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Revenus - Épargne</span>
+                <span className="font-mono-amount font-medium">{formatAmount(availableAfterSavings)}</span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Budgété</span>
+                <span className="font-mono-amount font-medium text-primary">-{formatAmount(totalBudgetLimit)}</span>
+              </div>
+              <div className="h-px bg-border/40" />
+              <div className="flex justify-between font-medium">
+                <span className={remainingToBudget > 0 ? 'text-warning' : 'text-primary'}>
+                  {remainingToBudget > 0 ? 'Non budgété' : 'Surplus budgété'}
+                </span>
+                <span className={`font-mono-amount font-semibold ${remainingToBudget > 0 ? 'text-warning' : 'text-primary'}`}>
+                  {formatAmount(Math.abs(remainingToBudget))}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Status indicator */}
+          {!isFullyCovered && availableAfterSavings > 0 && (
+            <div className="mx-4 mt-1 mb-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-warning/[0.06]">
+              <AlertTriangle className="w-3 h-3 text-warning shrink-0" />
+              <p className="text-[10px] text-warning font-medium">{budgetCoverage}% du disponible couvert — crée des budgets pour atteindre 100%</p>
             </div>
           )}
           {isFullyCovered && budgetData.length > 0 && (
-            <div className="mx-4 mt-2 mb-1 px-3 py-2 rounded-xl bg-primary/[0.06] border border-primary/15">
-              <div className="flex items-center gap-2">
-                <Check className="w-3.5 h-3.5 text-primary shrink-0" />
-                <p className="text-[12px] font-medium text-primary">Budget complet</p>
-              </div>
+            <div className="mx-4 mt-1 mb-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/[0.04]">
+              <Check className="w-3 h-3 text-primary shrink-0" />
+              <p className="text-[10px] text-primary font-medium">Budget complet</p>
             </div>
           )}
 
