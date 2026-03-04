@@ -22,7 +22,7 @@ import DebtDetailModal from '@/components/DebtDetailModal';
 import { toast } from 'sonner';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PremiumGate } from '@/components/PremiumPaywall';
-import { CreditCard, Plus, ArrowLeft, CalendarDays, ChevronDown, ChevronUp } from 'lucide-react';
+import { CreditCard, Plus, ArrowLeft, CalendarDays, ChevronDown, ChevronUp, TrendingDown, Landmark, CheckCircle, AlertTriangle, Clock, Shield, Fuel, Wrench, Phone, Car, Snowflake, Info, Percent } from 'lucide-react';
 
 interface UpcomingPayment {
   id: string;
@@ -263,68 +263,110 @@ const Debts = () => {
       <PremiumGate feature="les dettes & crédits" description="Gérez tous vos crédits, prêts et dettes avec un suivi détaillé des remboursements.">
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-primary/5 via-transparent to-transparent h-64" />
       <motion.div variants={stagger} initial="hidden" animate="show" className="relative space-y-5">
-        <motion.div variants={fadeUp} className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold tracking-tight">Dettes & Crédits</h1>
-          <button onClick={() => setShowAdd(true)} className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5">
+
+        {/* Header */}
+        <motion.div variants={fadeUp} className="flex items-center justify-between pt-1">
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Gestion</p>
+            <h1 className="text-lg font-bold tracking-tight">Dettes & Crédits</h1>
+          </div>
+          <button onClick={() => setShowAdd(true)} className="h-8 px-3 rounded-xl bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center gap-1.5">
             <Plus className="w-4 h-4" /> Ajouter
           </button>
         </motion.div>
 
-        {/* Summary */}
-        <motion.div variants={fadeUp} className="grid grid-cols-2 gap-2">
-          <div className="bg-card border border-border rounded-xl p-3 text-center">
-            <p className="text-[11px] text-muted-foreground mb-1">Capital emprunté</p>
-            <p className="font-mono-amount font-semibold text-sm">{formatAmount(totalInitial)}</p>
-          </div>
-          <div className="bg-card border border-border rounded-xl p-3 text-center">
-            <p className="text-[11px] text-muted-foreground mb-1">Capital restant dû</p>
-            <p className="font-mono-amount font-semibold text-destructive text-sm">{formatAmount(totalRemaining)}</p>
-          </div>
-          <div className="bg-card border border-border rounded-xl p-3 text-center">
-            <div
-              className="cursor-pointer"
-              onClick={() => setShowPaymentBreakdown(!showPaymentBreakdown)}
-            >
-              <div className="flex items-center justify-center gap-1 mb-1">
-                <p className="text-[11px] text-muted-foreground">Échéances du mois</p>
-                {showPaymentBreakdown ? <ChevronUp className="w-3 h-3 text-muted-foreground" /> : <ChevronDown className="w-3 h-3 text-muted-foreground" />}
-              </div>
-              <p className="font-mono-amount font-semibold text-sm">{formatAmount(totalPayment)}</p>
+        {/* Hero card — Total remaining */}
+        <motion.div variants={fadeUp}>
+          <div className="bg-primary p-6 shadow-lg shadow-primary/20 rounded-2xl">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm text-primary-foreground/70">Capital restant dû</span>
+              <Landmark className="w-4 h-4 text-primary-foreground/50" />
             </div>
-            <AnimatePresence>
-              {showPaymentBreakdown && paymentBreakdownList.length > 0 && (
+            <p className="text-4xl font-bold font-mono-amount tracking-tight text-primary-foreground">
+              {formatAmount(totalRemaining)}
+            </p>
+            <div className="flex items-center gap-3 mt-3">
+              <div className="flex-1 h-1.5 bg-primary-foreground/20 rounded-full overflow-hidden">
                 <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
-                >
-                  <div className="border-t border-border mt-2 pt-2 space-y-1 text-left">
-                    {paymentBreakdownList.map((item, i) => (
-                      <div key={i} className="flex items-center justify-between text-[10px]">
-                        <span className="truncate text-muted-foreground flex items-center gap-1"><DebtIcon type={item.debtType || ''} size="sm" /> {item.name}</span>
-                        <span className="font-mono-amount font-medium shrink-0 ml-2">{formatAmount(item.monthlyAmount)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-          <div className="bg-card border border-border rounded-xl p-3 text-center">
-            <p className="text-[11px] text-muted-foreground mb-1">Total remboursé</p>
-            <p className="font-mono-amount font-semibold text-success text-sm">{formatAmount(totalRepaid)}</p>
+                  initial={{ width: 0 }}
+                  animate={{ width: `${totalInitial > 0 ? Math.min(((totalInitial - totalRemaining) / totalInitial) * 100, 100) : 0}%` }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                  className="h-full rounded-full bg-primary-foreground/60"
+                />
+              </div>
+              <span className="text-xs text-primary-foreground/60 font-mono-amount">
+                {totalInitial > 0 ? Math.round(((totalInitial - totalRemaining) / totalInitial) * 100) : 0}% remboursé
+              </span>
+            </div>
+            {totalRepaid > 0 && (
+              <div className="flex items-center gap-1.5 mt-2">
+                <CheckCircle className="w-3.5 h-3.5 text-primary-foreground/80" />
+                <span className="text-xs text-primary-foreground/80">Déjà remboursé : {formatAmount(totalRepaid)}</span>
+              </div>
+            )}
           </div>
         </motion.div>
 
-        {/* Debt list */}
+        {/* Stats grid */}
+        <motion.div variants={fadeUp} className="grid grid-cols-3 gap-1.5">
+          <div className="bg-card border border-border/30 rounded-xl p-3 text-center">
+            <CreditCard className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1" />
+            <p className="text-[9px] text-muted-foreground mb-0.5">Emprunté</p>
+            <p className="font-mono-amount font-bold text-foreground text-xs">{formatAmount(totalInitial)}</p>
+          </div>
+          <div
+            className="bg-card border border-border/30 rounded-xl p-3 text-center cursor-pointer"
+            onClick={() => setShowPaymentBreakdown(!showPaymentBreakdown)}
+          >
+            <CalendarDays className="w-3.5 h-3.5 text-primary mx-auto mb-1" />
+            <div className="flex items-center justify-center gap-0.5 mb-0.5">
+              <p className="text-[9px] text-muted-foreground">Échéances/mois</p>
+              {showPaymentBreakdown ? <ChevronUp className="w-2.5 h-2.5 text-muted-foreground" /> : <ChevronDown className="w-2.5 h-2.5 text-muted-foreground" />}
+            </div>
+            <p className="font-mono-amount font-bold text-primary text-xs">{formatAmount(totalPayment)}</p>
+          </div>
+          <div className="bg-card border border-border/30 rounded-xl p-3 text-center">
+            <TrendingDown className="w-3.5 h-3.5 text-success mx-auto mb-1" />
+            <p className="text-[9px] text-muted-foreground mb-0.5">Remboursé</p>
+            <p className="font-mono-amount font-bold text-success text-xs">{formatAmount(totalRepaid)}</p>
+          </div>
+        </motion.div>
+
+        {/* Payment breakdown dropdown */}
+        <AnimatePresence>
+          {showPaymentBreakdown && paymentBreakdownList.length > 0 && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden -mt-3"
+            >
+              <div className="bg-card border border-border/30 rounded-2xl p-3 space-y-1.5">
+                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-1">Détail des échéances du mois</p>
+                {paymentBreakdownList.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1.5 truncate">
+                      <DebtIcon type={item.debtType || ''} size="sm" />
+                      {item.name}
+                    </span>
+                    <span className="font-mono-amount text-xs font-semibold shrink-0 ml-2">{formatAmount(item.monthlyAmount)}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Debt list — unified container */}
         {debts.length === 0 ? (
-          <motion.div variants={fadeUp} className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground text-sm">
-            Aucune dette enregistrée. Ajoutez votre premier crédit !
+          <motion.div variants={fadeUp} className="bg-card border border-border/30 rounded-2xl p-8 text-center">
+            <CreditCard className="w-8 h-8 text-muted-foreground/40 mx-auto mb-3" />
+            <p className="text-sm text-muted-foreground">Aucune dette enregistrée</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">Ajoutez votre premier crédit pour commencer le suivi</p>
           </motion.div>
         ) : (
-          <motion.div variants={fadeUp} className="space-y-2">
+          <motion.div variants={fadeUp} className="bg-card border border-border/30 rounded-2xl overflow-hidden divide-y divide-border/30">
             {debts.map(d => {
               const remaining = getRealRemaining(d);
               const repaidPct = d.initialAmount > 0 ? Math.min(((d.initialAmount - remaining) / d.initialAmount) * 100, 100) : 0;
@@ -332,21 +374,14 @@ const Debts = () => {
               const nextDate = nextRow ? nextRow.due_date : (d.nextPaymentDate || calculateNextPaymentDate(d));
               const ppy = getPeriodsPerYear(d.paymentFrequency as PaymentFrequency);
               const freqSuffix = getFrequencySuffix(d.paymentFrequency);
-              const freqAdj = d.paymentFrequency === 'monthly' ? 'mensuelle' : d.paymentFrequency === 'quarterly' ? 'trimestrielle' : d.paymentFrequency === 'semi-annual' ? 'semestrielle' : 'annuelle';
 
               const isVehicle = !!d.vehicleType;
-              const vehicleTypeEmoji = d.vehicleType === 'credit' ? '💰' : d.vehicleType === 'leasing' ? '🔄' : d.vehicleType === 'lld' ? '📋' : '';
-              const vehicleTypeLabel = d.vehicleType === 'credit' ? 'Crédit auto' : d.vehicleType === 'leasing' ? 'Leasing (LOA)' : d.vehicleType === 'lld' ? 'LLD' : '';
-
               const isConsumer = d.type === 'consumer';
               const isStudent = d.type === 'student';
               const isOther = d.type === 'other';
-              const consumerTypeEmoji = d.consumerType === 'personal' ? '💰' : d.consumerType === 'revolving' ? '🔄' : d.consumerType === 'purchase' ? '🛒' : '';
-              const consumerTypeLabel = d.consumerType === 'personal' ? 'Prêt personnel' : d.consumerType === 'revolving' ? 'Crédit revolving' : d.consumerType === 'purchase' ? 'Achat à crédit' : '';
               const isRevolving = d.consumerType === 'revolving';
               const isInDeferral = isStudent && d.hasDeferral && d.deferralEndDate && new Date(d.deferralEndDate) > new Date();
 
-              // Use schedule row if available
               const displayTotal = nextRow ? nextRow.total_amount : 
                 d.mortgageSystem === 'swiss' ? (
                   (remaining * d.interestRate / 100 / ppy) +
@@ -359,7 +394,6 @@ const Debts = () => {
                 Math.max(d.paymentAmount - displayInterest, 0);
               const displayMaintenance = d.includeMaintenance && d.propertyValue ? d.propertyValue * 0.01 / ppy : 0;
 
-              // Vehicle contract progress
               const vehicleContractMonths = isVehicle ? Math.round(d.durationYears * 12) : 0;
               const vehicleElapsedMonths = isVehicle ? (() => {
                 const start = new Date(d.startDate);
@@ -370,249 +404,229 @@ const Debts = () => {
               const vehicleTotalKm = isVehicle && d.annualKm ? d.annualKm * d.durationYears : 0;
               const vehicleKmPct = vehicleTotalKm > 0 && d.currentKm ? Math.min((d.currentKm / vehicleTotalKm) * 100, 100) : 0;
 
+              // Badges
+              const badges: { label: string; variant: 'default' | 'warning' | 'info' | 'destructive' | 'success' }[] = [];
+              if (d.mortgageSystem === 'swiss') badges.push({ label: '🇨🇭 Suisse', variant: 'default' });
+              if (d.mortgageSystem === 'europe') badges.push({ label: '🇪🇺 Europe', variant: 'default' });
+              if (d.interestRate === 0 && (isConsumer || isOther)) badges.push({ label: 'Sans frais', variant: 'success' });
+              if (isRevolving) badges.push({ label: 'Revolving', variant: 'warning' });
+              if (isInDeferral) badges.push({ label: 'En différé', variant: 'info' });
+              if (d.interestRate > 10) badges.push({ label: 'Taux élevé', variant: 'destructive' });
+              if (d.vehicleType === 'leasing') badges.push({ label: 'LOA', variant: 'default' });
+              if (d.vehicleType === 'lld') badges.push({ label: 'LLD', variant: 'default' });
+
+              const badgeClasses: Record<string, string> = {
+                default: 'bg-muted text-muted-foreground',
+                warning: 'bg-warning/10 text-warning',
+                info: 'bg-primary/10 text-primary',
+                destructive: 'bg-destructive/10 text-destructive',
+                success: 'bg-success/10 text-success',
+              };
+
+              const vehicleTypeLabel = d.vehicleType === 'credit' ? 'Crédit auto' : d.vehicleType === 'leasing' ? 'Leasing (LOA)' : d.vehicleType === 'lld' ? 'LLD' : '';
+              const consumerTypeLabel = d.consumerType === 'personal' ? 'Prêt personnel' : d.consumerType === 'revolving' ? 'Crédit revolving' : d.consumerType === 'purchase' ? 'Achat à crédit' : '';
+
               return (
                 <div
                   key={d.id}
                   onClick={() => setSelectedDebtId(d.id)}
-                  className={`bg-card border rounded-xl p-4 cursor-pointer hover:bg-muted/50 transition-colors ${
-                    d.mortgageSystem === 'swiss' ? 'border-red-200 dark:border-red-900/30' :
-                    d.mortgageSystem === 'europe' ? 'border-blue-200 dark:border-blue-900/30' :
-                    isVehicle ? 'border-amber-200 dark:border-amber-900/30' :
-                    isRevolving ? 'border-orange-200 dark:border-orange-900/30' :
-                    isConsumer ? 'border-purple-200 dark:border-purple-900/30' :
-                    isStudent ? 'border-indigo-200 dark:border-indigo-900/30' :
-                    'border-border'
-                  }`}
+                  className="px-4 py-4 hover:bg-muted/30 transition-colors cursor-pointer"
                 >
+                  {/* Row 1: Icon + Name + Amount */}
                   <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <DebtIcon type={d.type} />
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <p className="font-semibold text-sm">{d.vehicleName || d.name}</p>
-                          {d.mortgageSystem === 'swiss' && <span className="text-xs">🇨🇭</span>}
-                          {d.mortgageSystem === 'europe' && <span className="text-xs">🇪🇺</span>}
-                          {isVehicle && <span className="text-xs">{vehicleTypeEmoji}</span>}
-                          {isConsumer && <span className="text-xs">{consumerTypeEmoji}</span>}
-                          {d.interestRate === 0 && (isConsumer || isOther) && <span className="text-[9px] bg-success/10 text-success px-1.5 py-0.5 rounded-full font-medium">Sans frais</span>}
-                          {isRevolving && <span className="text-[9px] bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full font-medium">Revolving</span>}
-                          {isInDeferral && <span className="text-[9px] bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-1.5 py-0.5 rounded-full font-medium">⏳ En différé</span>}
-                          {d.interestRate > 10 && <span className="text-[9px] bg-destructive/10 text-destructive px-1.5 py-0.5 rounded-full font-medium">⚠️ Taux élevé</span>}
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-muted/50 flex items-center justify-center shrink-0">
+                        <DebtIcon type={d.type} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm truncate">{d.vehicleName || d.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">
                           {isVehicle ? `${d.lender ? d.lender + ' · ' : ''}${vehicleTypeLabel}` :
                            isConsumer ? `${d.lender ? d.lender + ' · ' : ''}${consumerTypeLabel}` :
                            isStudent ? `${d.lender ? d.lender + ' · ' : ''}Prêt étudiant` :
                            isOther ? `${d.lender ? d.lender + ' · ' : ''}${d.hasInterest === false ? 'Sans intérêts' : `${d.interestRate}%`}` :
-                           d.lender ? `${d.lender} · ${d.rateType === 'fixed' ? 'Taux fixe' : 'Taux variable'} ${d.interestRate}%` : ''}
+                           d.lender ? `${d.lender} · ${d.rateType === 'fixed' ? 'Fixe' : 'Variable'} ${d.interestRate}%` : `${d.interestRate}% · ${d.currency}`}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-mono-amount text-sm font-semibold">
+                    <div className="text-right shrink-0 ml-3">
+                      <p className="font-mono-amount text-sm font-bold">
                         {isRevolving
                           ? formatAmountWithCurrency(d.currentBalance || 0, d.currency)
                           : isInDeferral
-                          ? (d.deferralType === 'partial' ? formatAmountWithCurrency(remaining * d.interestRate / 100 / 12, d.currency) + '/mois' : '—')
-                          : formatAmountWithCurrency(d.mortgageSystem === 'swiss' ? displayTotal + displayMaintenance : displayTotal, d.currency) + freqSuffix}
+                          ? (d.deferralType === 'partial' ? formatAmountWithCurrency(remaining * d.interestRate / 100 / 12, d.currency) : '—')
+                          : formatAmountWithCurrency(d.mortgageSystem === 'swiss' ? displayTotal + displayMaintenance : displayTotal, d.currency)}
                       </p>
                       <p className="text-[10px] text-muted-foreground">
                         {isRevolving ? 'Solde utilisé' :
-                         isInDeferral ? (d.deferralType === 'partial' ? 'Intérêts seuls' : 'En différé') :
-                         isVehicle ? (d.vehicleType === 'credit' ? 'Mensualité' : 'Loyer mensuel') :
-                         d.mortgageSystem ? `Charge ${freqAdj}` : `${d.interestRate}% · ${d.currency}`}
+                         isInDeferral ? (d.deferralType === 'partial' ? '/mois' : 'En différé') :
+                         freqSuffix.replace('/', '')}
                       </p>
                     </div>
                   </div>
-                  
-                  {/* Swiss: breakdown */}
+
+                  {/* Badges */}
+                  {badges.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {badges.map((b, i) => (
+                        <span key={i} className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${badgeClasses[b.variant]}`}>
+                          {b.label}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Swiss breakdown */}
                   {d.mortgageSystem === 'swiss' && (
-                    <div className="text-[10px] text-muted-foreground mb-2 space-y-0.5">
-                      <div className="flex justify-between">
-                        <span>├ Intérêts</span>
-                        <span className="font-mono-amount">{formatAmountWithCurrency(displayInterest, d.currency)}</span>
-                      </div>
+                    <div className="text-[10px] text-muted-foreground mb-2 bg-muted/30 rounded-lg p-2 space-y-0.5">
+                      <div className="flex justify-between"><span>Intérêts</span><span className="font-mono-amount">{formatAmountWithCurrency(displayInterest, d.currency)}</span></div>
                       {d.swissAmortizationType !== 'none' && displayCapital > 0 && (
-                        <div className="flex justify-between">
-                          <span>├ Amortissement</span>
-                          <span className="font-mono-amount">{formatAmountWithCurrency(displayCapital, d.currency)}</span>
-                        </div>
+                        <div className="flex justify-between"><span>Amortissement</span><span className="font-mono-amount">{formatAmountWithCurrency(displayCapital, d.currency)}</span></div>
                       )}
                       {d.includeMaintenance && displayMaintenance > 0 && (
-                        <div className="flex justify-between">
-                          <span>└ Frais entretien</span>
-                          <span className="font-mono-amount">{formatAmountWithCurrency(displayMaintenance, d.currency)}</span>
-                        </div>
+                        <div className="flex justify-between"><span>Frais entretien</span><span className="font-mono-amount">{formatAmountWithCurrency(displayMaintenance, d.currency)}</span></div>
                       )}
                     </div>
                   )}
 
-                  {/* Europe: breakdown */}
+                  {/* Europe breakdown */}
                   {d.mortgageSystem === 'europe' && (
-                    <div className="text-[10px] text-muted-foreground mb-2 space-y-0.5">
-                      <div className="flex justify-between">
-                        <span>├ Intérêts {getFrequencyLabel(d.paymentFrequency)}</span>
-                        <span className="font-mono-amount">{formatAmountWithCurrency(displayInterest, d.currency)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>└ Capital {getFrequencyLabel(d.paymentFrequency)}</span>
-                        <span className="font-mono-amount">{formatAmountWithCurrency(displayCapital, d.currency)}</span>
-                      </div>
+                    <div className="text-[10px] text-muted-foreground mb-2 bg-muted/30 rounded-lg p-2 space-y-0.5">
+                      <div className="flex justify-between"><span>Intérêts</span><span className="font-mono-amount">{formatAmountWithCurrency(displayInterest, d.currency)}</span></div>
+                      <div className="flex justify-between"><span>Capital</span><span className="font-mono-amount">{formatAmountWithCurrency(displayCapital, d.currency)}</span></div>
                     </div>
                   )}
 
-                  {/* Vehicle: contract progress bar */}
+                  {/* Vehicle leasing/lld */}
                   {isVehicle && (d.vehicleType === 'leasing' || d.vehicleType === 'lld') ? (
-                    <>
-                      <div className="mb-1.5">
+                    <div className="space-y-1.5">
+                      <div>
                         <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">
                           <span>Contrat</span>
-                          <span>{vehicleElapsedMonths}/{vehicleContractMonths} mois</span>
+                          <span className="font-mono-amount">{vehicleElapsedMonths}/{vehicleContractMonths} mois</span>
                         </div>
-                        <div className="h-1 bg-muted rounded-full overflow-hidden">
+                        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                           <div className={`h-full rounded-full transition-all ${vehicleContractPct >= 90 ? 'bg-warning' : 'bg-primary'}`} style={{ width: `${vehicleContractPct}%` }} />
                         </div>
                       </div>
                       {d.annualKm && d.currentKm !== undefined && d.currentKm > 0 && (
-                        <div className="mb-1.5">
+                        <div>
                           <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">
                             <span>Kilométrage</span>
-                            <span>{d.currentKm.toLocaleString('fr-FR')} / {vehicleTotalKm.toLocaleString('fr-FR')} km</span>
+                            <span className="font-mono-amount">{d.currentKm.toLocaleString('fr-FR')} / {vehicleTotalKm.toLocaleString('fr-FR')} km</span>
                           </div>
-                          <div className="h-1 bg-muted rounded-full overflow-hidden">
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                             <div className={`h-full rounded-full transition-all ${vehicleKmPct > 100 ? 'bg-destructive' : vehicleKmPct > 80 ? 'bg-warning' : 'bg-success'}`} style={{ width: `${Math.min(vehicleKmPct, 100)}%` }} />
                           </div>
                         </div>
                       )}
                       {d.vehicleType === 'leasing' && d.residualValue && (
-                        <div className="text-[10px] text-muted-foreground">
-                          💰 Valeur de rachat : {formatAmountWithCurrency(d.residualValue, d.currency)}
+                        <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <CreditCard className="w-3 h-3" /> Rachat : {formatAmountWithCurrency(d.residualValue, d.currency)}
                         </div>
                       )}
                       {d.vehicleType === 'lld' && d.servicesIncluded && d.servicesIncluded.length > 0 && (
-                        <div className="text-[10px] text-muted-foreground flex flex-wrap gap-1 mt-1">
+                        <div className="flex flex-wrap gap-1.5 mt-0.5">
                           {d.servicesIncluded.map((s: string) => {
-                            const svcMap: Record<string, string> = { maintenance: '🔧', insurance: '🛡️', assistance: '📞', replacement: '🚗', winter_tires: '❄️', fuel_card: '⛽' };
-                            return <span key={s}>{svcMap[s] || '✅'}</span>;
+                            const svcIcons: Record<string, React.ReactNode> = {
+                              maintenance: <Wrench className="w-3 h-3" />,
+                              insurance: <Shield className="w-3 h-3" />,
+                              assistance: <Phone className="w-3 h-3" />,
+                              replacement: <Car className="w-3 h-3" />,
+                              winter_tires: <Snowflake className="w-3 h-3" />,
+                              fuel_card: <Fuel className="w-3 h-3" />,
+                            };
+                            return <span key={s} className="text-muted-foreground">{svcIcons[s] || <CheckCircle className="w-3 h-3" />}</span>;
                           })}
                         </div>
                       )}
                       {d.contractEndDate && (
-                        <div className="mt-1 text-[10px] text-muted-foreground">
-                          📅 {d.vehicleType === 'lld' ? 'Restitution' : 'Fin du contrat'} : {format(new Date(d.contractEndDate), 'MMMM yyyy', { locale: fr })}
+                        <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <CalendarDays className="w-3 h-3" /> {d.vehicleType === 'lld' ? 'Restitution' : 'Fin'} : {format(new Date(d.contractEndDate), 'MMMM yyyy', { locale: fr })}
                         </div>
                       )}
-                    </>
-                  ) : isVehicle && d.vehicleType === 'credit' ? (
-                    <>
-                      <div className="h-1 bg-muted rounded-full overflow-hidden mb-1.5">
-                        <div className={`h-full rounded-full transition-all ${repaidPct >= 100 ? 'bg-success' : repaidPct >= 50 ? 'bg-primary' : 'bg-warning'}`} style={{ width: `${repaidPct}%` }} />
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                        <span className="font-mono-amount">{formatAmountWithCurrency(remaining, d.currency)} restant</span>
-                        <span className="font-mono-amount">{Math.round(repaidPct)}% remboursé</span>
-                      </div>
-                      {d.contractEndDate && (
-                        <div className="mt-1.5 text-[10px] text-muted-foreground">
-                          📅 Fin du crédit : {format(new Date(d.contractEndDate), 'MMMM yyyy', { locale: fr })}
-                        </div>
-                      )}
-                    </>
+                    </div>
                   ) : isRevolving ? (
-                    <>
-                      {/* Revolving: utilization bar */}
-                      {(() => {
-                        const utilPct = d.creditLimit ? Math.min(((d.currentBalance || 0) / d.creditLimit) * 100, 100) : 0;
-                        const available = (d.creditLimit || 0) - (d.currentBalance || 0);
-                        const monthlyInterest = ((d.currentBalance || 0) * d.interestRate / 100) / 12;
-                        return (
-                          <>
-                            <div className="h-1 bg-muted rounded-full overflow-hidden mb-1.5">
-                              <div className={`h-full rounded-full transition-all ${utilPct > 80 ? 'bg-destructive' : utilPct > 50 ? 'bg-warning' : 'bg-primary'}`} style={{ width: `${utilPct}%` }} />
+                    /* Revolving */
+                    (() => {
+                      const utilPct = d.creditLimit ? Math.min(((d.currentBalance || 0) / d.creditLimit) * 100, 100) : 0;
+                      const available = (d.creditLimit || 0) - (d.currentBalance || 0);
+                      const monthlyInterest = ((d.currentBalance || 0) * d.interestRate / 100) / 12;
+                      return (
+                        <div className="space-y-1.5">
+                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all ${utilPct > 80 ? 'bg-destructive' : utilPct > 50 ? 'bg-warning' : 'bg-primary'}`} style={{ width: `${utilPct}%` }} />
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                            <span className="font-mono-amount">{Math.round(utilPct)}% du plafond</span>
+                            <span className="font-mono-amount">Dispo : {formatAmountWithCurrency(available, d.currency)}</span>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                            <span>Plafond : {formatAmountWithCurrency(d.creditLimit || 0, d.currency)}</span>
+                            <span>Min. : {formatAmountWithCurrency(d.minimumPayment || 0, d.currency)}/mois</span>
+                          </div>
+                          {monthlyInterest > 0 && (
+                            <div className="flex items-center gap-1 text-[10px] text-warning font-medium">
+                              <AlertTriangle className="w-3 h-3" /> Intérêts estimés : {formatAmountWithCurrency(monthlyInterest, d.currency)}/mois
                             </div>
-                            <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
-                              <span className="font-mono-amount">{Math.round(utilPct)}% du plafond</span>
-                              <span className="font-mono-amount">Dispo : {formatAmountWithCurrency(available, d.currency)}</span>
-                            </div>
-                            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                              <span>Plafond : {formatAmountWithCurrency(d.creditLimit || 0, d.currency)}</span>
-                              <span>Min. : {formatAmountWithCurrency(d.minimumPayment || 0, d.currency)}/mois</span>
-                            </div>
-                            {monthlyInterest > 0 && (
-                              <div className="mt-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium">
-                                ⚠️ Intérêts estimés ce mois : {formatAmountWithCurrency(monthlyInterest, d.currency)}
-                              </div>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </>
+                          )}
+                        </div>
+                      );
+                    })()
                   ) : isInDeferral ? (
-                    <>
-                      {/* Student in deferral */}
-                      {(() => {
-                        const deferEnd = new Date(d.deferralEndDate!);
-                        const now = new Date();
-                        const monthsLeft = Math.max(0, (deferEnd.getFullYear() - now.getFullYear()) * 12 + (deferEnd.getMonth() - now.getMonth()));
-                        return (
-                          <>
-                            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 mb-1.5 text-center">
-                              <p className="text-[10px] font-semibold text-blue-700 dark:text-blue-400">🎓 EN PÉRIODE DE DIFFÉRÉ</p>
-                            </div>
-                            <div className="text-[10px] text-muted-foreground space-y-0.5">
-                              <div className="flex justify-between">
-                                <span>Montant emprunté</span>
-                                <span className="font-mono-amount">{formatAmountWithCurrency(d.initialAmount, d.currency)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Début remboursement</span>
-                                <span>{format(deferEnd, 'MMMM yyyy', { locale: fr })}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Mensualité prévue</span>
-                                <span className="font-mono-amount">{formatAmountWithCurrency(d.paymentAmount, d.currency)}</span>
-                              </div>
-                            </div>
-                            <div className="mt-1 text-[10px] text-blue-600 dark:text-blue-400 font-medium">
-                              ⏳ Différé restant : {monthsLeft} mois
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </>
+                    /* Student in deferral */
+                    (() => {
+                      const deferEnd = new Date(d.deferralEndDate!);
+                      const now = new Date();
+                      const monthsLeft = Math.max(0, (deferEnd.getFullYear() - now.getFullYear()) * 12 + (deferEnd.getMonth() - now.getMonth()));
+                      return (
+                        <div className="space-y-1.5">
+                          <div className="bg-primary/5 border border-primary/10 rounded-lg p-2 text-center">
+                            <p className="text-[10px] font-semibold text-primary">EN PÉRIODE DE DIFFÉRÉ</p>
+                          </div>
+                          <div className="text-[10px] text-muted-foreground bg-muted/30 rounded-lg p-2 space-y-0.5">
+                            <div className="flex justify-between"><span>Montant emprunté</span><span className="font-mono-amount">{formatAmountWithCurrency(d.initialAmount, d.currency)}</span></div>
+                            <div className="flex justify-between"><span>Début remboursement</span><span>{format(deferEnd, 'MMMM yyyy', { locale: fr })}</span></div>
+                            <div className="flex justify-between"><span>Mensualité prévue</span><span className="font-mono-amount">{formatAmountWithCurrency(d.paymentAmount, d.currency)}</span></div>
+                          </div>
+                          <div className="flex items-center gap-1 text-[10px] text-primary font-medium">
+                            <Clock className="w-3 h-3" /> Différé restant : {monthsLeft} mois
+                          </div>
+                        </div>
+                      );
+                    })()
                   ) : isOther && d.hasSchedule === false ? (
-                    <>
-                      {/* Other without schedule */}
-                      <div className="h-1 bg-muted rounded-full overflow-hidden mb-1.5">
+                    /* Other without schedule */
+                    <div className="space-y-1.5">
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                         <div className={`h-full rounded-full transition-all ${repaidPct >= 50 ? 'bg-success' : 'bg-primary'}`} style={{ width: `${repaidPct}%` }} />
                       </div>
                       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                         <span className="font-mono-amount">{formatAmountWithCurrency(remaining, d.currency)} restant</span>
                         <span className="font-mono-amount">{Math.round(repaidPct)}% remboursé</span>
                       </div>
-                      <div className="mt-1 text-[10px] text-muted-foreground">
-                        💡 Pas d'échéancier fixe
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <Info className="w-3 h-3" /> Pas d'échéancier fixe
                       </div>
                       {d.notes && (
-                        <div className="mt-0.5 text-[10px] text-muted-foreground">
-                          📝 "{d.notes}"
-                        </div>
+                        <p className="text-[10px] text-muted-foreground/70 italic">"{d.notes}"</p>
                       )}
-                    </>
+                    </div>
                   ) : (
-                    <>
-                      <div className="h-1 bg-muted rounded-full overflow-hidden mb-1.5">
+                    /* Default: standard progress bar */
+                    <div className="space-y-1.5">
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                         <div className={`h-full rounded-full transition-all ${repaidPct >= 100 ? 'bg-success' : repaidPct >= 50 ? 'bg-primary' : 'bg-warning'}`} style={{ width: `${repaidPct}%` }} />
                       </div>
                       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                        <span className="font-mono-amount">{formatAmountWithCurrency(remaining, d.currency)} restant / {formatAmountWithCurrency(d.initialAmount, d.currency)}</span>
+                        <span className="font-mono-amount">{formatAmountWithCurrency(remaining, d.currency)} / {formatAmountWithCurrency(d.initialAmount, d.currency)}</span>
                         <span className="font-mono-amount">
-                          {Math.round(repaidPct)}% remboursé
+                          {Math.round(repaidPct)}%
                           {d.mortgageSystem === 'swiss' && d.propertyValue ? ` · LTV ${Math.round((remaining / d.propertyValue) * 100)}%` : ''}
                         </span>
                       </div>
-                      
-                      {/* Rate renewal alert for Swiss */}
+
+                      {/* Swiss rate renewal */}
                       {d.mortgageSystem === 'swiss' && d.rateEndDate && (() => {
                         const endDate = new Date(d.rateEndDate!);
                         const now = new Date();
@@ -621,15 +635,15 @@ const Debts = () => {
                           const years = Math.floor(monthsLeft / 12);
                           const months = monthsLeft % 12;
                           return (
-                            <div className="mt-1.5 text-[10px] text-amber-600 dark:text-amber-400 font-medium">
-                              ⚠️ Renouvellement taux dans {years > 0 ? `${years} an${years > 1 ? 's' : ''} ` : ''}{months} mois
+                            <div className="flex items-center gap-1 text-[10px] text-warning font-medium">
+                              <AlertTriangle className="w-3 h-3" /> Renouvellement dans {years > 0 ? `${years}a ` : ''}{months}m
                             </div>
                           );
                         }
                         return null;
                       })()}
 
-                      {/* Europe: end date */}
+                      {/* Europe end date */}
                       {d.mortgageSystem === 'europe' && d.durationYears > 0 && (() => {
                         const startD = new Date(d.startDate);
                         const endD = new Date(startD);
@@ -638,24 +652,24 @@ const Debts = () => {
                         const now = new Date();
                         const yearsLeft = Math.max(0, Math.round((endD.getTime() - now.getTime()) / (365.25 * 24 * 3600 * 1000)));
                         return (
-                          <div className="mt-1.5 text-[10px] text-muted-foreground">
-                            📅 Fin du crédit : {format(endD, 'MMMM yyyy', { locale: fr })} ({yearsLeft} ans restants)
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <CalendarDays className="w-3 h-3" /> Fin : {format(endD, 'MMMM yyyy', { locale: fr })} ({yearsLeft}a)
                           </div>
                         );
                       })()}
 
                       {d.propertyValue && d.propertyValue > 0 && (
-                        <div className="mt-1.5 text-[10px] text-muted-foreground">
-                          🏠 Valeur du bien : {formatAmountWithCurrency(d.propertyValue, d.currency)}
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Landmark className="w-3 h-3" /> Bien : {formatAmountWithCurrency(d.propertyValue, d.currency)}
                         </div>
                       )}
 
                       {nextDate && (
-                        <div className="mt-1.5 text-[10px] text-muted-foreground">
-                          Prochaine échéance ({getFrequencySuffix(d.paymentFrequency).slice(1)}) : {formatDateLong(nextDate)}
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Clock className="w-3 h-3" /> Prochaine : {formatDateLong(nextDate)}
                         </div>
                       )}
-                    </>
+                    </div>
                   )}
                 </div>
               );
@@ -663,59 +677,58 @@ const Debts = () => {
           </motion.div>
         )}
 
-        {/* Upcoming payments - next 2 years */}
+        {/* Upcoming payments — unified container */}
         {upcomingPayments.length > 0 && (
-          <motion.div variants={fadeUp} className="bg-card border border-border rounded-xl overflow-hidden">
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="w-4 h-4 text-primary" />
-                <div>
-                  <h2 className="text-sm font-semibold">Prochaines échéances</h2>
+          <motion.div variants={fadeUp} className="bg-card border border-border/30 rounded-2xl overflow-hidden">
+            <button
+              onClick={() => setShowAllUpcoming(!showAllUpcoming)}
+              className="w-full px-4 py-3.5 flex items-center justify-between"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <CalendarDays className="w-4 h-4 text-primary" />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-semibold">Prochaines échéances</p>
                   <p className="text-[10px] text-muted-foreground">{upcomingPayments.length} échéances sur 2 ans</p>
                 </div>
               </div>
-              {upcomingPayments.length > 12 && (
-                <button
-                  onClick={() => setShowAllUpcoming(!showAllUpcoming)}
-                  className="text-xs text-primary hover:text-primary/80 font-medium flex items-center gap-1"
+              {showAllUpcoming ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+            </button>
+            <AnimatePresence>
+              {showAllUpcoming && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="overflow-hidden"
                 >
-                  {showAllUpcoming ? 'Réduire' : 'Tout voir'}
-                  {showAllUpcoming ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                </button>
-              )}
-            </div>
-            <div className="divide-y divide-border">
-              {(showAllUpcoming ? upcomingPayments : upcomingPayments.slice(0, 12)).map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-center px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer"
-                  onClick={() => setSelectedDebtId(p.debt_id)}
-                >
-                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                    <DebtIcon type={p.debtType || ''} />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{formatDateLong(p.due_date)}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">
-                        {p.debtName} · Int. {formatAmountWithCurrency(p.interest_amount, p.debtCurrency)} · Cap. {formatAmountWithCurrency(p.principal_amount, p.debtCurrency)}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground/70 font-mono-amount">
-                        {formatAmountWithCurrency(p.capital_before, p.debtCurrency)} → {formatAmountWithCurrency(p.capital_after, p.debtCurrency)}
-                      </p>
-                    </div>
+                  <div className="divide-y divide-border/30">
+                    {upcomingPayments.map((p) => (
+                      <div
+                        key={p.id}
+                        className="flex items-center px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer"
+                        onClick={() => setSelectedDebtId(p.debt_id)}
+                      >
+                        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                          <DebtIcon type={p.debtType || ''} size="sm" />
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium truncate">{formatDateLong(p.due_date)}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {p.debtName} · Int. {formatAmountWithCurrency(p.interest_amount, p.debtCurrency)} · Cap. {formatAmountWithCurrency(p.principal_amount, p.debtCurrency)}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="font-mono-amount text-xs font-semibold text-destructive shrink-0">
+                          -{formatAmountWithCurrency(p.total_amount, p.debtCurrency)}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  <span className="font-mono-amount text-sm font-semibold text-destructive shrink-0">
-                    -{formatAmountWithCurrency(p.total_amount, p.debtCurrency)}
-                  </span>
-                </div>
-              ))}
-            </div>
-            {!showAllUpcoming && upcomingPayments.length > 12 && (
-              <div className="p-3 text-center border-t border-border">
-                <button onClick={() => setShowAllUpcoming(true)} className="text-xs text-primary hover:text-primary/80 font-medium">
-                  Voir les {upcomingPayments.length - 12} échéances restantes
-                </button>
-              </div>
-            )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </motion.div>
