@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
-import { formatAmount as rawFormatAmount, formatDate, getBudgetStatus, getInitials } from '@/utils/format';
+import { formatAmount as rawFormatAmount, formatDate, getBudgetStatus } from '@/utils/format';
 import { useCurrency } from '@/hooks/useCurrency';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -11,10 +11,9 @@ import MonthlyReportModal from '@/components/MonthlyReportModal';
 import ConvertedAmount from '@/components/ConvertedAmount';
 import { supabase } from '@/integrations/supabase/client';
 import { Debt, getDebtEmoji, calculateNextPaymentDate } from '@/types/debt';
-import { toast } from 'sonner';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
-import { Calendar, Sparkles, Camera, BarChart3, ArrowRight, ChevronRight, ChevronDown, Lock, HeartPulse } from 'lucide-react';
+import { Calendar, Sparkles, Camera, BarChart3, ArrowRight, ChevronRight, ChevronDown, Lock, HeartPulse, TrendingUp, TrendingDown, Plus, MoreHorizontal } from 'lucide-react';
 import HealthScoreGauge from '@/components/HealthScoreGauge';
 import { useHealthScore, useSaveHealthScore } from '@/hooks/useHealthScore';
 
@@ -70,14 +69,8 @@ const Dashboard = () => {
   React.useEffect(() => {
     if (!currentUser?.id) return;
     const checkOnboarding = async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('onboarding_done')
-        .eq('id', currentUser.id)
-        .single();
-      if (data && !data.onboarding_done) {
-        setShowOnboarding(true);
-      }
+      const { data } = await supabase.from('profiles').select('onboarding_done').eq('id', currentUser.id).single();
+      if (data && !data.onboarding_done) setShowOnboarding(true);
     };
     checkOnboarding();
   }, [currentUser?.id]);
@@ -85,10 +78,7 @@ const Dashboard = () => {
   const handleOnboardingComplete = async () => {
     setShowOnboarding(false);
     if (currentUser?.id) {
-      await supabase
-        .from('profiles')
-        .update({ onboarding_done: true } as any)
-        .eq('id', currentUser.id);
+      await supabase.from('profiles').update({ onboarding_done: true } as any).eq('id', currentUser.id);
     }
   };
 
@@ -124,7 +114,6 @@ const Dashboard = () => {
 
   const epargneAccountIds = new Set(accounts.filter(a => a.type === 'epargne' || a.type === 'pilier3a').map(a => a.id));
   const isEpargneTx = (t: typeof monthTx[0]) => !!(t.accountId && epargneAccountIds.has(t.accountId));
-
   const transferIdRegex = /\[?Transfert\s+#([^\]\s]+)\]?/i;
   const savingsTransferIds = new Set<string>();
   monthTx.forEach(t => {
@@ -144,9 +133,7 @@ const Dashboard = () => {
   const epargneTransferOut = monthTx.filter(t => t.type === 'expense' && isEpargneTx(t) && t.category === 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
   const epargneDirectIn = monthTx.filter(t => t.type === 'income' && isEpargneTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
   const epargneDirectOut = monthTx.filter(t => t.type === 'expense' && isEpargneTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
-  const epargneIn = epargneTransferIn + epargneDirectIn;
-  const epargneOut = epargneTransferOut + epargneDirectOut;
-  const monthSavingsNet = epargneIn - epargneOut;
+  const monthSavingsNet = (epargneTransferIn + epargneDirectIn) - (epargneTransferOut + epargneDirectOut);
 
   const totalIncome = monthTx.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
   const totalExpense = monthTx.filter(t => t.type === 'expense' && !isAnySavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
@@ -158,6 +145,11 @@ const Dashboard = () => {
   prevMonth.setMonth(prevMonth.getMonth() - 1);
   const prevTx = useMemo(() => getTransactionsForMonth(prevMonth), [getTransactionsForMonth]);
   const prevExpense = prevTx.filter(t => t.type === 'expense' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const prevIncome = prevTx.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+
+  // Variation % du solde
+  const prevBalance = prevIncome - prevExpense;
+  const balanceVariation = prevBalance !== 0 ? ((balance - prevBalance) / Math.abs(prevBalance)) * 100 : 0;
 
   const budgetData = budgets.filter(b => b.period === 'monthly').map(b => ({ ...b, spent: getBudgetSpent(b) }));
   const goalsData = savingsGoals.map(g => ({ ...g, saved: getGoalSaved(g.id) }));
@@ -172,14 +164,19 @@ const Dashboard = () => {
     return () => clearInterval(timer);
   }, [aiAdvices.length]);
 
-  const fade = { hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0, transition: { duration: 0.25 } } };
-  const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.04 } } };
+  const fade = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
+  const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
+
+  // Budget usage total
+  const totalBudgetLimit = budgetData.reduce((s, b) => s + b.limit, 0);
+  const totalBudgetSpent = budgetData.reduce((s, b) => s + b.spent, 0);
+  const budgetUsagePct = totalBudgetLimit > 0 ? Math.round((totalBudgetSpent / totalBudgetLimit) * 100) : 0;
 
   const quickActions = [
     { icon: Calendar, label: 'Préparer', onClick: () => navigate('/start-of-month') },
-    { icon: Sparkles, label: 'Coach IA', onClick: () => isPremium ? navigate('/chat') : setPaywallFeature({ feature: 'le Coach IA', description: 'Accédez à votre coach financier personnel propulsé par l\'IA pour des conseils adaptés à votre situation.' }), locked: !subLoading && !isPremium },
+    { icon: Sparkles, label: 'Coach IA', onClick: () => isPremium ? navigate('/chat') : setPaywallFeature({ feature: 'le Coach IA', description: 'Accédez à votre coach financier personnel propulsé par l\'IA.' }), locked: !subLoading && !isPremium },
     { icon: Camera, label: 'Scanner', onClick: () => setShowScan(true) },
-    { icon: BarChart3, label: 'Rapport', onClick: () => isPremium ? setShowReport(true) : setPaywallFeature({ feature: 'le rapport mensuel', description: 'Obtenez un rapport détaillé de vos finances chaque mois avec des conseils personnalisés.' }), locked: !subLoading && !isPremium },
+    { icon: BarChart3, label: 'Rapport', onClick: () => isPremium ? setShowReport(true) : setPaywallFeature({ feature: 'le rapport mensuel', description: 'Obtenez un rapport détaillé de vos finances chaque mois.' }), locked: !subLoading && !isPremium },
   ];
 
   return (
@@ -187,46 +184,43 @@ const Dashboard = () => {
       <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-5 pb-4">
 
         {/* Greeting */}
-        <motion.div variants={fade} className="pt-1">
-          <p className="text-[11px] text-muted-foreground uppercase tracking-wider">
-            {now.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-          </p>
-          <h1 className="text-xl font-semibold tracking-tight mt-0.5">
-            Bonjour, {currentUser?.name?.split(' ')[0] || 'Utilisateur'} 👋
-          </h1>
+        <motion.div variants={fade} className="flex items-center justify-between pt-1">
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Bienvenue,</p>
+            <h1 className="text-lg font-bold tracking-tight">
+              {currentUser?.name || 'Utilisateur'}
+            </h1>
+          </div>
         </motion.div>
 
-        {/* Balance — clean card */}
+        {/* Hero Balance Card — bold primary bg */}
         <motion.div variants={fade}>
           <button
             onClick={() => setBalanceExpanded(!balanceExpanded)}
-            className="w-full text-left rounded-2xl bg-card border border-border p-5 transition-colors hover:border-border/80"
+            className="w-full text-left rounded-2xl bg-primary p-6 shadow-lg shadow-primary/20 transition-transform active:scale-[0.99]"
           >
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-muted-foreground">Solde du mois</span>
-              <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${balanceExpanded ? 'rotate-180' : ''}`} />
+              <span className="text-sm text-primary-foreground/70">Solde du mois</span>
+              <ChevronDown className={`w-4 h-4 text-primary-foreground/50 transition-transform duration-200 ${balanceExpanded ? 'rotate-180' : ''}`} />
             </div>
-            <p className={`text-3xl font-semibold font-mono-amount tracking-tight ${balance >= 0 ? 'text-foreground' : 'text-destructive'}`}>
-              {balance >= 0 ? '+' : ''}{formatAmount(balance)}
+            <p className="text-4xl font-bold font-mono-amount tracking-tight text-primary-foreground">
+              {formatAmount(Math.abs(balance))}
             </p>
-
-            {/* Inline summary row */}
-            <div className="flex items-center gap-4 mt-3">
-              <span className="text-xs text-muted-foreground">
-                <span className="text-success font-medium font-mono-amount">+{formatAmount(totalIncome)}</span>
-              </span>
-              <span className="text-xs text-muted-foreground">
-                <span className="text-destructive font-medium font-mono-amount">-{formatAmount(totalExpense)}</span>
-              </span>
-              {monthSavingsNet !== 0 && (
-                <span className="text-xs text-muted-foreground">
-                  <span className="text-primary font-medium font-mono-amount">{monthSavingsNet > 0 ? '' : '-'}{formatAmount(Math.abs(monthSavingsNet))} épargne</span>
+            {balanceVariation !== 0 && (
+              <div className="flex items-center gap-1.5 mt-2">
+                {balanceVariation >= 0
+                  ? <TrendingUp className="w-3.5 h-3.5 text-primary-foreground/80" />
+                  : <TrendingDown className="w-3.5 h-3.5 text-primary-foreground/80" />
+                }
+                <span className="text-sm font-medium text-primary-foreground/80">
+                  {balanceVariation >= 0 ? '+' : ''}{balanceVariation.toFixed(1)}%
                 </span>
-              )}
-            </div>
+                <span className="text-sm text-primary-foreground/50">ce mois-ci</span>
+              </div>
+            )}
           </button>
 
-          {/* Expandable details */}
+          {/* Expandable breakdown */}
           <AnimatePresence>
             {balanceExpanded && (
               <motion.div
@@ -236,7 +230,7 @@ const Dashboard = () => {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="bg-card border border-t-0 border-border rounded-b-2xl -mt-2 pt-4 px-5 pb-4 space-y-2">
+                <div className="bg-card border border-t-0 border-border rounded-b-2xl -mt-3 pt-5 px-5 pb-4 space-y-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">💰 Revenus</span>
                     <span className="font-mono-amount font-semibold text-success">+{formatAmount(totalIncome)}</span>
@@ -255,7 +249,7 @@ const Dashboard = () => {
                   )}
                   <div className="flex justify-between text-xs pt-2 border-t border-border">
                     <span className="font-semibold">Solde</span>
-                    <span className={`font-mono-amount font-semibold ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
+                    <span className={`font-mono-amount font-bold ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
                       {balance >= 0 ? '+' : ''}{formatAmount(balance)}
                     </span>
                   </div>
@@ -269,7 +263,6 @@ const Dashboard = () => {
             )}
           </AnimatePresence>
 
-          {/* Savings warning */}
           {monthSavings < 0 && (
             <button
               onClick={() => navigate('/transactions')}
@@ -282,22 +275,66 @@ const Dashboard = () => {
           )}
         </motion.div>
 
-        {/* Quick Actions — horizontal scroll */}
-        <motion.div variants={fade} className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
+        {/* Quick Actions — round icon buttons like the reference */}
+        <motion.div variants={fade} className="flex justify-around px-2">
           {quickActions.map((item, i) => (
             <button
               key={i}
               onClick={item.onClick}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-card border border-border text-sm font-medium whitespace-nowrap hover:bg-muted/50 transition-colors active:scale-[0.97] relative flex-shrink-0"
+              className="flex flex-col items-center gap-1.5 group relative"
             >
-              {item.locked && <Lock className="w-3 h-3 text-warning absolute -top-1 -right-1" />}
-              <item.icon className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xs">{item.label}</span>
+              {item.locked && <Lock className="w-2.5 h-2.5 text-warning absolute -top-0.5 -right-0.5 z-10" />}
+              <div className="w-12 h-12 rounded-2xl bg-card border border-border flex items-center justify-center group-hover:bg-muted/50 group-active:scale-95 transition-all shadow-sm">
+                <item.icon className="w-5 h-5 text-primary" />
+              </div>
+              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{item.label}</span>
             </button>
           ))}
         </motion.div>
 
-        {/* AI Insight — minimal */}
+        {/* Santé Financière — prominent section */}
+        <motion.div variants={fade}>
+          <SectionHeader title="Santé Financière" action="Détails" onAction={() => navigate('/health-score')} />
+          <div
+            className="rounded-2xl bg-card border border-border p-5 cursor-pointer hover:border-primary/20 transition-colors"
+            onClick={() => navigate('/health-score')}
+          >
+            <div className="flex justify-center">
+              <HealthScoreGauge
+                score={healthScore.totalScore}
+                label={healthScore.label}
+                color={healthScore.color}
+                diff={healthScore.diff}
+                compact
+              />
+            </div>
+
+            {/* Mini stats below gauge */}
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <div className="rounded-xl bg-muted/50 p-3">
+                <p className="text-[11px] text-muted-foreground mb-0.5">Budget mensuel</p>
+                <p className="text-sm font-semibold">{budgetUsagePct}% utilisé</p>
+                <div className="h-1 bg-muted rounded-full mt-1.5 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${budgetUsagePct > 100 ? 'bg-destructive' : budgetUsagePct > 80 ? 'bg-warning' : 'bg-primary'}`}
+                    style={{ width: `${Math.min(budgetUsagePct, 100)}%` }}
+                  />
+                </div>
+              </div>
+              <div className="rounded-xl bg-muted/50 p-3">
+                <p className="text-[11px] text-muted-foreground mb-0.5">Épargne</p>
+                <p className={`text-sm font-semibold ${monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'}`}>
+                  {monthSavingsNet >= 0 ? '+' : ''}{formatAmount(monthSavingsNet)}
+                </p>
+                <div className="h-1 bg-muted rounded-full mt-1.5 overflow-hidden">
+                  <div className="h-full rounded-full bg-success transition-all duration-500" style={{ width: `${Math.min(monthSavingsNet > 0 ? 100 : 0, 100)}%` }} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* AI Insight */}
         <motion.div variants={fade}>
           <AnimatePresence mode="wait">
             <motion.div
@@ -306,7 +343,7 @@ const Dashboard = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.2 }}
-              className="flex items-start gap-3 rounded-xl bg-card border border-border p-4"
+              className="flex items-start gap-3 rounded-2xl bg-card border border-border p-4"
             >
               <span className="text-lg flex-shrink-0">{aiAdvices[adviceIndex].icon}</span>
               <div className="flex-1 min-w-0">
@@ -328,33 +365,10 @@ const Dashboard = () => {
           )}
         </motion.div>
 
-        {/* Health Score — compact inline */}
-        <motion.div
-          variants={fade}
-          className="flex items-center gap-4 rounded-xl bg-card border border-border p-4 cursor-pointer hover:bg-muted/30 transition-colors"
-          onClick={() => navigate('/health-score')}
-        >
-          <HealthScoreGauge
-            score={healthScore.totalScore}
-            label={healthScore.label}
-            color={healthScore.color}
-            diff={healthScore.diff}
-            compact
-          />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <HeartPulse className="w-3.5 h-3.5 text-primary" />
-              <span className="text-sm font-semibold">Santé Financière</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">{healthScore.label}</p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-        </motion.div>
-
         {/* Transactions récentes */}
         <motion.div variants={fade}>
           <SectionHeader title="Transactions récentes" action="Voir tout" onAction={() => navigate('/transactions')} />
-          <div className="rounded-xl bg-card border border-border divide-y divide-border overflow-hidden">
+          <div className="rounded-2xl bg-card border border-border divide-y divide-border overflow-hidden">
             {transactions.slice(0, 4).map(t => (
               <div key={t.id} className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-3 min-w-0">
@@ -377,7 +391,7 @@ const Dashboard = () => {
         {budgetData.length > 0 && (
           <motion.div variants={fade}>
             <SectionHeader title="Budgets" action="Voir" onAction={() => navigate('/budgets')} />
-            <div className="rounded-xl bg-card border border-border p-4 space-y-3">
+            <div className="rounded-2xl bg-card border border-border p-4 space-y-3">
               {budgetData.slice(0, 3).map(b => {
                 const status = getBudgetStatus(b.spent, b.limit);
                 const pct = Math.min((b.spent / b.limit) * 100, 100);
@@ -404,7 +418,7 @@ const Dashboard = () => {
         {goalsData.length > 0 && (
           <motion.div variants={fade}>
             <SectionHeader title="Épargne" action="Voir" onAction={() => navigate('/savings')} />
-            <div className="rounded-xl bg-card border border-border p-4 space-y-3">
+            <div className="rounded-2xl bg-card border border-border p-4 space-y-3">
               {goalsData.slice(0, 3).map(g => {
                 const pct = Math.min((g.saved / g.target) * 100, 100);
                 return (
@@ -427,7 +441,7 @@ const Dashboard = () => {
         {debts.length > 0 && (
           <motion.div variants={fade}>
             <SectionHeader title="Dettes" action="Voir" onAction={() => navigate('/debts')} />
-            <div className="rounded-xl bg-card border border-border p-4 space-y-2">
+            <div className="rounded-2xl bg-card border border-border p-4 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Total restant dû</span>
                 <span className="font-mono-amount font-medium text-destructive">{formatAmount(debts.reduce((s, d) => s + d.remainingAmount, 0))}</span>
@@ -463,9 +477,9 @@ const Dashboard = () => {
 
 const SectionHeader = ({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) => (
   <div className="flex items-center justify-between mb-2">
-    <h2 className="text-sm font-semibold">{title}</h2>
+    <h2 className="text-sm font-bold">{title}</h2>
     {action && onAction && (
-      <button onClick={onAction} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-0.5 transition-colors">
+      <button onClick={onAction} className="text-xs text-primary font-medium hover:text-primary/80 flex items-center gap-0.5 transition-colors">
         {action} <ChevronRight className="w-3 h-3" />
       </button>
     )}
