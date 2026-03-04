@@ -15,6 +15,7 @@ import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
 import { Calendar, Sparkles, Camera, BarChart3, ArrowRight, ChevronRight, ChevronDown, Lock, HeartPulse, TrendingUp, TrendingDown, Plus, MoreHorizontal, Wallet, Receipt, PiggyBank, CheckCircle2, AlertTriangle } from 'lucide-react';
 import HealthScoreGauge from '@/components/HealthScoreGauge';
+import { CategoryIcon } from '@/utils/categoryIcons';
 import { useHealthScore, useSaveHealthScore } from '@/hooks/useHealthScore';
 
 function generateAIAdvices(
@@ -375,7 +376,7 @@ const Dashboard = () => {
             {transactions.slice(0, 4).map(t => (
               <div key={t.id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-muted/50 flex items-center justify-center text-base flex-shrink-0">{t.emoji}</div>
+                  <CategoryIcon category={t.category} />
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{t.label}</p>
                     <p className="text-[11px] text-muted-foreground">{t.category} · {formatDate(t.date)}</p>
