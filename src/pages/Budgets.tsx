@@ -450,7 +450,7 @@ const Budgets = () => {
           <div className="bg-card border border-border/30 rounded-xl p-3 text-center">
             <PieChart className="w-3.5 h-3.5 text-primary mx-auto mb-1" />
             <p className="text-[9px] text-muted-foreground mb-0.5">Budgété</p>
-            <p className="font-mono-amount font-bold text-foreground text-xs">{formatAmount(totalBudgeted)}</p>
+            <p className="font-mono-amount font-bold text-foreground text-xs">{formatAmount(totalAllocated)}</p>
           </div>
           <div className="bg-card border border-border/30 rounded-xl p-3 text-center">
             <Wallet className={`w-3.5 h-3.5 mx-auto mb-1 ${monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'}`} />
