@@ -115,6 +115,18 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </header>
 
+      {/* FAB floating button */}
+      <div className="lg:hidden fixed bottom-[68px] right-4 z-50 safe-area-bottom">
+        <button
+          onClick={() => setFabOpen(prev => !prev)}
+          className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center active:scale-90 transition-all ${fabOpen ? 'bg-foreground' : 'bg-primary'}`}
+        >
+          <motion.div animate={{ rotate: fabOpen ? 45 : 0 }} transition={{ duration: 0.15 }}>
+            <Plus className={`w-5 h-5 ${fabOpen ? 'text-background' : 'text-primary-foreground'}`} />
+          </motion.div>
+        </button>
+      </div>
+
       {/* FAB overlay */}
       <AnimatePresence>
         {fabOpen && (
@@ -126,7 +138,7 @@ const Layout = ({ children }: LayoutProps) => {
             className="lg:hidden fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
             onClick={() => setFabOpen(false)}
           >
-            <div className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5" onClick={e => e.stopPropagation()}>
+            <div className="absolute bottom-32 right-4 flex flex-col items-end gap-1.5" onClick={e => e.stopPropagation()}>
               {fabActions.map((item, i) => (
                 <motion.button
                   key={item.action}
@@ -135,7 +147,7 @@ const Layout = ({ children }: LayoutProps) => {
                   exit={{ opacity: 0, y: 8, scale: 0.9 }}
                   transition={{ delay: i * 0.03, type: 'spring', damping: 25, stiffness: 350 }}
                   onClick={() => handleFabAction(item.action)}
-                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-card shadow-card-lg border border-border active:scale-95 transition-transform"
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-card/95 backdrop-blur-lg shadow-lg border border-border/50 active:scale-95 transition-transform"
                 >
                   <span className="text-base">{item.emoji}</span>
                   <span className="text-sm font-medium text-foreground">{item.label}</span>
@@ -147,52 +159,24 @@ const Layout = ({ children }: LayoutProps) => {
       </AnimatePresence>
 
       {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-nav safe-area-bottom">
-        <div className="flex items-center h-16 px-1 pb-1">
-          {mobileNavItems.slice(0, 3).map(item => {
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border/50 safe-area-bottom">
+        <div className="flex items-center h-[60px] px-2">
+          {mobileNavItems.map(item => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             return (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors relative ${
+                className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-all relative ${
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
-                <Icon className="w-5 h-5" />
-                <span className="text-[9px] font-medium leading-tight">{item.label}</span>
-                {showLock && (item.path === '/debts' || item.path === '/insights' || item.path === '/chat') && <Lock className="w-2.5 h-2.5 text-amber-500 absolute top-1 right-2" />}
-              </button>
-            );
-          })}
-
-          {/* FAB center button */}
-          <div className="relative flex items-center justify-center w-14 flex-shrink-0">
-            <button
-              onClick={() => setFabOpen(prev => !prev)}
-              className="w-11 h-11 -mt-5 rounded-full bg-primary shadow-md flex items-center justify-center active:scale-90 transition-transform"
-            >
-              <motion.div animate={{ rotate: fabOpen ? 45 : 0 }} transition={{ duration: 0.15 }}>
-                <Plus className="w-5 h-5 text-primary-foreground" />
-              </motion.div>
-            </button>
-          </div>
-
-          {mobileNavItems.slice(3).map(item => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            return (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-colors relative ${
-                  isActive ? 'text-primary' : 'text-muted-foreground'
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                <span className="text-[9px] font-medium leading-tight">{item.label}</span>
-                {showLock && (item.path === '/debts' || item.path === '/insights' || item.path === '/chat') && <Lock className="w-2.5 h-2.5 text-amber-500 absolute top-1 right-2" />}
+                <div className={`flex items-center justify-center w-9 h-9 rounded-xl transition-colors ${isActive ? 'bg-primary/10' : ''}`}>
+                  <Icon className={`w-[18px] h-[18px] transition-transform ${isActive ? 'scale-110' : ''}`} />
+                </div>
+                <span className={`text-[9px] font-medium leading-tight ${isActive ? 'text-primary' : ''}`}>{item.label}</span>
+                {showLock && (item.path === '/debts' || item.path === '/insights' || item.path === '/chat') && <Lock className="w-2.5 h-2.5 text-amber-500 absolute top-0.5 right-1.5" />}
               </button>
             );
           })}
