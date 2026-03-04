@@ -55,14 +55,13 @@ const Budgets = () => {
     if (!householdId) return;
     const fetchDebtTotal = async () => {
       const userId = session?.user?.id;
-      // Fetch schedules due this month
       const now = new Date();
       const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
       const monthEnd = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
       // Fetch debts for scope filtering
-      let debtQuery = supabase.from('debts').select('id, currency');
+      let debtQuery = supabase.from('debts').select('id, currency, payment_amount, payment_frequency, has_schedule');
       if (financeScope === 'personal') {
         debtQuery = debtQuery.eq('scope', 'personal').eq('created_by', userId);
       } else {
@@ -70,18 +69,6 @@ const Budgets = () => {
       }
       const { data: debtsData } = await debtQuery;
       if (!debtsData || debtsData.length === 0) { setDebtMonthlyTotal(0); return; }
-
-      const debtIds = debtsData.map((d: any) => d.id);
-      const debtCurrencyMap = new Map(debtsData.map((d: any) => [d.id, d.currency]));
-
-      const { data: schedules } = await supabase
-        .from('debt_schedules')
-        .select('debt_id, total_amount')
-        .in('debt_id', debtIds)
-        .gte('due_date', monthStart)
-        .lte('due_date', monthEnd);
-
-      if (!schedules || schedules.length === 0) { setDebtMonthlyTotal(0); return; }
 
       const baseCurrency = household.currency;
       const convert = (amount: number, from: string) => {
@@ -91,11 +78,40 @@ const Budgets = () => {
         return amount * (fromToEur / mainToEur);
       };
 
+      // Debts WITH schedules: sum from debt_schedules
+      const debtsWithSchedule = debtsData.filter((d: any) => d.has_schedule !== false);
+      const debtsWithoutSchedule = debtsData.filter((d: any) => d.has_schedule === false);
+
       let total = 0;
-      for (const s of schedules) {
-        const cur = debtCurrencyMap.get(s.debt_id) || baseCurrency;
-        total += convert(Number(s.total_amount), cur);
+
+      if (debtsWithSchedule.length > 0) {
+        const debtIds = debtsWithSchedule.map((d: any) => d.id);
+        const debtCurrencyMap = new Map(debtsWithSchedule.map((d: any) => [d.id, d.currency]));
+
+        const { data: schedules } = await supabase
+          .from('debt_schedules')
+          .select('debt_id, total_amount')
+          .in('debt_id', debtIds)
+          .gte('due_date', monthStart)
+          .lte('due_date', monthEnd);
+
+        if (schedules) {
+          for (const s of schedules) {
+            const cur = debtCurrencyMap.get(s.debt_id) || baseCurrency;
+            total += convert(Number(s.total_amount), cur);
+          }
+        }
       }
+
+      // Debts WITHOUT schedules: use payment_amount if monthly payment is due this month
+      for (const d of debtsWithoutSchedule) {
+        const freq = (d as any).payment_frequency || 'monthly';
+        // For monthly debts, always add; for others, check if payment falls this month
+        if (freq === 'monthly') {
+          total += convert(Number((d as any).payment_amount) || 0, (d as any).currency || baseCurrency);
+        }
+      }
+
       setDebtMonthlyTotal(Math.round(total));
     };
     fetchDebtTotal();
