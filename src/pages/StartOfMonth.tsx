@@ -387,16 +387,16 @@ const StartOfMonth = () => {
               <StepHeader stepNum={4} title="Budgets variables" subtitle="Vérifie et complète tes budgets" icon={BarChart3} done={step4Done} total={budgetData.length > 0 ? formatAmount(totalBudgetLimit) : '—'} />
               
               {/* Unbudgeted warning */}
-              {!isFullyCovered && totalRecurringIncome > 0 && (
+              {!isFullyCovered && availableAfterSavings > 0 && (
                 <div className="px-4 py-3 bg-warning/10 border-b border-warning/20">
                   <div className="flex items-start gap-2.5">
                     <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
                     <div className="flex-1">
                       <p className="text-sm font-medium text-warning">
-                        {formatAmount(unbudgeted)} non budgété
+                        {formatAmount(remainingToBudget)} reste à budgéter
                       </p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Tes budgets couvrent {budgetCoverage}% de ton disponible. Crée des budgets pour mieux contrôler tes dépenses.
+                        Tes budgets couvrent {budgetCoverage}% de ton disponible ({formatAmount(availableAfterSavings)}). Crée des budgets pour mieux contrôler tes dépenses.
                       </p>
                     </div>
                   </div>
