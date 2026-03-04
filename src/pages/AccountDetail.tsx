@@ -23,6 +23,7 @@ const AccountDetail = () => {
   const [showEdit, setShowEdit] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [showAllTransactions, setShowAllTransactions] = useState(false);
+  const [showChart, setShowChart] = useState(false);
 
   // Edit state
   const [editName, setEditName] = useState('');
