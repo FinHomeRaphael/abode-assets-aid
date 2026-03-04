@@ -455,7 +455,7 @@ const StartOfMonth = () => {
           </div>
 
           {/* Status indicator */}
-          {!isFullyCovered && availableAfterSavings > 0 && (
+          {!isFullyCovered && totalIncome > 0 && (
             <div className="mx-4 mt-1 mb-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-warning/[0.06]">
               <AlertTriangle className="w-3 h-3 text-warning shrink-0" />
               <p className="text-[10px] text-warning font-medium">{budgetCoverage}% du disponible couvert — crée des budgets pour atteindre 100%</p>
