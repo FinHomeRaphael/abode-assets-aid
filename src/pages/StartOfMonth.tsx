@@ -88,6 +88,31 @@ const StartOfMonth = () => {
     transactions.filter(t => t.isRecurring && !t.recurringSourceId && t.type === 'expense' && (!t.recurringEndMonth || t.recurringEndMonth > monthYear)),
     [transactions, monthYear]);
 
+  // Month transactions (for budget calculation matching Budgets page)
+  const monthTx = useMemo(() => getTransactionsForMonth(now), [getTransactionsForMonth]);
+
+  // Savings calculation (same as Budgets page)
+  const savingsAccountIds = useMemo(() =>
+    new Set(accounts.filter(a => (a.type === 'epargne' || a.type === 'pilier3a') && !a.isArchived).map(a => a.id)),
+    [accounts]);
+  const isSavingsTx = (t: typeof monthTx[0]) => !!(t.accountId && savingsAccountIds.has(t.accountId));
+  const monthSavingsNet = useMemo(() => {
+    const savingsTransferIn = monthTx.filter(t => t.type === 'income' && isSavingsTx(t) && t.category === 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+    const savingsTransferOut = monthTx.filter(t => t.type === 'expense' && isSavingsTx(t) && t.category === 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+    const savingsDirectIncome = monthTx.filter(t => t.type === 'income' && isSavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+    const savingsDirectExpenses = monthTx.filter(t => t.type === 'expense' && isSavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+    return (savingsTransferIn + savingsDirectIncome) - (savingsTransferOut + savingsDirectExpenses);
+  }, [monthTx, savingsAccountIds]);
+
+  // Total income (same as Budgets page)
+  const totalIncome = useMemo(() =>
+    monthTx.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0),
+    [monthTx]);
+
+  // Available to budget = income - |savings net| - budgeted (same formula as Budgets page)
+  const totalSavingsDeducted = Math.abs(monthSavingsNet);
+  const availableAfterSavings = totalIncome - totalSavingsDeducted;
+
   // Budgets
   const budgetData = useMemo(() =>
     budgets.filter(b => b.period === 'monthly').map(b => ({ ...b, spent: getBudgetSpent(b) })),
