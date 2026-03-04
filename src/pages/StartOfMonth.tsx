@@ -377,9 +377,9 @@ const StartOfMonth = () => {
 
         {/* Step 4: Budgets */}
         {(() => {
-          const unbudgeted = totalRecurringIncome - totalRecurringExpense - totalDebtPayments - totalBudgetLimit;
-          const budgetCoverage = totalRecurringIncome > 0 ? Math.round((totalBudgetLimit / (totalRecurringIncome - totalRecurringExpense - totalDebtPayments)) * 100) : 0;
-          const isFullyCovered = unbudgeted <= 0 || budgetCoverage >= 95;
+          const remainingToBudget = availableAfterSavings - totalBudgetLimit;
+          const budgetCoverage = availableAfterSavings > 0 ? Math.round((totalBudgetLimit / availableAfterSavings) * 100) : 0;
+          const isFullyCovered = remainingToBudget <= 0 || budgetCoverage >= 95;
           const budgetedCategories = new Set(budgetData.map(b => b.category));
 
           return (
