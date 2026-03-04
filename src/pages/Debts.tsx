@@ -125,7 +125,9 @@ const Debts = () => {
   // Fetch upcoming schedules for all debts (next 2 years)
   const fetchUpcomingPayments = useCallback(async () => {
     if (!householdId || debts.length === 0) { setUpcomingPayments([]); return; }
-    const today = new Date().toISOString().split('T')[0];
+    // Start from the 1st of current month to include all this month's schedules
+    const now = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
     const twoYearsLater = new Date();
     twoYearsLater.setFullYear(twoYearsLater.getFullYear() + 2);
     const maxDate = twoYearsLater.toISOString().split('T')[0];
@@ -136,7 +138,7 @@ const Debts = () => {
       .select('*')
       .in('debt_id', debtIds)
       .in('status', ['prevu', 'ajuste'])
-      .gte('due_date', today)
+      .gte('due_date', monthStart)
       .lte('due_date', maxDate)
       .order('due_date', { ascending: true });
 
