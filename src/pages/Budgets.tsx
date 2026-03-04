@@ -13,6 +13,7 @@ import MonthSelector from '@/components/MonthSelector';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
 import { Plus, X, ChevronDown, ChevronUp, TrendingUp, Wallet, AlertTriangle, CheckCircle, PieChart, Lightbulb, ArrowRight, Target, Pencil, PartyPopper } from 'lucide-react';
+import { CategoryIcon, getCategoryIcon } from '@/utils/categoryIcons';
 import { supabase } from '@/integrations/supabase/client';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
@@ -357,9 +358,9 @@ const Budgets = () => {
                   {incomeByCategory.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-2">Aucun revenu ce mois</p>
                   ) : (
-                    incomeByCategory.map(([cat, { emoji, total }]) => (
+                    incomeByCategory.map(([cat, { total }]) => (
                       <div key={cat} className="flex items-center justify-between bg-secondary/30 rounded-xl px-3 py-2.5">
-                        <span className="text-sm">{emoji} {cat}</span>
+                        <span className="text-sm flex items-center gap-2"><CategoryIcon category={cat} size="sm" /> {cat}</span>
                         <span className="text-sm font-mono-amount font-semibold">{formatAmount(total)}</span>
                       </div>
                     ))
@@ -523,7 +524,7 @@ const Budgets = () => {
                     onClick={() => openEditModal(b)}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold text-sm">{b.emoji} {b.category}</span>
+                      <span className="font-semibold text-sm flex items-center gap-2"><CategoryIcon category={b.category} size="sm" /> {b.category}</span>
                       <span className="text-lg">{getStatusIcon(pct)}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
@@ -595,7 +596,7 @@ const Budgets = () => {
                 <div key={category} className="bg-card border border-border rounded-xl px-4 py-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium">{emoji} {category}</span>
+                      <span className="text-sm font-medium flex items-center gap-2"><CategoryIcon category={category} size="sm" /> {category}</span>
                       <div className="flex items-center gap-3 mt-0.5">
                         <p className="text-xs text-muted-foreground">
                           Ce mois : <span className="font-mono-amount font-medium text-foreground">{formatAmount(spent)}</span>
@@ -645,7 +646,7 @@ const Budgets = () => {
                     {(() => {
                       const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16', '#a855f7'];
                       const budgetData = filteredBudgets.map((b, i) => ({
-                        name: `${b.emoji} ${b.category}`,
+                        name: b.category,
                         value: b.limit,
                         spent: getBudgetSpent(b),
                         color: COLORS[i % COLORS.length],
@@ -831,7 +832,7 @@ const Budgets = () => {
                               : 'bg-secondary/30 text-muted-foreground hover:bg-secondary/50'
                           }`}
                         >
-                          {CATEGORY_EMOJIS[c] || '📌'} {c}
+                          {c}
                         </button>
                       ))}
                     </div>
@@ -891,7 +892,7 @@ const Budgets = () => {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setEditTarget(null)}>
               <motion.div initial={{ scale: 0.92, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.92, opacity: 0, y: 20 }} transition={{ type: 'spring', damping: 25, stiffness: 300 }} onClick={e => e.stopPropagation()} className="bg-card w-full max-w-md rounded-2xl border border-border/30 shadow-2xl overflow-hidden max-h-[85vh] flex flex-col">
                 <div className="px-5 pt-5 pb-3 border-b border-border/30 flex items-center justify-between shrink-0">
-                  <h2 className="text-base font-bold">{editTarget.emoji} {editTarget.category}</h2>
+                  <h2 className="text-base font-bold flex items-center gap-2"><CategoryIcon category={editTarget.category} size="sm" /> {editTarget.category}</h2>
                   <button onClick={() => setEditTarget(null)} className="w-8 h-8 rounded-xl bg-secondary/50 flex items-center justify-center"><X className="w-4 h-4 text-muted-foreground" /></button>
                 </div>
                 <div className="p-5 overflow-y-auto flex-1">
@@ -945,7 +946,7 @@ const Budgets = () => {
                           {budgetTx.map(t => (
                             <div key={t.id} className="flex items-center justify-between text-[11px] bg-secondary/30 rounded-lg px-3 py-2">
                               <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <span>{t.emoji}</span>
+                                <CategoryIcon category={t.category} size="sm" />
                                 <span className="truncate font-medium">{t.label}</span>
                                 <span className="text-muted-foreground shrink-0">{formatDateLong(t.date)}</span>
                               </div>
