@@ -368,11 +368,11 @@ const Dashboard = () => {
         {/* Transactions récentes */}
         <motion.div variants={fade}>
           <SectionHeader title="Transactions récentes" action="Voir tout" onAction={() => navigate('/transactions')} />
-          <div className="space-y-2">
+          <div className="rounded-2xl bg-card border border-border/50 overflow-hidden divide-y divide-border/40">
             {transactions.slice(0, 4).map(t => (
-              <div key={t.id} className="flex items-center justify-between px-4 py-3 rounded-xl bg-card border border-border/50 hover:border-primary/15 transition-colors">
+              <div key={t.id} className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-muted/60 flex items-center justify-center text-base flex-shrink-0">{t.emoji}</div>
+                  <div className="w-9 h-9 rounded-xl bg-muted/50 flex items-center justify-center text-base flex-shrink-0">{t.emoji}</div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{t.label}</p>
                     <p className="text-[11px] text-muted-foreground">{t.category} · {formatDate(t.date)}</p>
@@ -382,7 +382,7 @@ const Dashboard = () => {
               </div>
             ))}
             {transactions.length === 0 && (
-              <div className="px-4 py-8 text-center text-sm text-muted-foreground rounded-xl bg-card border border-border/50">Aucune transaction</div>
+              <div className="px-4 py-8 text-center text-sm text-muted-foreground">Aucune transaction</div>
             )}
           </div>
         </motion.div>
@@ -391,12 +391,12 @@ const Dashboard = () => {
         {budgetData.length > 0 && (
           <motion.div variants={fade}>
             <SectionHeader title="Budgets" action="Voir" onAction={() => navigate('/budgets')} />
-            <div className="space-y-2">
+            <div className="rounded-2xl bg-card border border-border/50 overflow-hidden divide-y divide-border/40">
               {budgetData.slice(0, 3).map(b => {
                 const status = getBudgetStatus(b.spent, b.limit);
                 const pct = Math.min((b.spent / b.limit) * 100, 100);
                 return (
-                  <div key={b.id} className="rounded-xl bg-card border border-border/50 px-4 py-3">
+                  <div key={b.id} className="px-4 py-3">
                     <div className="flex items-center justify-between text-xs mb-2">
                       <span className="font-medium">{b.emoji} {b.category}</span>
                       <span className="font-mono-amount text-muted-foreground">{formatAmount(b.spent)} / {formatAmount(b.limit)}</span>
@@ -418,11 +418,11 @@ const Dashboard = () => {
         {goalsData.length > 0 && (
           <motion.div variants={fade}>
             <SectionHeader title="Épargne" action="Voir" onAction={() => navigate('/savings')} />
-            <div className="space-y-2">
+            <div className="rounded-2xl bg-card border border-border/50 overflow-hidden divide-y divide-border/40">
               {goalsData.slice(0, 3).map(g => {
                 const pct = Math.min((g.saved / g.target) * 100, 100);
                 return (
-                  <div key={g.id} className="rounded-xl bg-card border border-border/50 px-4 py-3">
+                  <div key={g.id} className="px-4 py-3">
                     <div className="flex items-center justify-between text-xs mb-2">
                       <span className="font-medium">{g.emoji} {g.name}</span>
                       <span className="font-mono-amount text-primary font-semibold">{Math.round(pct)}%</span>
@@ -437,6 +437,33 @@ const Dashboard = () => {
           </motion.div>
         )}
 
+        {/* Dettes */}
+        {debts.length > 0 && (
+          <motion.div variants={fade}>
+            <SectionHeader title="Dettes" action="Voir" onAction={() => navigate('/debts')} />
+            <div className="rounded-2xl bg-card border border-border/50 overflow-hidden divide-y divide-border/40">
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="text-xs text-muted-foreground">Total restant dû</span>
+                <span className="font-mono-amount text-xs font-semibold text-destructive">{formatAmount(debts.reduce((s, d) => s + d.remainingAmount, 0))}</span>
+              </div>
+              {(() => {
+                const nextPayments = debts
+                  .filter(d => d.remainingAmount > 0)
+                  .map(d => ({ date: d.nextPaymentDate || calculateNextPaymentDate(d), amount: d.paymentAmount, name: d.name, emoji: getDebtEmoji(d.type) }))
+                  .filter(p => p.date)
+                  .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+                const next = nextPayments[0];
+                if (!next) return null;
+                return (
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <span className="text-xs text-muted-foreground">{next.emoji} {next.name}</span>
+                    <span className="font-mono-amount text-xs">{formatAmount(next.amount)} · {formatDate(next.date!)}</span>
+                  </div>
+                );
+              })()}
+            </div>
+          </motion.div>
+        )}
         {/* Dettes */}
         {debts.length > 0 && (
           <motion.div variants={fade}>
