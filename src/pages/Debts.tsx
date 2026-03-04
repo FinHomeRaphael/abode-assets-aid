@@ -59,6 +59,7 @@ const Debts = () => {
   const [upcomingPayments, setUpcomingPayments] = useState<UpcomingPayment[]>([]);
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   const [showPaymentBreakdown, setShowPaymentBreakdown] = useState(false);
+  const [showAssetBreakdown, setShowAssetBreakdown] = useState(false);
 
   const fetchDebts = useCallback(async () => {
     if (!householdId) return;
