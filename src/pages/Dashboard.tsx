@@ -447,16 +447,28 @@ const Dashboard = () => {
                 <span className="font-mono-amount text-xs font-semibold text-destructive">{formatAmount(debts.reduce((s, d) => s + d.remainingAmount, 0))}</span>
               </div>
               {debts.filter(d => d.remainingAmount > 0).slice(0, 3).map(d => {
-                const nextDate = d.nextPaymentDate || calculateNextPaymentDate(d);
+                const paid = d.initialAmount - d.remainingAmount;
+                const pct = d.initialAmount > 0 ? Math.min((paid / d.initialAmount) * 100, 100) : 0;
                 return (
-                  <div key={d.id} className="flex items-center justify-between px-4 py-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-base flex-shrink-0">{getDebtEmoji(d.type)}</span>
-                      <span className="text-xs font-medium truncate">{d.name}</span>
+                  <div key={d.id} className="px-4 py-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-base flex-shrink-0">{getDebtEmoji(d.type)}</span>
+                        <span className="text-xs font-medium truncate">{d.name}</span>
+                      </div>
+                      <span className="font-mono-amount text-[11px] text-muted-foreground flex-shrink-0">
+                        {formatAmount(d.remainingAmount)} / {formatAmount(d.initialAmount)}
+                      </span>
                     </div>
-                    <span className="font-mono-amount text-xs text-muted-foreground flex-shrink-0">
-                      {formatAmount(d.paymentAmount)}{nextDate ? ` · ${formatDate(nextDate)}` : ''}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="font-mono-amount text-[10px] text-primary font-semibold w-8 text-right">{Math.round(pct)}%</span>
+                    </div>
                   </div>
                 );
               })}
