@@ -333,6 +333,9 @@ const Debts = () => {
             <CreditCard className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1" />
             <p className="text-[9px] text-muted-foreground mb-0.5">Emprunté</p>
             <p className="font-mono-amount font-bold text-foreground text-xs">{formatAmount(totalInitial)}</p>
+            {totalAssetValue > 0 && (
+              <p className="text-[9px] text-muted-foreground mt-0.5">{Math.round((totalInitial / totalAssetValue) * 100)}% de la valeur</p>
+            )}
           </div>
           <div
             className="bg-card border border-border/30 rounded-xl p-3 text-center cursor-pointer"
