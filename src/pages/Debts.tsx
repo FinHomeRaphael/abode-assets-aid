@@ -59,6 +59,7 @@ const Debts = () => {
   const [upcomingPayments, setUpcomingPayments] = useState<UpcomingPayment[]>([]);
   const [showAllUpcoming, setShowAllUpcoming] = useState(false);
   const [showPaymentBreakdown, setShowPaymentBreakdown] = useState(false);
+  const [showAssetBreakdown, setShowAssetBreakdown] = useState(false);
 
   const fetchDebts = useCallback(async () => {
     if (!householdId) return;
@@ -231,6 +232,25 @@ const Debts = () => {
 
   const totalRepaid = useMemo(() => scopeFilteredDebts.reduce((s, d) => s + convert(d.initialAmount - getRealRemaining(d), d.currency), 0), [scopeFilteredDebts, debtRemainingMap, convert]);
 
+  // Asset values (property, vehicle, purchase)
+  const assetBreakdownList = useMemo(() => {
+    const list: { name: string; emoji: string; type: string; value: number }[] = [];
+    for (const d of scopeFilteredDebts) {
+      const assetValue = d.propertyValue || d.vehiclePrice || d.purchasePrice;
+      if (assetValue && assetValue > 0) {
+        list.push({
+          name: d.vehicleName || d.name,
+          emoji: getDebtEmoji(d.type),
+          type: d.type,
+          value: convert(assetValue, d.currency),
+        });
+      }
+    }
+    return list.sort((a, b) => b.value - a.value);
+  }, [scopeFilteredDebts, convert]);
+
+  const totalAssetValue = useMemo(() => assetBreakdownList.reduce((s, a) => s + a.value, 0), [assetBreakdownList]);
+
   const selectedDebt = useMemo(() => debts.find(d => d.id === selectedDebtId) || null, [debts, selectedDebtId]);
 
   const handleDebtAdded = async () => { await fetchDebts(); await refreshDebtSchedules(); setShowAdd(false); };
@@ -308,7 +328,7 @@ const Debts = () => {
         </motion.div>
 
         {/* Stats grid */}
-        <motion.div variants={fadeUp} className="grid grid-cols-3 gap-1.5">
+        <motion.div variants={fadeUp} className="grid grid-cols-2 gap-1.5">
           <div className="bg-card border border-border/30 rounded-xl p-3 text-center">
             <CreditCard className="w-3.5 h-3.5 text-muted-foreground mx-auto mb-1" />
             <p className="text-[9px] text-muted-foreground mb-0.5">Emprunté</p>
@@ -316,7 +336,7 @@ const Debts = () => {
           </div>
           <div
             className="bg-card border border-border/30 rounded-xl p-3 text-center cursor-pointer"
-            onClick={() => setShowPaymentBreakdown(!showPaymentBreakdown)}
+            onClick={() => { setShowPaymentBreakdown(!showPaymentBreakdown); setShowAssetBreakdown(false); }}
           >
             <CalendarDays className="w-3.5 h-3.5 text-primary mx-auto mb-1" />
             <div className="flex items-center justify-center gap-0.5 mb-0.5">
@@ -330,6 +350,19 @@ const Debts = () => {
             <p className="text-[9px] text-muted-foreground mb-0.5">Remboursé</p>
             <p className="font-mono-amount font-bold text-success text-xs">{formatAmount(totalRepaid)}</p>
           </div>
+          {totalAssetValue > 0 && (
+            <div
+              className="bg-card border border-border/30 rounded-xl p-3 text-center cursor-pointer"
+              onClick={() => { setShowAssetBreakdown(!showAssetBreakdown); setShowPaymentBreakdown(false); }}
+            >
+              <Shield className="w-3.5 h-3.5 text-accent-foreground mx-auto mb-1" />
+              <div className="flex items-center justify-center gap-0.5 mb-0.5">
+                <p className="text-[9px] text-muted-foreground">Valeur des biens</p>
+                {showAssetBreakdown ? <ChevronUp className="w-2.5 h-2.5 text-muted-foreground" /> : <ChevronDown className="w-2.5 h-2.5 text-muted-foreground" />}
+              </div>
+              <p className="font-mono-amount font-bold text-foreground text-xs">{formatAmount(totalAssetValue)}</p>
+            </div>
+          )}
         </motion.div>
 
         {/* Payment breakdown dropdown */}
@@ -351,6 +384,32 @@ const Debts = () => {
                       {item.name}
                     </span>
                     <span className="font-mono-amount text-xs font-semibold shrink-0 ml-2">{formatAmount(item.monthlyAmount)}</span>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Asset value breakdown dropdown */}
+        <AnimatePresence>
+          {showAssetBreakdown && assetBreakdownList.length > 0 && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden -mt-3"
+            >
+              <div className="bg-card border border-border/30 rounded-2xl p-3 space-y-1.5">
+                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-1">Détail par bien</p>
+                {assetBreakdownList.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1.5 truncate">
+                      <DebtIcon type={item.type || ''} size="sm" />
+                      {item.name}
+                    </span>
+                    <span className="font-mono-amount text-xs font-semibold shrink-0 ml-2">{formatAmount(item.value)}</span>
                   </div>
                 ))}
               </div>
