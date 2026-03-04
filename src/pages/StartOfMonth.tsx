@@ -474,6 +474,7 @@ const StartOfMonth = () => {
           </div>
         </motion.div>
       </motion.div>
+      <AddBudgetModal open={showAddBudget} onClose={() => setShowAddBudget(false)} />
     </Layout>
   );
 };
