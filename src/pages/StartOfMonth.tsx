@@ -1,349 +1,357 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { useCurrency } from '@/hooks/useCurrency';
-import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import BackHeader from '@/components/BackHeader';
-import { CategoryIcon } from '@/utils/categoryIcons';
-
-const STORAGE_KEY_PREFIX = 'finehome_start_month_';
-
-interface ChecklistState {
-  checkedIncomes: string[];
-  checkedExpenses: string[];
-  cancelled: string[];
-  savingsConfirmed: boolean;
-  savingsSkipped: boolean;
-}
-
-function loadChecklist(monthYear: string): ChecklistState {
-  try {
-    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${monthYear}`);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { checkedIncomes: [], checkedExpenses: [], cancelled: [], savingsConfirmed: false, savingsSkipped: false };
-}
-
-function saveChecklist(monthYear: string, state: ChecklistState) {
-  localStorage.setItem(`${STORAGE_KEY_PREFIX}${monthYear}`, JSON.stringify(state));
-}
+import { CategoryIcon, DebtIcon } from '@/utils/categoryIcons';
+import { Debt, getDebtEmoji } from '@/types/debt';
+import { supabase } from '@/integrations/supabase/client';
+import { getBudgetStatus } from '@/utils/format';
+import { TrendingUp, TrendingDown, Wallet, PiggyBank, CreditCard, BarChart3, ChevronRight, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 
 const StartOfMonth = () => {
   const {
-    scopedTransactions: transactions, household, currentUser,
-    scopedSavingsGoals: savingsGoals, getGoalSaved, addSavingsDeposit,
-    softDeleteRecurringTransaction, getMemberById,
+    scopedTransactions: transactions, household, currentUser, session,
+    scopedSavingsGoals: savingsGoals, getGoalSaved,
+    scopedBudgets: budgets, getBudgetSpent, getTransactionsForMonth,
+    scopedAccounts: accounts, getMonthSavings, getTotalSavings,
+    householdId, financeScope, getMemberById,
   } = useApp();
-  const { formatAmount } = useCurrency();
+  const { formatAmount, currency } = useCurrency();
+  const navigate = useNavigate();
 
   const now = new Date();
-  const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const monthLabel = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(now);
 
-  // Recurring templates active this month
-  const recurringTemplates = useMemo(() => {
-    return transactions.filter(t => t.isRecurring && !t.recurringSourceId && (!t.recurringEndMonth || t.recurringEndMonth > monthYear));
-  }, [transactions, monthYear]);
-
-  const recurringIncomes = recurringTemplates.filter(t => t.type === 'income');
-  const recurringExpenses = recurringTemplates.filter(t => t.type === 'expense');
-
-  // Load persisted state
-  const initial = useMemo(() => loadChecklist(monthYear), [monthYear]);
-
-  const [checkedIncomes, setCheckedIncomes] = useState<Set<string>>(() => new Set(initial.checkedIncomes));
-  const [checkedExpenses, setCheckedExpenses] = useState<Set<string>>(() => new Set(initial.checkedExpenses));
-  const [cancelRequested, setCancelRequested] = useState<Set<string>>(() => new Set(initial.cancelled));
-  const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
-
-  // Savings
-  const [savingsConfirmed, setSavingsConfirmed] = useState(initial.savingsConfirmed);
-  const [savingsSkipped, setSavingsSkipped] = useState(initial.savingsSkipped);
-  const [savingsAmounts, setSavingsAmounts] = useState<Record<string, string>>({});
-
-  // Persist on every change
-  useEffect(() => {
-    saveChecklist(monthYear, {
-      checkedIncomes: Array.from(checkedIncomes),
-      checkedExpenses: Array.from(checkedExpenses),
-      cancelled: Array.from(cancelRequested),
-      savingsConfirmed,
-      savingsSkipped,
-    });
-  }, [monthYear, checkedIncomes, checkedExpenses, cancelRequested, savingsConfirmed, savingsSkipped]);
-
-  // Step completion: every item is either checked or cancel-requested
-  const step1Done = recurringIncomes.length === 0 || recurringIncomes.every(t => checkedIncomes.has(t.id) || cancelRequested.has(t.id));
-  const step2Done = recurringExpenses.length === 0 || recurringExpenses.every(t => checkedExpenses.has(t.id) || cancelRequested.has(t.id));
-  const step3Done = savingsConfirmed || savingsSkipped || savingsGoals.length === 0;
-
-  const completedSteps = [step1Done, step2Done, step3Done].filter(Boolean).length;
-  const progressPct = Math.round((completedSteps / 3) * 100);
-  const allDone = completedSteps === 3;
-
-  const toggleCheck = (id: string, type: 'income' | 'expense') => {
-    const setter = type === 'income' ? setCheckedIncomes : setCheckedExpenses;
-    setter(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-
-  const handleCancelRecurring = (id: string) => {
-    softDeleteRecurringTransaction(id, monthYear);
-    setCancelRequested(prev => new Set(prev).add(id));
-    setConfirmCancel(null);
-    // silent
-  };
-
-  const handleConfirmSavings = () => {
-    let deposited = false;
-    for (const goal of savingsGoals) {
-      const amount = parseFloat(savingsAmounts[goal.id] || '0');
-      if (amount > 0) {
-        addSavingsDeposit({
-          goalId: goal.id,
-          amount,
-          memberId: currentUser?.id || household.members[0]?.id || '',
-          date: `${monthYear}-01`,
-        });
-        deposited = true;
-      }
+  // Debts
+  const [debts, setDebts] = useState<Debt[]>([]);
+  const fetchDebts = useCallback(async () => {
+    if (!householdId) return;
+    const userId = session?.user?.id;
+    let query = supabase.from('debts').select('*');
+    if (financeScope === 'personal') {
+      query = query.eq('scope', 'personal').eq('created_by', userId);
+    } else {
+      query = query.eq('household_id', householdId).eq('scope', 'household');
     }
-    setSavingsConfirmed(true);
-    // silent
+    const { data } = await query;
+    if (data) {
+      setDebts(data.map((d: any) => ({
+        id: d.id, householdId: d.household_id, type: d.type, name: d.name, lender: d.lender,
+        initialAmount: Number(d.initial_amount), remainingAmount: Number(d.remaining_amount),
+        currency: d.currency, interestRate: Number(d.interest_rate), durationYears: Number(d.duration_years),
+        startDate: d.start_date, paymentFrequency: d.payment_frequency, paymentDay: d.payment_day,
+        paymentAmount: Number(d.payment_amount), categoryId: d.category_id,
+        nextPaymentDate: d.next_payment_date, lastPaymentDate: d.last_payment_date,
+        createdAt: d.created_at, updatedAt: d.updated_at,
+        scope: d.scope || 'household', createdBy: d.created_by || undefined,
+        amortizationType: d.amortization_type || 'fixed_annuity',
+      })));
+    }
+  }, [householdId, financeScope, session?.user?.id]);
+  useEffect(() => { fetchDebts(); }, [fetchDebts]);
+
+  // Month transactions
+  const monthTx = useMemo(() => getTransactionsForMonth(now), [getTransactionsForMonth]);
+
+  // Savings account IDs
+  const epargneAccountIds = new Set(accounts.filter(a => (a.type === 'epargne' || a.type === 'pilier3a') && !a.isArchived).map(a => a.id));
+  const isEpargneTx = (t: typeof monthTx[0]) => !!(t.accountId && epargneAccountIds.has(t.accountId));
+  const transferIdRegex = /\[?Transfert\s+#([^\]\s]+)\]?/i;
+  const savingsTransferIds = new Set<string>();
+  monthTx.forEach(t => {
+    if (isEpargneTx(t) && t.category === 'Transfert' && t.notes) {
+      const match = t.notes.match(transferIdRegex);
+      if (match) savingsTransferIds.add(match[1]);
+    }
+  });
+  const isSavingsTransferCounterpart = (t: typeof monthTx[0]) => {
+    if (t.category !== 'Transfert' || !t.notes) return false;
+    const match = t.notes.match(transferIdRegex);
+    return match ? savingsTransferIds.has(match[1]) : false;
   };
+  const isAnySavingsTx = (t: typeof monthTx[0]) => isEpargneTx(t) || isSavingsTransferCounterpart(t);
 
-  const fadeUp = { hidden: { opacity: 0, y: 16 }, show: { opacity: 1, y: 0, transition: { duration: 0.35 } } };
-  const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
+  // Totals
+  const totalIncome = monthTx.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const totalExpense = monthTx.filter(t => t.type === 'expense' && !isAnySavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
 
-  const renderRecurringItem = (t: typeof recurringTemplates[0], type: 'income' | 'expense') => {
-    const checked = type === 'income' ? checkedIncomes.has(t.id) : checkedExpenses.has(t.id);
-    const cancelled = cancelRequested.has(t.id);
-    const member = getMemberById(t.memberId);
-    const isConfirmingCancel = confirmCancel === t.id;
+  const epargneTransferIn = monthTx.filter(t => t.type === 'income' && isEpargneTx(t) && t.category === 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const epargneTransferOut = monthTx.filter(t => t.type === 'expense' && isEpargneTx(t) && t.category === 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const epargneDirectIn = monthTx.filter(t => t.type === 'income' && isEpargneTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const epargneDirectOut = monthTx.filter(t => t.type === 'expense' && isEpargneTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const monthSavingsNet = (epargneTransferIn + epargneDirectIn) - (epargneTransferOut + epargneDirectOut);
 
-    return (
-      <div key={t.id} className={`rounded-xl px-3 py-3 transition-colors ${cancelled ? 'bg-destructive/5 opacity-60' : checked ? 'bg-primary/5' : 'bg-muted/50'}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            {/* Checkbox */}
-            <button
-              onClick={() => !cancelled && toggleCheck(t.id, type)}
-              disabled={cancelled}
-              className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 transition-all ${
-                checked ? 'bg-primary border-primary text-primary-foreground' : cancelled ? 'border-muted bg-muted' : 'border-border hover:border-primary/50'
-              }`}
-            >
-              {checked && <span className="text-xs">✓</span>}
-              {cancelled && <span className="text-xs">✕</span>}
-            </button>
-            <CategoryIcon category={t.category} size="sm" />
-            <div className="min-w-0">
-              <p className={`text-sm font-medium truncate ${cancelled ? 'line-through text-muted-foreground' : ''}`}>{t.label}</p>
-              <p className="text-xs text-muted-foreground">{t.category}{member ? ` · ${member.name}` : ''} · Le {t.recurrenceDay || parseInt(t.date.split('-')[2])}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 ml-2">
-            <span className={`font-mono-amount text-sm font-semibold ${type === 'income' ? 'text-primary' : 'text-destructive'}`}>
-              {type === 'income' ? '+' : '-'}{formatAmount(t.convertedAmount)}
-            </span>
-            {!cancelled && !checked && (
-              <button
-                onClick={() => setConfirmCancel(isConfirmingCancel ? null : t.id)}
-                className="text-xs font-medium px-2 py-1.5 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors"
-              >
-                Annuler
-              </button>
-            )}
-            {cancelled && (
-              <span className="text-xs text-destructive font-medium px-2 py-1 rounded-lg bg-destructive/10">Annulé</span>
-            )}
-          </div>
+  const balance = totalIncome - totalExpense - Math.abs(monthSavingsNet);
+
+  // Previous month comparison
+  const prevMonth = new Date(now);
+  prevMonth.setMonth(prevMonth.getMonth() - 1);
+  const prevTx = useMemo(() => getTransactionsForMonth(prevMonth), [getTransactionsForMonth]);
+  const prevExpense = prevTx.filter(t => t.type === 'expense' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const prevIncome = prevTx.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const expenseVariation = prevExpense > 0 ? Math.round(((totalExpense - prevExpense) / prevExpense) * 100) : 0;
+
+  // Recurring incomes & expenses
+  const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const recurringIncomes = transactions.filter(t => t.isRecurring && !t.recurringSourceId && t.type === 'income' && (!t.recurringEndMonth || t.recurringEndMonth > monthYear));
+  const recurringExpenses = transactions.filter(t => t.isRecurring && !t.recurringSourceId && t.type === 'expense' && (!t.recurringEndMonth || t.recurringEndMonth > monthYear));
+  const totalRecurringIncome = recurringIncomes.reduce((s, t) => s + t.convertedAmount, 0);
+  const totalRecurringExpense = recurringExpenses.reduce((s, t) => s + t.convertedAmount, 0);
+
+  // Budgets
+  const budgetData = budgets.filter(b => b.period === 'monthly').map(b => ({ ...b, spent: getBudgetSpent(b) }));
+  const totalBudgetLimit = budgetData.reduce((s, b) => s + b.limit, 0);
+  const totalBudgetSpent = budgetData.reduce((s, b) => s + b.spent, 0);
+  const budgetUsagePct = totalBudgetLimit > 0 ? Math.round((totalBudgetSpent / totalBudgetLimit) * 100) : 0;
+  const overBudgets = budgetData.filter(b => b.spent > b.limit);
+  const warningBudgets = budgetData.filter(b => b.spent / b.limit > 0.7 && b.spent <= b.limit);
+
+  // Savings goals
+  const goalsData = savingsGoals.map(g => ({ ...g, saved: getGoalSaved(g.id) }));
+  const totalSavings = getTotalSavings();
+
+  // Debt totals for the month
+  const totalDebtPayments = debts.reduce((s, d) => s + d.paymentAmount, 0);
+  const totalDebtRemaining = debts.reduce((s, d) => s + d.remainingAmount, 0);
+
+  const fade = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
+  const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
+
+  const SectionCard = ({ title, icon: Icon, children, action, onAction }: { title: string; icon: any; children: React.ReactNode; action?: string; onAction?: () => void }) => (
+    <motion.div variants={fade} className="rounded-2xl bg-card border border-border overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
+        <div className="flex items-center gap-2">
+          <Icon className="w-4 h-4 text-primary" />
+          <h3 className="text-sm font-semibold">{title}</h3>
         </div>
-
-        {/* Cancel confirmation */}
-        <AnimatePresence>
-          {isConfirmingCancel && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-              <div className="mt-2 p-3 rounded-lg border border-destructive/30 bg-destructive/5 space-y-2">
-                <p className="text-xs text-destructive font-medium">
-                  Arrêter cette récurrence à partir de ce mois ? L'historique passé sera conservé.
-                </p>
-                <div className="flex gap-2">
-                  <button onClick={() => setConfirmCancel(null)} className="flex-1 py-1.5 rounded-lg border border-border text-xs font-medium hover:bg-muted transition-colors">
-                    Non
-                  </button>
-                  <button onClick={() => handleCancelRecurring(t.id)} className="flex-1 py-1.5 rounded-lg bg-destructive text-destructive-foreground text-xs font-semibold hover:bg-destructive/90 transition-colors">
-                    Oui, arrêter
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {action && onAction && (
+          <button onClick={onAction} className="flex items-center gap-1 text-xs text-primary font-medium hover:underline">
+            {action} <ChevronRight className="w-3 h-3" />
+          </button>
+        )}
       </div>
-    );
-  };
+      <div className="p-4">{children}</div>
+    </motion.div>
+  );
 
   return (
     <Layout>
-      <motion.div variants={stagger} initial="hidden" animate="show" className="max-w-2xl mx-auto space-y-5">
+      <motion.div variants={stagger} initial="hidden" animate="show" className="max-w-2xl mx-auto space-y-4 pb-6">
         {/* Header */}
-        <motion.div variants={fadeUp}>
-          <BackHeader title="🗓️ Début de mois" />
+        <motion.div variants={fade}>
+          <BackHeader title="🗓️ Résumé du mois" />
           <p className="text-sm text-muted-foreground capitalize -mt-2">{monthLabel}</p>
         </motion.div>
 
-        {/* Progress bar */}
-        <motion.div variants={fadeUp} className="card-elevated p-4">
-          <div className="flex items-center justify-between text-sm mb-2">
-            <span className="font-medium">Progression</span>
-            <span className="font-bold text-primary">{progressPct}%</span>
+        {/* Hero: Solde disponible */}
+        <motion.div variants={fade} className="rounded-2xl bg-primary p-5 text-primary-foreground">
+          <p className="text-xs font-medium opacity-80 mb-1">Reste à vivre ce mois</p>
+          <p className={`text-3xl font-bold font-mono-amount ${balance < 0 ? 'text-destructive-foreground' : ''}`}>
+            {balance >= 0 ? '+' : ''}{formatAmount(balance)}
+          </p>
+          <div className="grid grid-cols-3 gap-3 mt-4">
+            <div className="bg-primary-foreground/10 rounded-xl p-2.5 text-center">
+              <p className="text-[10px] opacity-70">Revenus</p>
+              <p className="text-sm font-semibold font-mono-amount">+{formatAmount(totalIncome)}</p>
+            </div>
+            <div className="bg-primary-foreground/10 rounded-xl p-2.5 text-center">
+              <p className="text-[10px] opacity-70">Dépenses</p>
+              <p className="text-sm font-semibold font-mono-amount">-{formatAmount(totalExpense)}</p>
+            </div>
+            <div className="bg-primary-foreground/10 rounded-xl p-2.5 text-center">
+              <p className="text-[10px] opacity-70">Épargne</p>
+              <p className="text-sm font-semibold font-mono-amount">{monthSavingsNet >= 0 ? '+' : ''}{formatAmount(monthSavingsNet)}</p>
+            </div>
           </div>
-          <div className="h-3 bg-muted rounded-full overflow-hidden">
-            <motion.div className="h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${progressPct}%` }} transition={{ duration: 0.6, ease: 'easeOut' }} />
-          </div>
-          <div className="flex justify-between mt-2">
-            {['Revenus', 'Charges', 'Épargne'].map((label, i) => (
-              <span key={label} className={`text-xs font-medium ${[step1Done, step2Done, step3Done][i] ? 'text-primary' : 'text-muted-foreground'}`}>
-                {[step1Done, step2Done, step3Done][i] ? '✓ ' : ''}{label}
-              </span>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Success */}
-        <AnimatePresence>
-          {allDone && (
-            <motion.div initial={{ opacity: 0, scale: 0.9, y: -10 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: 'spring', damping: 12 }} className="card-elevated p-6 text-center border-2 border-primary/30 bg-primary/5">
-              <motion.p initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.2, type: 'spring', damping: 8 }} className="text-4xl mb-3">🚀</motion.p>
-              <p className="font-bold text-lg">Tu gères comme un(e) pro !</p>
-              <p className="text-sm text-muted-foreground mt-1.5">Tout est en ordre pour {monthLabel}. Profite bien de ton mois 💪</p>
-            </motion.div>
+          {expenseVariation !== 0 && (
+            <div className="mt-3 flex items-center gap-1.5 text-xs opacity-80">
+              {expenseVariation > 0 ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+              <span>Dépenses {expenseVariation > 0 ? '+' : ''}{expenseVariation}% vs mois dernier</span>
+            </div>
           )}
-        </AnimatePresence>
-
-        {/* Step 1: Incomes */}
-        <motion.div variants={fadeUp} className="card-elevated overflow-hidden">
-          <div className={`p-4 flex items-center justify-between border-b border-border/50 ${step1Done ? 'bg-primary/5' : ''}`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step1Done ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                {step1Done ? '✓' : '1'}
-              </div>
-              <div>
-                <p className="font-semibold text-sm">Vérifier tes revenus du mois</p>
-                <p className="text-xs text-muted-foreground">Coche ou annule tes revenus récurrents</p>
-              </div>
-            </div>
-            {step1Done && <span className="text-xs font-semibold text-primary px-2 py-1 rounded-lg bg-primary/10">Terminé</span>}
-          </div>
-          <div className="p-4 space-y-2">
-            {recurringIncomes.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-3">Aucun revenu récurrent configuré</p>
-            ) : recurringIncomes.map(t => renderRecurringItem(t, 'income'))}
-            <AnimatePresence>
-              {step1Done && recurringIncomes.length > 0 && (
-                <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-center text-xs font-medium text-primary pt-2">
-                  ✨ Revenus vérifiés, nickel !
-                </motion.p>
-              )}
-            </AnimatePresence>
-          </div>
         </motion.div>
 
-        {/* Step 2: Expenses */}
-        <motion.div variants={fadeUp} className="card-elevated overflow-hidden">
-          <div className={`p-4 flex items-center justify-between border-b border-border/50 ${step2Done ? 'bg-primary/5' : ''}`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step2Done ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                {step2Done ? '✓' : '2'}
-              </div>
-              <div>
-                <p className="font-semibold text-sm">Vérifier tes charges fixes</p>
-                <p className="text-xs text-muted-foreground">Coche ou annule tes dépenses récurrentes</p>
-              </div>
-            </div>
-            {step2Done && <span className="text-xs font-semibold text-primary px-2 py-1 rounded-lg bg-primary/10">Terminé</span>}
-          </div>
-          <div className="p-4 space-y-2">
-            {recurringExpenses.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-3">Aucune dépense récurrente configurée</p>
-            ) : recurringExpenses.map(t => renderRecurringItem(t, 'expense'))}
-            <AnimatePresence>
-              {step2Done && recurringExpenses.length > 0 && (
-                <motion.p initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-center text-xs font-medium text-primary pt-2">
-                  💸 Charges sous contrôle, bien joué !
-                </motion.p>
-              )}
-            </AnimatePresence>
-          </div>
-        </motion.div>
-
-        {/* Step 3: Savings */}
-        <motion.div variants={fadeUp} className="card-elevated overflow-hidden">
-          <div className={`p-4 flex items-center justify-between border-b border-border/50 ${step3Done ? 'bg-primary/5' : ''}`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step3Done ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                {step3Done ? '✓' : '3'}
-              </div>
-              <div>
-                <p className="font-semibold text-sm">Planifier ton épargne du mois</p>
-                <p className="text-xs text-muted-foreground">Définis combien mettre de côté ce mois-ci</p>
-              </div>
-            </div>
-            {step3Done && <span className="text-xs font-semibold text-primary px-2 py-1 rounded-lg bg-primary/10">Terminé</span>}
-          </div>
-          <div className="p-4 space-y-3">
-            {savingsGoals.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-3">Aucun objectif d'épargne créé</p>
-            ) : step3Done ? (
-              <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-center py-3">
-                <p className="text-sm font-medium text-primary">
-                  {savingsSkipped ? '👍 Pas de souci, le mois prochain sera le bon !' : '🐷 Épargne planifiée, futur toi te remerciera !'}
-                </p>
-              </motion.div>
-            ) : (
-              <>
-                {savingsGoals.map(g => {
-                  const saved = getGoalSaved(g.id);
-                  const pct = Math.min((saved / g.target) * 100, 100);
-                  return (
-                    <div key={g.id} className="rounded-xl bg-muted/50 px-4 py-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium">{g.emoji} {g.name}</span>
-                        <span className="text-xs text-muted-foreground font-mono-amount">{formatAmount(saved, g.currency)} / {formatAmount(g.target, g.currency)} ({Math.round(pct)}%)</span>
-                      </div>
-                      <div className="h-1.5 bg-muted rounded-full overflow-hidden mb-3">
-                        <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <label className="text-xs text-muted-foreground shrink-0">Verser :</label>
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="0"
-                          value={savingsAmounts[g.id] || ''}
-                          onChange={e => setSavingsAmounts(prev => ({ ...prev, [g.id]: e.target.value }))}
-                          className="flex-1 px-3 py-2 rounded-lg border border-input bg-background text-sm font-mono-amount focus:outline-none focus:ring-2 focus:ring-ring"
-                        />
-                        <span className="text-xs text-muted-foreground">{g.currency}</span>
-                      </div>
+        {/* Revenus récurrents */}
+        <SectionCard title="Revenus récurrents" icon={TrendingUp} action="Transactions" onAction={() => navigate('/transactions')}>
+          {recurringIncomes.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-2">Aucun revenu récurrent</p>
+          ) : (
+            <div className="space-y-2">
+              {recurringIncomes.map(t => (
+                <div key={t.id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <CategoryIcon category={t.category} size="sm" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{t.label}</p>
+                      <p className="text-[11px] text-muted-foreground">Le {t.recurrenceDay || parseInt(t.date.split('-')[2])} · {t.category}</p>
                     </div>
-                  );
-                })}
-                <div className="flex gap-2 pt-1">
-                  <button onClick={() => setSavingsSkipped(true)} className="flex-1 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">
-                    Pas ce mois-ci
-                  </button>
-                  <button onClick={handleConfirmSavings} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
-                    Valider
-                  </button>
+                  </div>
+                  <span className="text-sm font-semibold text-success font-mono-amount">+{formatAmount(t.convertedAmount)}</span>
                 </div>
-              </>
+              ))}
+              <div className="pt-2 border-t border-border/50 flex justify-between">
+                <span className="text-xs font-medium text-muted-foreground">Total récurrent</span>
+                <span className="text-sm font-bold text-success font-mono-amount">+{formatAmount(totalRecurringIncome)}</span>
+              </div>
+            </div>
+          )}
+        </SectionCard>
+
+        {/* Charges fixes */}
+        <SectionCard title="Charges fixes" icon={TrendingDown} action="Transactions" onAction={() => navigate('/transactions')}>
+          {recurringExpenses.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-2">Aucune charge récurrente</p>
+          ) : (
+            <div className="space-y-2">
+              {recurringExpenses.map(t => (
+                <div key={t.id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <CategoryIcon category={t.category} size="sm" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{t.label}</p>
+                      <p className="text-[11px] text-muted-foreground">Le {t.recurrenceDay || parseInt(t.date.split('-')[2])} · {t.category}</p>
+                    </div>
+                  </div>
+                  <span className="text-sm font-semibold text-destructive font-mono-amount">-{formatAmount(t.convertedAmount)}</span>
+                </div>
+              ))}
+              <div className="pt-2 border-t border-border/50 flex justify-between">
+                <span className="text-xs font-medium text-muted-foreground">Total charges fixes</span>
+                <span className="text-sm font-bold text-destructive font-mono-amount">-{formatAmount(totalRecurringExpense)}</span>
+              </div>
+            </div>
+          )}
+        </SectionCard>
+
+        {/* Budgets */}
+        {budgetData.length > 0 && (
+          <SectionCard title="Budgets du mois" icon={BarChart3} action="Gérer" onAction={() => navigate('/budgets')}>
+            <div className="space-y-3">
+              {budgetData.slice(0, 5).map(b => {
+                const pct = Math.min(Math.round((b.spent / b.limit) * 100), 100);
+                const status = getBudgetStatus(b.spent, b.limit);
+                return (
+                  <div key={b.id}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium">{b.emoji} {b.category}</span>
+                      <span className="text-xs text-muted-foreground font-mono-amount">{formatAmount(b.spent)} / {formatAmount(b.limit)}</span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${status === 'over' ? 'bg-destructive' : status === 'warning' ? 'bg-warning' : 'bg-primary'}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="pt-2 border-t border-border/50">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-medium text-muted-foreground">Utilisation globale</span>
+                  <span className={`text-sm font-bold font-mono-amount ${budgetUsagePct > 100 ? 'text-destructive' : budgetUsagePct > 80 ? 'text-warning' : 'text-primary'}`}>
+                    {budgetUsagePct}%
+                  </span>
+                </div>
+                {overBudgets.length > 0 && (
+                  <p className="text-xs text-destructive mt-1">⚠️ {overBudgets.length} budget{overBudgets.length > 1 ? 's' : ''} dépassé{overBudgets.length > 1 ? 's' : ''}</p>
+                )}
+                {warningBudgets.length > 0 && overBudgets.length === 0 && (
+                  <p className="text-xs text-warning mt-1">👀 {warningBudgets.length} budget{warningBudgets.length > 1 ? 's' : ''} à surveiller</p>
+                )}
+              </div>
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Dettes */}
+        {debts.length > 0 && (
+          <SectionCard title="Échéances dettes" icon={CreditCard} action="Détails" onAction={() => navigate('/debts')}>
+            <div className="space-y-2.5">
+              {debts.map(d => {
+                const pctPaid = d.initialAmount > 0 ? Math.round(((d.initialAmount - d.remainingAmount) / d.initialAmount) * 100) : 0;
+                return (
+                  <div key={d.id}>
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-base">{getDebtEmoji(d.type)}</span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{d.name}</p>
+                          <p className="text-[11px] text-muted-foreground">Le {d.paymentDay} · Reste {formatAmount(d.remainingAmount, d.currency)}</p>
+                        </div>
+                      </div>
+                      <span className="text-sm font-semibold text-destructive font-mono-amount shrink-0">-{formatAmount(d.paymentAmount, d.currency)}</span>
+                    </div>
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${pctPaid}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="pt-2 border-t border-border/50 flex justify-between">
+                <span className="text-xs font-medium text-muted-foreground">Total échéances</span>
+                <span className="text-sm font-bold text-destructive font-mono-amount">-{formatAmount(totalDebtPayments)}</span>
+              </div>
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Épargne */}
+        {goalsData.length > 0 && (
+          <SectionCard title="Objectifs d'épargne" icon={PiggyBank} action="Voir" onAction={() => navigate('/savings')}>
+            <div className="space-y-3">
+              {goalsData.map(g => {
+                const pct = g.target > 0 ? Math.min(Math.round((g.saved / g.target) * 100), 100) : 0;
+                return (
+                  <div key={g.id}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium">{g.emoji} {g.name}</span>
+                      <span className="text-xs text-muted-foreground font-mono-amount">{formatAmount(g.saved, g.currency)} / {formatAmount(g.target, g.currency)}</span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-success" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="pt-2 border-t border-border/50 flex justify-between">
+                <span className="text-xs font-medium text-muted-foreground">Épargne totale</span>
+                <span className="text-sm font-bold text-success font-mono-amount">{formatAmount(totalSavings)}</span>
+              </div>
+            </div>
+          </SectionCard>
+        )}
+
+        {/* Quick summary card */}
+        <motion.div variants={fade} className="rounded-2xl bg-muted/50 border border-border p-4">
+          <p className="text-sm font-semibold mb-3">📊 En résumé</p>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Revenus récurrents</span>
+              <span className="font-medium text-success font-mono-amount">+{formatAmount(totalRecurringIncome)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Charges fixes</span>
+              <span className="font-medium text-destructive font-mono-amount">-{formatAmount(totalRecurringExpense)}</span>
+            </div>
+            {debts.length > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Échéances dettes</span>
+                <span className="font-medium text-destructive font-mono-amount">-{formatAmount(totalDebtPayments)}</span>
+              </div>
             )}
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Budgets variables</span>
+              <span className="font-medium font-mono-amount">-{formatAmount(totalBudgetLimit)}</span>
+            </div>
+            <div className="pt-2 border-t border-border/50 flex justify-between">
+              <span className="font-semibold">Disponible estimé</span>
+              <span className={`font-bold font-mono-amount ${(totalRecurringIncome - totalRecurringExpense - totalDebtPayments - totalBudgetLimit) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                {formatAmount(totalRecurringIncome - totalRecurringExpense - totalDebtPayments - totalBudgetLimit)}
+              </span>
+            </div>
           </div>
         </motion.div>
       </motion.div>
