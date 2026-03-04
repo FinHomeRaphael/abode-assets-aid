@@ -545,15 +545,6 @@ const Transactions = () => {
 
         <p className="text-[10px] text-muted-foreground text-center pb-2">{filtered.length} transaction(s)</p>
 
-        {/* FAB — floating add button */}
-        {!selectMode && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="fixed bottom-24 right-5 sm:bottom-8 sm:right-8 w-14 h-14 rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all z-30"
-          >
-            <Plus className="w-6 h-6" />
-          </button>
-        )}
 
         {/* Bulk delete bar */}
         <AnimatePresence>
