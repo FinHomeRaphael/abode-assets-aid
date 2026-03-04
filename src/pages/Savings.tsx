@@ -32,7 +32,7 @@ const Savings = () => {
   const {
     getMonthSavings, getTotalSavings,
     household,
-    scopedAccounts: accounts, getActiveAccounts, getAccountBalance, addAccount, householdId, currentUser,
+    accounts, getAccountBalance, addAccount, householdId, currentUser,
     customAccountTypes, addCustomAccountType,
   } = useApp();
   const { formatAmount } = useCurrency();
@@ -64,7 +64,7 @@ const Savings = () => {
 
   const monthSavings = getMonthSavings(currentMonth);
   const totalSavings = getTotalSavings();
-  const activeAccounts = getActiveAccounts();
+  const activeAccounts = accounts.filter(acc => !acc.isArchived);
   const totalAccountsBalance = activeAccounts.reduce((sum, acc) => sum + getAccountBalance(acc.id), 0);
 
   const handleCreateAccount = () => {
