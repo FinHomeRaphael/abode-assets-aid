@@ -461,15 +461,15 @@ const Transactions = () => {
         </div>
 
         {/* Pill filter tabs */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-4 gap-1.5 bg-muted/50 p-1 rounded-xl">
           {filterTabs.map(tab => (
             <button
               key={tab.key}
               onClick={() => setFilterType(tab.key)}
-              className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+              className={`py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                 filterType === tab.key
                   ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-card border border-border text-foreground hover:bg-muted/50'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               {tab.label}
