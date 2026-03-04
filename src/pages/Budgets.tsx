@@ -316,33 +316,101 @@ const Budgets = () => {
     return new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(new Date(parseInt(y), parseInt(m) - 1));
   };
 
+  const fade = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
+  const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
+
+  // Overall budget health stats
+  const totalSpent = useMemo(() => filteredBudgets.reduce((s, b) => s + getSpentForBudget(b), 0), [filteredBudgets, getSpentForBudget]);
+  const overBudgetCount = filteredBudgets.filter(b => getSpentForBudget(b) > b.limit).length;
+  const onTrackCount = filteredBudgets.filter(b => {
+    const pct = b.limit > 0 ? (getSpentForBudget(b) / b.limit) * 100 : 0;
+    return pct <= 80;
+  }).length;
+
   return (
     <Layout>
-      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-primary/5 via-transparent to-transparent h-64" />
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative space-y-4">
+      <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-5 pb-4">
 
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold">Budgets</h1>
+        <motion.div variants={fade} className="flex items-center justify-between pt-1">
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider">Gestion</p>
+            <h1 className="text-lg font-bold tracking-tight">Budgets</h1>
+          </div>
           <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} />
-        </div>
+        </motion.div>
 
-        {/* Section 1: Income Summary */}
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        {/* Hero card — Available to budget */}
+        <motion.div variants={fade}>
+          <div className={`w-full text-left bg-primary p-6 shadow-lg shadow-primary/20 rounded-2xl`}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm text-primary-foreground/70">Disponible à budgéter</span>
+              <Wallet className="w-4 h-4 text-primary-foreground/50" />
+            </div>
+            <p className="text-4xl font-bold font-mono-amount tracking-tight text-primary-foreground">
+              {formatAmount(Math.max(remainingToBudget, 0))}
+            </p>
+            <div className="flex items-center gap-3 mt-3">
+              <div className="flex-1 h-1.5 bg-primary-foreground/20 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(budgetPercentage, 100)}%` }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                  className={`h-full rounded-full ${remainingToBudget < 0 ? 'bg-destructive' : 'bg-primary-foreground/60'}`}
+                />
+              </div>
+              <span className="text-xs text-primary-foreground/60 font-mono-amount">{Math.round(budgetPercentage)}%</span>
+            </div>
+            {remainingToBudget < 0 && totalIncome > 0 && (
+              <div className="flex items-center gap-1.5 mt-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-primary-foreground/80" />
+                <span className="text-xs text-primary-foreground/80">Dépassement de {formatAmount(Math.abs(remainingToBudget))}</span>
+              </div>
+            )}
+            {remainingToBudget === 0 && totalIncome > 0 && (
+              <div className="flex items-center gap-1.5 mt-2">
+                <CheckCircle className="w-3.5 h-3.5 text-primary-foreground/80" />
+                <span className="text-xs text-primary-foreground/80">Tout est budgété !</span>
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Summary stat cards */}
+        <motion.div variants={fade} className="grid grid-cols-3 gap-1.5">
+          <div className="bg-card border border-border/30 rounded-xl p-3 text-center">
+            <TrendingUp className="w-3.5 h-3.5 text-success mx-auto mb-1" />
+            <p className="text-[9px] text-muted-foreground mb-0.5">Revenus</p>
+            <p className="font-mono-amount font-bold text-success text-xs">{formatAmount(totalIncome)}</p>
+          </div>
+          <div className="bg-card border border-border/30 rounded-xl p-3 text-center">
+            <PieChart className="w-3.5 h-3.5 text-primary mx-auto mb-1" />
+            <p className="text-[9px] text-muted-foreground mb-0.5">Budgété</p>
+            <p className="font-mono-amount font-bold text-foreground text-xs">{formatAmount(totalBudgeted)}</p>
+          </div>
+          <div className="bg-card border border-border/30 rounded-xl p-3 text-center">
+            <Wallet className={`w-3.5 h-3.5 mx-auto mb-1 ${monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'}`} />
+            <p className="text-[9px] text-muted-foreground mb-0.5">Épargne</p>
+            <p className={`font-mono-amount font-bold text-xs ${monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'}`}>{formatAmount(totalSavingsDeducted)}</p>
+          </div>
+        </motion.div>
+
+        {/* Income detail — collapsible */}
+        <motion.div variants={fade} className="bg-card border border-border/30 rounded-2xl overflow-hidden">
           <button
             onClick={() => setIncomeExpanded(!incomeExpanded)}
-            className="w-full px-5 py-4 flex items-center justify-between"
+            className="w-full px-4 py-3.5 flex items-center justify-between"
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-success/10 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-success" />
+              <div className="w-9 h-9 rounded-xl bg-success/10 flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 text-success" />
               </div>
               <div className="text-left">
-                <p className="text-xs text-muted-foreground font-medium">Revenus du mois</p>
-                <p className="text-lg font-bold font-mono-amount">{formatAmount(totalIncome)}</p>
+                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Revenus du mois</p>
+                <p className="text-base font-bold font-mono-amount">{formatAmount(totalIncome)}</p>
               </div>
             </div>
-            {incomeExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${incomeExpanded ? 'rotate-180' : ''}`} />
           </button>
 
           <AnimatePresence>
@@ -354,9 +422,9 @@ const Budgets = () => {
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className="px-5 pb-4 space-y-2">
+                <div className="px-4 pb-4 space-y-1.5">
                   {incomeByCategory.length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-2">Aucun revenu ce mois</p>
+                    <p className="text-xs text-muted-foreground text-center py-3">Aucun revenu ce mois</p>
                   ) : (
                     incomeByCategory.map(([cat, { total }]) => (
                       <div key={cat} className="flex items-center justify-between bg-secondary/30 rounded-xl px-3 py-2.5">
@@ -367,7 +435,7 @@ const Budgets = () => {
                   )}
                   <button
                     onClick={handleAddIncome}
-                    className="w-full py-2.5 rounded-xl border border-dashed border-border text-sm font-medium text-muted-foreground hover:bg-secondary/30 hover:text-foreground transition-colors flex items-center justify-center gap-1.5"
+                    className="w-full py-2.5 rounded-xl border border-dashed border-border/50 text-xs font-medium text-muted-foreground hover:bg-secondary/30 hover:text-foreground transition-colors flex items-center justify-center gap-1.5"
                   >
                     <Plus className="w-3.5 h-3.5" /> Ajouter du revenu
                   </button>
@@ -375,122 +443,76 @@ const Budgets = () => {
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
+        </motion.div>
 
-        {/* Section 2: Budget Allocation Summary */}
-        <div className="bg-card border border-border rounded-2xl p-5 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <PieChart className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm font-semibold">Répartition</span>
-          </div>
-
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Total revenus</span>
-            <span className="font-mono-amount font-medium text-foreground">{formatAmount(totalIncome)}</span>
-          </div>
-
-          {/* Total épargné + objectif */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <div className="flex items-center gap-1.5">
-                <span>Total épargné</span>
-                <button
-                  onClick={() => { setSavingsTargetInput(savingsTarget ? String(savingsTarget) : ''); setShowSavingsTargetEdit(true); }}
-                  className="text-primary hover:text-primary/80 transition-colors"
-                  title="Définir un objectif d'épargne"
-                >
-                  {savingsTarget ? <Pencil className="w-3 h-3" /> : <Target className="w-3 h-3" />}
-                </button>
-              </div>
-              <span className={`font-mono-amount font-medium ${monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'}`}>
-                {monthSavingsNet >= 0 ? '-' : '+'}{formatAmount(totalSavingsDeducted)}
-              </span>
+        {/* Savings target section */}
+        <motion.div variants={fade} className="bg-card border border-border/30 rounded-2xl p-4 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold">Épargne mensuelle</span>
             </div>
-
-            {/* Savings target progress */}
-            {savingsTarget && savingsTarget > 0 && (
-              <>
-                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min((monthSavingsNet / savingsTarget) * 100, 100)}%` }}
-                    transition={{ duration: 0.6, ease: 'easeOut' }}
-                    className={`h-full rounded-full ${monthSavingsNet >= savingsTarget ? 'bg-success' : 'bg-primary'}`}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-                  <span>Objectif : <span className="font-mono-amount">{formatAmount(savingsTarget)}</span></span>
-                  <span className="font-mono-amount">{Math.round(Math.max((monthSavingsNet / savingsTarget) * 100, 0))}%</span>
-                </div>
-                {monthSavingsNet >= savingsTarget && (
-                  <div className="flex items-center gap-2 bg-success/10 border border-success/20 rounded-xl px-3 py-2">
-                    <PartyPopper className="w-4 h-4 text-success shrink-0" />
-                    <p className="text-[11px] text-success font-medium">Bravo ! Vous avez atteint votre objectif d'épargne ce mois-ci 🎉</p>
-                  </div>
-                )}
-              </>
-            )}
+            <button
+              onClick={() => { setSavingsTargetInput(savingsTarget ? String(savingsTarget) : ''); setShowSavingsTargetEdit(true); }}
+              className="text-primary hover:text-primary/80 transition-colors"
+            >
+              {savingsTarget ? <Pencil className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+            </button>
           </div>
+
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">Épargné ce mois</span>
+            <span className={`font-mono-amount font-semibold ${monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'}`}>
+              {monthSavingsNet >= 0 ? '+' : ''}{formatAmount(monthSavingsNet)}
+            </span>
+          </div>
+
+          {savingsTarget && savingsTarget > 0 && (
+            <>
+              <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(Math.max((monthSavingsNet / savingsTarget) * 100, 0), 100)}%` }}
+                  transition={{ duration: 0.6, ease: 'easeOut' }}
+                  className={`h-full rounded-full ${monthSavingsNet >= savingsTarget ? 'bg-success' : 'bg-primary'}`}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>Objectif : <span className="font-mono-amount">{formatAmount(savingsTarget)}</span></span>
+                <span className="font-mono-amount">{Math.round(Math.max((monthSavingsNet / savingsTarget) * 100, 0))}%</span>
+              </div>
+              {monthSavingsNet >= savingsTarget && (
+                <div className="flex items-center gap-2 bg-success/10 border border-success/20 rounded-xl px-3 py-2">
+                  <PartyPopper className="w-4 h-4 text-success shrink-0" />
+                  <p className="text-[11px] text-success font-medium">Objectif d'épargne atteint ce mois !</p>
+                </div>
+              )}
+            </>
+          )}
 
           {monthSavingsNet < 0 && (
             <button
               onClick={() => navigate('/transactions')}
-              className="flex items-center gap-1.5 w-full px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors text-left"
+              className="flex items-center gap-1.5 w-full px-3 py-2 rounded-xl bg-warning/10 border border-warning/20 text-[11px] text-warning hover:bg-warning/15 transition-colors text-left"
             >
               <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-              <span className="flex-1">Vous puisez dans vos économies ce mois-ci. Pensez à faire un transfert vers votre épargne.</span>
+              <span className="flex-1">Vous puisez dans vos économies ce mois-ci.</span>
               <ArrowRight className="w-3 h-3 flex-shrink-0" />
             </button>
           )}
+        </motion.div>
 
-          <div>
-            <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="text-muted-foreground">Total budgété</span>
-              <span className="font-mono-amount font-semibold">{formatAmount(totalBudgeted)}</span>
-            </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.min(budgetPercentage, 100)}%` }}
-                transition={{ duration: 0.6, ease: 'easeOut' }}
-                className={`h-full rounded-full ${remainingToBudget < 0 ? 'bg-destructive' : 'bg-primary'}`}
-              />
-            </div>
-            <p className="text-[10px] text-muted-foreground text-right mt-1">{Math.round(budgetPercentage)}%</p>
-          </div>
-
-          {/* Remaining / Overshoot */}
-          {remainingToBudget > 0 ? (
-            <div className="flex items-center gap-2 bg-success/10 border border-success/20 rounded-xl px-4 py-2.5">
-              <CheckCircle className="w-4 h-4 text-success shrink-0" />
-              <div className="flex-1 flex items-center justify-between">
-                <span className="text-sm font-medium text-success">Reste à budgéter</span>
-                <span className="text-sm font-mono-amount font-bold text-success">{formatAmount(remainingToBudget)}</span>
-              </div>
-            </div>
-          ) : remainingToBudget === 0 && totalIncome > 0 ? (
-            <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-xl px-4 py-2.5">
-              <CheckCircle className="w-4 h-4 text-primary shrink-0" />
-              <span className="text-sm font-medium text-primary">Tout est budgété !</span>
-            </div>
-          ) : totalIncome > 0 ? (
-            <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/20 rounded-xl px-4 py-2.5">
-              <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-destructive">Dépassement</span>
-                  <span className="text-sm font-mono-amount font-bold text-destructive">{formatAmount(Math.abs(remainingToBudget))}</span>
-                </div>
-                <p className="text-[10px] text-destructive/70">Tu as budgété plus que tes revenus !</p>
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Section 3: Budget List */}
-        <div className="space-y-3">
+        {/* Budget List */}
+        <motion.div variants={fade} className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold">Tes budgets</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold">Tes budgets</h2>
+              {filteredBudgets.length > 0 && (
+                <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full font-medium">
+                  {onTrackCount}/{filteredBudgets.length} en règle
+                </span>
+              )}
+            </div>
             <button
               onClick={() => {
                 if (!canAdd('budgets', budgets.length)) { setShowPaywall(true); return; }
@@ -505,33 +527,38 @@ const Budgets = () => {
           </div>
 
           {filteredBudgets.length === 0 ? (
-            <div className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground text-sm">
-              Aucun budget pour ce mois
+            <div className="bg-card border border-border/30 rounded-2xl p-8 text-center">
+              <PieChart className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">Aucun budget pour ce mois</p>
+              <p className="text-[10px] text-muted-foreground/60 mt-1">Créez votre premier budget pour suivre vos dépenses</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {filteredBudgets.map(b => {
+            <div className="bg-card border border-border/30 rounded-2xl overflow-hidden divide-y divide-border/30">
+              {filteredBudgets.map((b, idx) => {
                 const spent = getSpentForBudget(b);
                 const pct = b.limit > 0 ? (spent / b.limit) * 100 : 0;
                 const clampedPct = Math.min(pct, 100);
                 const remaining = b.limit - spent;
-                const isStopped = !!b.endMonth && b.endMonth <= currentMonthYear;
 
                 return (
                   <div
                     key={b.id}
-                    className="bg-card border border-border rounded-xl p-4 cursor-pointer hover:bg-muted/50 transition-colors active:scale-[0.99]"
+                    className="px-4 py-3.5 cursor-pointer hover:bg-muted/30 transition-colors active:scale-[0.99]"
                     onClick={() => openEditModal(b)}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-semibold text-sm flex items-center gap-2"><CategoryIcon category={b.category} size="sm" /> {b.category}</span>
-                      {getStatusIcon(pct)}
+                      <div className="flex items-center gap-2.5">
+                        <CategoryIcon category={b.category} size="sm" />
+                        <span className="font-semibold text-sm">{b.category}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono-amount font-semibold">{formatAmount(spent)}</span>
+                        <span className="text-[10px] text-muted-foreground">/</span>
+                        <span className="text-xs font-mono-amount text-muted-foreground">{formatAmount(b.limit)}</span>
+                        {getStatusIcon(pct)}
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-                      <span>Budget : <span className="font-mono-amount text-foreground">{formatAmount(b.limit)}</span></span>
-                      <span>Dépensé : <span className={`font-mono-amount font-semibold ${pct > 100 ? 'text-destructive' : 'text-foreground'}`}>{formatAmount(spent)}</span></span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden mb-1.5">
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${clampedPct}%` }}
@@ -539,12 +566,12 @@ const Budgets = () => {
                         className={`h-full rounded-full ${getProgressColor(pct)}`}
                       />
                     </div>
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className="font-mono-amount text-muted-foreground">{Math.round(pct)}%</span>
+                    <div className="flex items-center justify-between mt-1.5">
+                      <span className="text-[10px] font-mono-amount text-muted-foreground">{Math.round(pct)}%</span>
                       {remaining >= 0 ? (
-                        <span className="text-muted-foreground">Reste : <span className="font-mono-amount">{formatAmount(remaining)}</span></span>
+                        <span className="text-[10px] text-muted-foreground">Reste <span className="font-mono-amount font-medium">{formatAmount(remaining)}</span></span>
                       ) : (
-                        <span className="text-destructive font-semibold">Dépassement : <span className="font-mono-amount">{formatAmount(Math.abs(remaining))}</span></span>
+                        <span className="text-[10px] text-destructive font-medium">Dépassé de <span className="font-mono-amount">{formatAmount(Math.abs(remaining))}</span></span>
                       )}
                     </div>
                   </div>
@@ -552,80 +579,80 @@ const Budgets = () => {
               })}
             </div>
           )}
-        </div>
+        </motion.div>
 
         {/* Debt budget suggestion */}
         {debtMonthlyTotal > 0 && !budgetedCategories.has('Dettes') && (
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
+          <motion.div variants={fade} className="bg-card border border-primary/20 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-3">
               <Lightbulb className="w-4 h-4 text-primary" />
-              <h2 className="text-base font-bold">Suggestion dette</h2>
+              <span className="text-sm font-semibold">Suggestion dette</span>
             </div>
-            <div className="bg-card border border-primary/30 rounded-xl px-4 py-3">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium flex items-center gap-2"><CreditCard className="w-4 h-4 text-muted-foreground" /> Dettes</span>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Échéance mensuelle totale
-                  </p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                <CreditCard className="w-4 h-4 text-muted-foreground shrink-0" />
+                <div>
+                  <span className="text-sm font-medium">Dettes</span>
+                  <p className="text-[10px] text-muted-foreground">Échéance mensuelle totale</p>
                 </div>
-                <button
-                  onClick={() => handleCreateFromSuggestion('Dettes', debtMonthlyTotal)}
-                  className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shrink-0 flex items-center gap-1.5"
-                >
-                  <Target className="w-3 h-3" />
-                  {formatAmount(debtMonthlyTotal)}
-                </button>
               </div>
+              <button
+                onClick={() => handleCreateFromSuggestion('Dettes', debtMonthlyTotal)}
+                className="h-8 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shrink-0 flex items-center gap-1.5"
+              >
+                <Target className="w-3 h-3" />
+                {formatAmount(debtMonthlyTotal)}
+              </button>
             </div>
-          </div>
+          </motion.div>
         )}
 
-        {/* Section 4: Categories without budget — Smart suggestions */}
+        {/* Suggestions */}
         {categoriesWithoutBudget.length > 0 && (
-          <div className="space-y-3">
+          <motion.div variants={fade} className="space-y-3">
             <div className="flex items-center gap-2">
               <Lightbulb className="w-4 h-4 text-primary" />
-              <h2 className="text-base font-bold">Suggestions de budget</h2>
+              <h2 className="text-sm font-semibold">Suggestions de budget</h2>
             </div>
-            <p className="text-xs text-muted-foreground -mt-1">
+            <p className="text-[10px] text-muted-foreground -mt-1">
               Basées sur vos dépenses moyennes des 3 derniers mois
             </p>
-            <div className="space-y-2">
+            <div className="bg-card border border-border/30 rounded-2xl overflow-hidden divide-y divide-border/30">
               {categoriesWithoutBudget.map(({ category, spent, emoji, suggestedBudget }) => (
-                <div key={category} className="bg-card border border-border rounded-xl px-4 py-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium flex items-center gap-2"><CategoryIcon category={category} size="sm" /> {category}</span>
+                <div key={category} className="px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <CategoryIcon category={category} size="sm" />
+                    <div className="min-w-0">
+                      <span className="text-sm font-medium block truncate">{category}</span>
                       <div className="flex items-center gap-3 mt-0.5">
-                        <p className="text-xs text-muted-foreground">
+                        <span className="text-[10px] text-muted-foreground">
                           Ce mois : <span className="font-mono-amount font-medium text-foreground">{formatAmount(spent)}</span>
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Moy. 3 mois : <span className="font-mono-amount font-medium text-primary">{formatAmount(suggestedBudget)}</span>
-                        </p>
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          Moy. : <span className="font-mono-amount font-medium text-primary">{formatAmount(suggestedBudget)}</span>
+                        </span>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleCreateFromSuggestion(category, suggestedBudget)}
-                      className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors shrink-0 flex items-center gap-1.5"
-                    >
-                      <Target className="w-3 h-3" />
-                      {formatAmount(suggestedBudget)}
-                    </button>
                   </div>
+                  <button
+                    onClick={() => handleCreateFromSuggestion(category, suggestedBudget)}
+                    className="h-7 px-2.5 rounded-lg bg-primary/10 text-primary text-[11px] font-medium hover:bg-primary/20 transition-colors shrink-0 flex items-center gap-1"
+                  >
+                    <Plus className="w-3 h-3" />
+                    {formatAmount(suggestedBudget)}
+                  </button>
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
         )}
 
-        {/* Pie Chart - collapsible (moved to bottom) */}
+        {/* Pie Chart - collapsible */}
         {filteredBudgets.length > 0 && (
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+          <motion.div variants={fade} className="bg-card border border-border/30 rounded-2xl overflow-hidden">
             <button
               onClick={() => setChartExpanded(!chartExpanded)}
-              className="w-full px-5 py-3.5 flex items-center justify-between"
+              className="w-full px-4 py-3.5 flex items-center justify-between"
             >
               <div className="flex items-center gap-2">
                 <PieChart className="w-4 h-4 text-muted-foreground" />
@@ -804,7 +831,7 @@ const Budgets = () => {
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </motion.div>
         )}
 
         {/* ==================== MODALS ==================== */}
