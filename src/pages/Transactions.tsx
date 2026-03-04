@@ -282,28 +282,28 @@ const Transactions = () => {
           <div className="flex items-center rounded-xl border border-border/40 bg-card overflow-hidden divide-x divide-border/30">
             {selectMode ? (
               <>
-                <button onClick={toggleSelectAll} className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
+                <button onClick={toggleSelectAll} className="flex items-center gap-1.5 px-2.5 py-2 text-xs text-muted-foreground hover:bg-muted/50 transition-colors" title="Tout sélectionner">
                   <CheckSquare className="w-3.5 h-3.5" />
-                  <span>Tout</span>
+                  <span className="hidden sm:inline">Tout</span>
                 </button>
-                <button onClick={exitSelectMode} className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
+                <button onClick={exitSelectMode} className="flex items-center gap-1.5 px-2.5 py-2 text-xs text-muted-foreground hover:bg-muted/50 transition-colors" title="Annuler">
                   <X className="w-3.5 h-3.5" />
-                  <span>Annuler</span>
+                  <span className="hidden sm:inline">Annuler</span>
                 </button>
               </>
             ) : (
               <>
-                <button onClick={() => setSelectMode(true)} className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
+                <button onClick={() => setSelectMode(true)} className="flex items-center gap-1.5 px-2.5 py-2 text-xs text-muted-foreground hover:bg-muted/50 transition-colors" title="Sélectionner">
                   <CheckSquare className="w-3.5 h-3.5" />
-                  <span>Sélectionner</span>
+                  <span className="hidden sm:inline">Sélectionner</span>
                 </button>
-                <button onClick={() => setShowImportModal(true)} className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
+                <button onClick={() => setShowImportModal(true)} className="flex items-center gap-1.5 px-2.5 py-2 text-xs text-muted-foreground hover:bg-muted/50 transition-colors" title="Importer">
                   <Download className="w-3.5 h-3.5" />
-                  <span>Importer</span>
+                  <span className="hidden sm:inline">Importer</span>
                 </button>
-                <button onClick={() => setShowTransferModal(true)} className="flex items-center gap-1.5 px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
+                <button onClick={() => setShowTransferModal(true)} className="flex items-center gap-1.5 px-2.5 py-2 text-xs text-muted-foreground hover:bg-muted/50 transition-colors" title="Transfert">
                   <ArrowLeftRight className="w-3.5 h-3.5" />
-                  <span>Transfert</span>
+                  <span className="hidden sm:inline">Transfert</span>
                 </button>
               </>
             )}
