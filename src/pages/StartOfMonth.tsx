@@ -9,7 +9,9 @@ import { CategoryIcon } from '@/utils/categoryIcons';
 import { Debt, getDebtEmoji } from '@/types/debt';
 import { supabase } from '@/integrations/supabase/client';
 import { getBudgetStatus } from '@/utils/format';
-import { TrendingUp, TrendingDown, CreditCard, BarChart3, Check, X } from 'lucide-react';
+import { EXPENSE_CATEGORIES, CATEGORY_EMOJIS } from '@/types/finance';
+import { TrendingUp, TrendingDown, CreditCard, BarChart3, Check, X, Plus, AlertTriangle } from 'lucide-react';
+import AddBudgetModal from '@/components/AddBudgetModal';
 
 const STORAGE_KEY_PREFIX = 'finehome_start_month_';
 
@@ -37,11 +39,12 @@ function saveChecklist(monthYear: string, state: ChecklistState) {
 const StartOfMonth = () => {
   const {
     scopedTransactions: transactions, household, session,
-    scopedBudgets: budgets, getBudgetSpent,
+    scopedBudgets: budgets, getBudgetSpent, addBudget,
     scopedAccounts: accounts,
     householdId, financeScope, getMemberById,
     softDeleteRecurringTransaction,
   } = useApp();
+  const [showAddBudget, setShowAddBudget] = useState(false);
   const { formatAmount, currency } = useCurrency();
   const navigate = useNavigate();
 
@@ -348,45 +351,95 @@ const StartOfMonth = () => {
         </motion.div>
 
         {/* Step 4: Budgets */}
-        <motion.div variants={fade} className="rounded-2xl bg-card border border-border overflow-hidden">
-          <StepHeader stepNum={4} title="Budgets variables" subtitle="Vérifie tes plafonds pour ce mois" icon={BarChart3} done={step4Done} total={budgetData.length > 0 ? formatAmount(totalBudgetLimit) : '—'} />
-          <div className="divide-y divide-border/30">
-            {budgetData.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">Aucun budget configuré</p>
-            ) : budgetData.map(b => {
-              const checked = checkedBudgets.has(b.id);
-              const pct = Math.min(Math.round((b.spent / b.limit) * 100), 100);
-              const status = getBudgetStatus(b.spent, b.limit);
-              return (
-                <div key={b.id} className="px-4 py-2.5">
-                  <div className="flex items-center gap-3">
-                    <Checkbox checked={checked} onClick={() => toggle(checkedBudgets, setCheckedBudgets, b.id)} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium">{b.emoji} {b.category}</p>
-                        <span className="text-xs text-muted-foreground font-mono-amount">{formatAmount(b.spent)} / {formatAmount(b.limit)}</span>
-                      </div>
-                      <div className="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all ${status === 'over' ? 'bg-destructive' : status === 'warning' ? 'bg-warning' : 'bg-primary'}`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                      {status === 'over' && (
-                        <p className="text-[10px] text-destructive mt-1">⚠️ Dépassé de {formatAmount(b.spent - b.limit)}</p>
-                      )}
+        {(() => {
+          const unbudgeted = totalRecurringIncome - totalRecurringExpense - totalDebtPayments - totalBudgetLimit;
+          const budgetCoverage = totalRecurringIncome > 0 ? Math.round((totalBudgetLimit / (totalRecurringIncome - totalRecurringExpense - totalDebtPayments)) * 100) : 0;
+          const isFullyCovered = unbudgeted <= 0 || budgetCoverage >= 95;
+          const budgetedCategories = new Set(budgetData.map(b => b.category));
+
+          return (
+            <motion.div variants={fade} className="rounded-2xl bg-card border border-border overflow-hidden">
+              <StepHeader stepNum={4} title="Budgets variables" subtitle="Vérifie et complète tes budgets" icon={BarChart3} done={step4Done} total={budgetData.length > 0 ? formatAmount(totalBudgetLimit) : '—'} />
+              
+              {/* Unbudgeted warning */}
+              {!isFullyCovered && totalRecurringIncome > 0 && (
+                <div className="px-4 py-3 bg-warning/10 border-b border-warning/20">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-warning">
+                        {formatAmount(unbudgeted)} non budgété
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Tes budgets couvrent {budgetCoverage}% de ton disponible. Crée des budgets pour mieux contrôler tes dépenses.
+                      </p>
                     </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-          {step4Done && budgetData.length > 0 && (
-            <div className="px-4 py-2 bg-primary/5 text-center">
-              <p className="text-xs font-medium text-primary">✓ Budgets vérifiés</p>
-            </div>
-          )}
-        </motion.div>
+              )}
+              {isFullyCovered && budgetData.length > 0 && (
+                <div className="px-4 py-3 bg-success/10 border-b border-success/20">
+                  <div className="flex items-center gap-2.5">
+                    <Check className="w-4 h-4 text-success shrink-0" />
+                    <p className="text-sm font-medium text-success">Budget complet ! Tout ton disponible est alloué.</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="divide-y divide-border/30">
+                {budgetData.length === 0 ? (
+                  <div className="text-center py-4 px-4">
+                    <p className="text-sm text-muted-foreground mb-2">Aucun budget configuré</p>
+                    <p className="text-xs text-muted-foreground">Crée des budgets pour suivre tes dépenses variables</p>
+                  </div>
+                ) : budgetData.map(b => {
+                  const checked = checkedBudgets.has(b.id);
+                  const pct = Math.min(Math.round((b.spent / b.limit) * 100), 100);
+                  const status = getBudgetStatus(b.spent, b.limit);
+                  return (
+                    <div key={b.id} className="px-4 py-2.5">
+                      <div className="flex items-center gap-3">
+                        <Checkbox checked={checked} onClick={() => toggle(checkedBudgets, setCheckedBudgets, b.id)} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm font-medium">{b.emoji} {b.category}</p>
+                            <span className="text-xs text-muted-foreground font-mono-amount">{formatAmount(b.spent)} / {formatAmount(b.limit)}</span>
+                          </div>
+                          <div className="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${status === 'over' ? 'bg-destructive' : status === 'warning' ? 'bg-warning' : 'bg-primary'}`}
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                          {status === 'over' && (
+                            <p className="text-[10px] text-destructive mt-1">⚠️ Dépassé de {formatAmount(b.spent - b.limit)}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Add budget button */}
+              <div className="px-4 py-3 border-t border-border/50">
+                <button
+                  onClick={() => setShowAddBudget(true)}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-primary/40 text-primary text-sm font-medium hover:bg-primary/5 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Créer un budget
+                </button>
+              </div>
+
+              {step4Done && budgetData.length > 0 && (
+                <div className="px-4 py-2 bg-primary/5 text-center border-t border-border/30">
+                  <p className="text-xs font-medium text-primary">✓ Budgets vérifiés</p>
+                </div>
+              )}
+            </motion.div>
+          );
+        })()}
 
         {/* Summary card */}
         <motion.div variants={fade} className="rounded-2xl bg-muted/50 border border-border p-4">
