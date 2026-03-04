@@ -9,8 +9,9 @@ import { toast } from 'sonner';
 import Layout from '@/components/Layout';
 import BackHeader from '@/components/BackHeader';
 import { AccountIcon, CategoryIcon } from '@/utils/categoryIcons';
-import { ArrowUpRight, ArrowDownLeft, Pencil, Archive, Trash2, TrendingUp, TrendingDown, Calendar, ChevronDown } from 'lucide-react';
+import { ArrowUpRight, ArrowDownLeft, Pencil, Archive, Trash2, TrendingUp, TrendingDown, Calendar, ChevronDown, BarChart3 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const AccountDetail = () => {
   const { id } = useParams<{ id: string }>();
