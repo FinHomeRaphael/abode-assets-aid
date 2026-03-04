@@ -115,72 +115,10 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </header>
 
-      {/* FAB overlay */}
-      <AnimatePresence>
-        {fabOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="lg:hidden fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
-            onClick={() => setFabOpen(false)}
-          >
-            <div className="absolute bottom-24 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1.5" onClick={e => e.stopPropagation()}>
-              {fabActions.map((item, i) => (
-                <motion.button
-                  key={item.action}
-                  initial={{ opacity: 0, y: 16, scale: 0.9 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8, scale: 0.9 }}
-                  transition={{ delay: i * 0.03, type: 'spring', damping: 25, stiffness: 350 }}
-                  onClick={() => handleFabAction(item.action)}
-                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-card/95 backdrop-blur-lg shadow-lg border border-border/50 active:scale-95 transition-transform"
-                >
-                  <span className="text-base">{item.emoji}</span>
-                  <span className="text-sm font-medium text-foreground">{item.label}</span>
-                </motion.button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Mobile bottom nav */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border/50 safe-area-bottom">
         <div className="flex items-center h-[60px] px-2">
-          {mobileNavItems.slice(0, 2).map(item => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            return (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={`flex flex-col items-center justify-center gap-0.5 flex-1 h-full transition-all relative ${
-                  isActive ? 'text-primary' : 'text-muted-foreground'
-                }`}
-              >
-                <div className={`flex items-center justify-center w-9 h-9 rounded-xl transition-colors ${isActive ? 'bg-primary/10' : ''}`}>
-                  <Icon className={`w-[18px] h-[18px] transition-transform ${isActive ? 'scale-110' : ''}`} />
-                </div>
-                <span className={`text-[9px] font-medium leading-tight ${isActive ? 'text-primary' : ''}`}>{item.label}</span>
-              </button>
-            );
-          })}
-
-          {/* Center + button */}
-          <div className="flex flex-col items-center justify-center flex-1 h-full">
-            <button
-              onClick={() => setFabOpen(prev => !prev)}
-              className="w-11 h-11 -mt-1 rounded-2xl bg-primary shadow-md shadow-primary/25 flex items-center justify-center active:scale-90 transition-all"
-            >
-              <motion.div animate={{ rotate: fabOpen ? 45 : 0 }} transition={{ duration: 0.15 }}>
-                <Plus className="w-5 h-5 text-primary-foreground" />
-              </motion.div>
-            </button>
-          </div>
-
-          {mobileNavItems.slice(2).map(item => {
+          {mobileNavItems.map(item => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             return (
