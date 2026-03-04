@@ -161,6 +161,11 @@ const StartOfMonth = () => {
   const totalDebtPayments = debts.reduce((s, d) => s + d.paymentAmount, 0);
   const totalBudgetLimit = budgetData.reduce((s, b) => s + b.limit, 0);
 
+  // Month-level totals (all transactions, for hero summary)
+  const totalMonthExpenses = useMemo(() =>
+    monthTx.filter(t => t.type === 'expense' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0),
+    [monthTx]);
+
   // Step completion
   const step1Done = recurringIncomes.length === 0 || recurringIncomes.every(t => checkedIncomes.has(t.id) || cancelledIncomes.has(t.id));
   const step2Done = recurringExpenses.length === 0 || recurringExpenses.every(t => checkedExpenses.has(t.id) || cancelledExpenses.has(t.id));
