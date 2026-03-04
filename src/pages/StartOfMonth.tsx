@@ -155,6 +155,12 @@ const StartOfMonth = () => {
     setConfirmCancel(null);
   };
 
+  // Totals (computed before step completion checks)
+  const totalRecurringIncome = recurringIncomes.filter(t => !cancelledIncomes.has(t.id)).reduce((s, t) => s + t.convertedAmount, 0);
+  const totalRecurringExpense = recurringExpenses.filter(t => !cancelledExpenses.has(t.id)).reduce((s, t) => s + t.convertedAmount, 0);
+  const totalDebtPayments = debts.reduce((s, d) => s + d.paymentAmount, 0);
+  const totalBudgetLimit = budgetData.reduce((s, b) => s + b.limit, 0);
+
   // Step completion
   const step1Done = recurringIncomes.length === 0 || recurringIncomes.every(t => checkedIncomes.has(t.id) || cancelledIncomes.has(t.id));
   const step2Done = recurringExpenses.length === 0 || recurringExpenses.every(t => checkedExpenses.has(t.id) || cancelledExpenses.has(t.id));
@@ -170,11 +176,30 @@ const StartOfMonth = () => {
   const progressPct = Math.round((completedSteps / totalSteps) * 100);
   const allDone = completedSteps === totalSteps;
 
-  // Totals
-  const totalRecurringIncome = recurringIncomes.filter(t => !cancelledIncomes.has(t.id)).reduce((s, t) => s + t.convertedAmount, 0);
-  const totalRecurringExpense = recurringExpenses.filter(t => !cancelledExpenses.has(t.id)).reduce((s, t) => s + t.convertedAmount, 0);
-  const totalDebtPayments = debts.reduce((s, d) => s + d.paymentAmount, 0);
-  const totalBudgetLimit = budgetData.reduce((s, b) => s + b.limit, 0);
+  // Budget suggestions: categories with spending but no budget
+  const budgetedCategories = useMemo(() => new Set(budgetData.map(b => b.category)), [budgetData]);
+  const budgetSuggestions = useMemo(() => {
+    const expenseTx = monthTx.filter(t => t.type === 'expense' && t.category !== 'Transfert');
+    const catSpent = new Map<string, number>();
+    expenseTx.forEach(t => {
+      if (!budgetedCategories.has(t.category)) {
+        catSpent.set(t.category, (catSpent.get(t.category) || 0) + t.convertedAmount);
+      }
+    });
+    // Add debt suggestion if no debt budget exists
+    if (!budgetedCategories.has('Dettes') && totalDebtPayments > 0) {
+      catSpent.set('Dettes', totalDebtPayments);
+    }
+    return Array.from(catSpent.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([cat, spent]) => ({
+        category: cat,
+        spent,
+        emoji: CATEGORY_EMOJIS[cat] || '📌',
+        suggestedAmount: cat === 'Dettes' ? totalDebtPayments : Math.round(spent),
+      }));
+  }, [monthTx, budgetedCategories, totalDebtPayments]);
 
   const fade = { hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
   const stagger = { hidden: {}, show: { transition: { staggerChildren: 0.06 } } };
