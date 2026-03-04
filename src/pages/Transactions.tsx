@@ -150,8 +150,8 @@ const Transactions = () => {
   const savingsExpenseTotal = savingsTransferOut + savingsDirectExpenses;
   const monthSavingsNet = savingsIncomeTotal - savingsExpenseTotal;
 
-  const monthIncome = filtered.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
-  const monthExpense = filtered.filter(t => t.type === 'expense' && !isAnySavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const monthIncome = monthTx.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const monthExpense = monthTx.filter(t => t.type === 'expense' && !isAnySavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
 
   const allAccountTypes = [...ACCOUNT_TYPES, ...customAccountTypes.map(t => ({ value: t.value, label: t.label, emoji: t.emoji }))];
   const getAccountLabel = (accountId: string | null | undefined) => {
@@ -165,11 +165,11 @@ const Transactions = () => {
   const breakdownByAccount = useMemo(() => {
     const incomeByAccount: Record<string, number> = {};
     const expenseByAccount: Record<string, number> = {};
-    filtered.filter(t => t.type === 'income' && t.category !== 'Transfert').forEach(t => {
+    monthTx.filter(t => t.type === 'income' && t.category !== 'Transfert').forEach(t => {
       const key = t.accountId || '__none__';
       incomeByAccount[key] = (incomeByAccount[key] || 0) + t.convertedAmount;
     });
-    filtered.filter(t => t.type === 'expense' && !isAnySavingsTx(t) && t.category !== 'Transfert').forEach(t => {
+    monthTx.filter(t => t.type === 'expense' && !isAnySavingsTx(t) && t.category !== 'Transfert').forEach(t => {
       const key = t.accountId || '__none__';
       expenseByAccount[key] = (expenseByAccount[key] || 0) + t.convertedAmount;
     });
