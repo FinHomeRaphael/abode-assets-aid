@@ -109,8 +109,9 @@ const StartOfMonth = () => {
     monthTx.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0),
     [monthTx]);
 
-  // Available to budget = income - |savings net| - budgeted (same formula as Budgets page)
+  // Available to budget = income - |savings net| - savings target - budgeted (same formula as Budgets page)
   const totalSavingsDeducted = Math.abs(monthSavingsNet);
+  const savingsTarget = household.monthlySavingsTarget ?? 0;
   const availableAfterSavings = totalIncome - totalSavingsDeducted;
 
   // Budgets — use getBudgetsForMonth to only get budgets active for current month
@@ -170,8 +171,8 @@ const StartOfMonth = () => {
   const step1Done = recurringIncomes.length === 0 || recurringIncomes.every(t => checkedIncomes.has(t.id) || cancelledIncomes.has(t.id));
   const step2Done = recurringExpenses.length === 0 || recurringExpenses.every(t => checkedExpenses.has(t.id) || cancelledExpenses.has(t.id));
   const step3Done = debts.length === 0 || debts.every(d => checkedDebts.has(d.id));
-  const remainingToBudget = availableAfterSavings - totalBudgetLimit;
-  const budgetCoverage = availableAfterSavings > 0 ? Math.round((totalBudgetLimit / availableAfterSavings) * 100) : 0;
+  const remainingToBudget = availableAfterSavings - totalBudgetLimit - savingsTarget;
+  const budgetCoverage = availableAfterSavings > 0 ? Math.round(((totalBudgetLimit + savingsTarget) / availableAfterSavings) * 100) : 0;
   const isFullyCovered = remainingToBudget <= 0 || budgetCoverage >= 95;
   const step4Done = budgetData.length > 0 && isFullyCovered;
 
@@ -432,6 +433,12 @@ const StartOfMonth = () => {
                 <span className="text-muted-foreground">Revenus - Épargne</span>
                 <span className="font-mono-amount font-medium">{formatAmount(availableAfterSavings)}</span>
               </div>
+              {savingsTarget > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Objectif d'épargne</span>
+                  <span className="font-mono-amount font-medium text-primary">-{formatAmount(savingsTarget)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Budgété</span>
                 <span className="font-mono-amount font-medium text-primary">-{formatAmount(totalBudgetLimit)}</span>

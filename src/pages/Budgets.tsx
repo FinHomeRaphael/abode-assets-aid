@@ -197,11 +197,13 @@ const Budgets = () => {
     return filteredBudgets.reduce((s, b) => s + b.limit, 0);
   }, [filteredBudgets]);
 
-  // Available to budget = income - abs(savings net) - budgeted
+  // Available to budget = income - abs(savings net) - savings target - budgeted
   const totalSavingsDeducted = Math.abs(monthSavingsNet);
+  const effectiveSavingsTarget = savingsTarget ?? 0;
+  const totalAllocated = totalBudgeted + effectiveSavingsTarget;
   const availableAfterSavings = totalIncome - totalSavingsDeducted;
-  const remainingToBudget = availableAfterSavings - totalBudgeted;
-  const budgetPercentage = availableAfterSavings > 0 ? Math.min((totalBudgeted / availableAfterSavings) * 100, 100) : 0;
+  const remainingToBudget = availableAfterSavings - totalAllocated;
+  const budgetPercentage = availableAfterSavings > 0 ? Math.min((totalAllocated / availableAfterSavings) * 100, 100) : 0;
 
   // === 3-month average spending per category ===
   const avg3MonthByCategory = useMemo(() => {
@@ -405,6 +407,12 @@ const Budgets = () => {
                       <span className="flex items-center gap-1.5"><Minus className="w-3 h-3" /> Épargne nette</span>
                       <span className="font-mono-amount font-semibold">- {formatAmount(totalSavingsDeducted)}</span>
                     </div>
+                    {effectiveSavingsTarget > 0 && (
+                      <div className="flex items-center justify-between text-xs text-primary-foreground/80">
+                        <span className="flex items-center gap-1.5"><Target className="w-3 h-3" /> Objectif d'épargne</span>
+                        <span className="font-mono-amount font-semibold">- {formatAmount(effectiveSavingsTarget)}</span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between text-xs text-primary-foreground/80">
                       <span className="flex items-center gap-1.5"><Minus className="w-3 h-3" /> Budgété</span>
                       <span className="font-mono-amount font-semibold">- {formatAmount(totalBudgeted)}</span>
@@ -442,7 +450,7 @@ const Budgets = () => {
           <div className="bg-card border border-border/30 rounded-xl p-3 text-center">
             <PieChart className="w-3.5 h-3.5 text-primary mx-auto mb-1" />
             <p className="text-[9px] text-muted-foreground mb-0.5">Budgété</p>
-            <p className="font-mono-amount font-bold text-foreground text-xs">{formatAmount(totalBudgeted)}</p>
+            <p className="font-mono-amount font-bold text-foreground text-xs">{formatAmount(totalAllocated)}</p>
           </div>
           <div className="bg-card border border-border/30 rounded-xl p-3 text-center">
             <Wallet className={`w-3.5 h-3.5 mx-auto mb-1 ${monthSavingsNet >= 0 ? 'text-success' : 'text-destructive'}`} />
