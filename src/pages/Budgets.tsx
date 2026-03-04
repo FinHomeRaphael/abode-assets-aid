@@ -12,7 +12,7 @@ import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import { useSubscription } from '@/hooks/useSubscription';
 import { useNavigate } from 'react-router-dom';
-import { Plus, X, ChevronDown, ChevronUp, TrendingUp, Wallet, AlertTriangle, CheckCircle, PieChart, Lightbulb, ArrowRight, Target, Pencil, PartyPopper } from 'lucide-react';
+import { Plus, X, ChevronDown, ChevronUp, TrendingUp, Wallet, AlertTriangle, CheckCircle, PieChart, Lightbulb, ArrowRight, Target, Pencil, PartyPopper, CircleAlert, CircleCheck, Clock, Trash2, StopCircle, CreditCard } from 'lucide-react';
 import { CategoryIcon, getCategoryIcon } from '@/utils/categoryIcons';
 import { supabase } from '@/integrations/supabase/client';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
@@ -306,9 +306,9 @@ const Budgets = () => {
   };
 
   const getStatusIcon = (pct: number) => {
-    if (pct > 100) return '🔴';
-    if (pct >= 80) return '⚠️';
-    return '✅';
+    if (pct > 100) return <CircleAlert className="w-4 h-4 text-destructive" />;
+    if (pct >= 80) return <AlertTriangle className="w-4 h-4 text-warning" />;
+    return <CircleCheck className="w-4 h-4 text-success" />;
   };
 
   const formatMonth = (monthStr: string) => {
@@ -437,7 +437,7 @@ const Budgets = () => {
               onClick={() => navigate('/transactions')}
               className="flex items-center gap-1.5 w-full px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-colors text-left"
             >
-              <span>⚠️</span>
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
               <span className="flex-1">Vous puisez dans vos économies ce mois-ci. Pensez à faire un transfert vers votre épargne.</span>
               <ArrowRight className="w-3 h-3 flex-shrink-0" />
             </button>
@@ -525,7 +525,7 @@ const Budgets = () => {
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-semibold text-sm flex items-center gap-2"><CategoryIcon category={b.category} size="sm" /> {b.category}</span>
-                      <span className="text-lg">{getStatusIcon(pct)}</span>
+                      {getStatusIcon(pct)}
                     </div>
                     <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
                       <span>Budget : <span className="font-mono-amount text-foreground">{formatAmount(b.limit)}</span></span>
@@ -564,7 +564,7 @@ const Budgets = () => {
             <div className="bg-card border border-primary/30 rounded-xl px-4 py-3">
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium">💳 Dettes</span>
+                  <span className="text-sm font-medium flex items-center gap-2"><CreditCard className="w-4 h-4 text-muted-foreground" /> Dettes</span>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     Échéance mensuelle totale
                   </p>
@@ -653,7 +653,7 @@ const Budgets = () => {
                       }));
                       const remaining = Math.max(remainingToBudget, 0);
                       const chartData = remaining > 0
-                        ? [...budgetData, { name: '💡 Restant à budgéter', value: remaining, spent: 0, color: '#d1d5db' }]
+                        ? [...budgetData, { name: 'Restant à budgéter', value: remaining, spent: 0, color: '#d1d5db' }]
                         : budgetData;
                       const chartTotal = chartData.reduce((s, d) => s + d.value, 0);
                       const activeIndex = hoveredSlice;
@@ -714,9 +714,9 @@ const Budgets = () => {
                             {/* Center label */}
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                               <div className="text-center">
-                                {activeIndex !== null && chartData[activeIndex].name !== '💡 Restant à budgéter' ? (
+                                {activeIndex !== null && chartData[activeIndex].name !== 'Restant à budgéter' ? (
                                   <>
-                                    <p className="text-[10px] text-muted-foreground max-w-[80px] truncate mx-auto">{chartData[activeIndex].name}</p>
+                                     <p className="text-[10px] text-muted-foreground max-w-[80px] truncate mx-auto">{chartData[activeIndex].name}</p>
                                     <p className="text-sm font-bold font-mono-amount">{formatAmount(chartData[activeIndex].spent)}</p>
                                     <p className="text-[9px] text-muted-foreground">sur {formatAmount(chartData[activeIndex].value)}</p>
                                   </>
@@ -738,7 +738,7 @@ const Budgets = () => {
                             {chartData.map((item, i) => {
                               const pct = chartTotal > 0 ? Math.round((item.value / chartTotal) * 100) : 0;
                               const isActive = activeIndex === i;
-                                  const isOver = item.spent > item.value && item.name !== '💡 Restant à budgéter';
+                                  const isOver = item.spent > item.value && item.name !== 'Restant à budgéter';
                                   return (
                                 <div
                                   key={i}
@@ -767,7 +767,7 @@ const Budgets = () => {
                                       </div>
                                       <span className="font-mono-amount font-semibold text-foreground shrink-0 ml-2">{pct}%</span>
                                     </div>
-                                    {item.value > 0 && item.spent !== undefined && item.name !== '💡 Restant à budgéter' ? (
+                                    {item.value > 0 && item.spent !== undefined && item.name !== 'Restant à budgéter' ? (
                                       <div className="space-y-0.5">
                                         <div className="flex items-center gap-2">
                                           <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
@@ -785,7 +785,7 @@ const Budgets = () => {
                                         </div>
                                         {isOver && (
                                           <p className="text-[10px] text-destructive font-medium">
-                                            ⚠️ Dépassement de {formatAmount(item.spent - item.value)}
+                                            Dépassement de {formatAmount(item.spent - item.value)}
                                           </p>
                                         )}
                                       </div>
@@ -860,14 +860,14 @@ const Budgets = () => {
 
                   {newCategory === 'Dettes' ? (
                     <div className="bg-muted/50 border border-border rounded-xl px-3 py-2">
-                      <p className="text-xs text-muted-foreground">💡 Le budget Dettes s'adapte automatiquement chaque mois selon vos échéances. Il ne peut pas être récurrent.</p>
+                      <p className="text-xs text-muted-foreground"><Lightbulb className="w-3 h-3 inline mr-1" />Le budget Dettes s'adapte automatiquement chaque mois selon vos échéances. Il ne peut pas être récurrent.</p>
                     </div>
                   ) : (
                     <div>
                       <label className="block text-xs font-medium mb-1">Type</label>
                       <div className="flex gap-2">
-                        <button onClick={() => setNewIsRecurring(true)} className={`flex-1 py-2 rounded-xl border text-sm font-medium transition-all ${newIsRecurring ? 'border-primary bg-primary/5 text-primary' : 'border-border/30 bg-secondary/20 hover:bg-secondary/40'}`}>🔄 Récurrent</button>
-                        <button onClick={() => setNewIsRecurring(false)} className={`flex-1 py-2 rounded-xl border text-sm font-medium transition-all ${!newIsRecurring ? 'border-primary bg-primary/5 text-primary' : 'border-border/30 bg-secondary/20 hover:bg-secondary/40'}`}>📌 Ponctuel</button>
+                         <button onClick={() => setNewIsRecurring(true)} className={`flex-1 py-2 rounded-xl border text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${newIsRecurring ? 'border-primary bg-primary/5 text-primary' : 'border-border/30 bg-secondary/20 hover:bg-secondary/40'}`}><Clock className="w-3.5 h-3.5" /> Récurrent</button>
+                         <button onClick={() => setNewIsRecurring(false)} className={`flex-1 py-2 rounded-xl border text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${!newIsRecurring ? 'border-primary bg-primary/5 text-primary' : 'border-border/30 bg-secondary/20 hover:bg-secondary/40'}`}><Target className="w-3.5 h-3.5" /> Ponctuel</button>
                       </div>
                       <p className="text-[10px] text-muted-foreground mt-1">{newIsRecurring ? 'Actif tous les mois.' : 'Ce mois uniquement.'}</p>
                     </div>
@@ -979,9 +979,9 @@ const Budgets = () => {
                       <button onClick={() => setEditTarget(null)} className="flex-1 py-2.5 rounded-xl border border-border/30 text-sm font-medium hover:bg-secondary/30 transition-colors">Annuler</button>
                       <button onClick={handleSaveEdit} className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">Enregistrer</button>
                     </div>
-                    <button onClick={handleDeleteFromEdit} className="w-full py-2.5 rounded-xl bg-destructive/5 border border-destructive/15 text-destructive text-sm font-semibold hover:bg-destructive/10 transition-colors">
-                      🗑️ Supprimer
-                    </button>
+                     <button onClick={handleDeleteFromEdit} className="w-full py-2.5 rounded-xl bg-destructive/5 border border-destructive/15 text-destructive text-sm font-semibold hover:bg-destructive/10 transition-colors flex items-center justify-center gap-1.5">
+                       <Trash2 className="w-3.5 h-3.5" /> Supprimer
+                     </button>
                   </div>
                 </div>
               </motion.div>
@@ -995,17 +995,17 @@ const Budgets = () => {
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-foreground/30 backdrop-blur-md flex items-center justify-center p-4" onClick={() => setDeleteTarget(null)}>
               <motion.div initial={{ scale: 0.92, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.92, opacity: 0, y: 20 }} transition={{ type: 'spring', damping: 25, stiffness: 300 }} onClick={e => e.stopPropagation()} className="bg-card w-full max-w-sm rounded-2xl border border-border/30 shadow-2xl p-5">
                 <h2 className="text-base font-bold mb-1">Supprimer le budget</h2>
-                <p className="text-xs text-muted-foreground mb-4">{deleteTarget.emoji} {deleteTarget.category} — {formatAmount(deleteTarget.limit)}</p>
+                <p className="text-xs text-muted-foreground mb-4"><CategoryIcon category={deleteTarget.category} size="sm" className="inline-block mr-1" /> {deleteTarget.category} — {formatAmount(deleteTarget.limit)}</p>
                 {deleteTarget.isRecurring ? (
                   <div className="space-y-2">
-                    <button onClick={handleSoftDelete} className="w-full py-3 rounded-xl border border-border/30 bg-secondary/20 text-sm font-medium hover:bg-secondary/40 transition-colors text-left px-4">
-                      <p className="font-semibold">⏹️ Arrêter pour les mois à venir</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">L'historique est conservé</p>
-                    </button>
-                    <button onClick={handleHardDelete} className="w-full py-3 rounded-xl border border-destructive/20 bg-destructive/5 text-sm font-medium hover:bg-destructive/10 transition-colors text-left px-4">
-                      <p className="font-semibold text-destructive">🗑️ Supprimer complètement</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">Efface de tous les mois</p>
-                    </button>
+                     <button onClick={handleSoftDelete} className="w-full py-3 rounded-xl border border-border/30 bg-secondary/20 text-sm font-medium hover:bg-secondary/40 transition-colors text-left px-4">
+                       <p className="font-semibold flex items-center gap-1.5"><StopCircle className="w-3.5 h-3.5 text-muted-foreground" /> Arrêter pour les mois à venir</p>
+                       <p className="text-[10px] text-muted-foreground mt-0.5 ml-5">L'historique est conservé</p>
+                     </button>
+                     <button onClick={handleHardDelete} className="w-full py-3 rounded-xl border border-destructive/20 bg-destructive/5 text-sm font-medium hover:bg-destructive/10 transition-colors text-left px-4">
+                       <p className="font-semibold text-destructive flex items-center gap-1.5"><Trash2 className="w-3.5 h-3.5" /> Supprimer complètement</p>
+                       <p className="text-[10px] text-muted-foreground mt-0.5 ml-5">Efface de tous les mois</p>
+                     </button>
                     <button onClick={() => setDeleteTarget(null)} className="w-full py-2.5 rounded-xl border border-border/30 text-sm font-medium hover:bg-secondary/30 transition-colors">Annuler</button>
                   </div>
                 ) : (
