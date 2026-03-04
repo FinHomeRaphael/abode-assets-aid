@@ -354,15 +354,15 @@ const StartOfMonth = () => {
           <div className="mt-3 pt-3 border-t border-border/30 grid grid-cols-3 gap-2 text-center">
             <div>
               <p className="text-[10px] text-muted-foreground">Revenus</p>
-              <p className="text-[13px] font-bold font-mono-amount text-success">+{formatAmount(totalRecurringIncome)}</p>
+              <p className="text-[13px] font-bold font-mono-amount text-success">+{formatAmount(totalIncome)}</p>
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground">Sorties fixes</p>
-              <p className="text-[13px] font-bold font-mono-amount text-destructive">-{formatAmount(totalRecurringExpense + totalDebtPayments)}</p>
+              <p className="text-[10px] text-muted-foreground">Dépenses</p>
+              <p className="text-[13px] font-bold font-mono-amount text-destructive">-{formatAmount(totalMonthExpenses)}</p>
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground">Reste à vivre</p>
-              <p className={`text-[13px] font-bold font-mono-amount ${(totalRecurringIncome - totalRecurringExpense - totalDebtPayments) >= 0 ? 'text-foreground' : 'text-destructive'}`}>{formatAmount(totalRecurringIncome - totalRecurringExpense - totalDebtPayments)}</p>
+              <p className={`text-[13px] font-bold font-mono-amount ${(totalIncome - totalMonthExpenses - totalSavingsDeducted) >= 0 ? 'text-foreground' : 'text-destructive'}`}>{formatAmount(totalIncome - totalMonthExpenses - totalSavingsDeducted)}</p>
             </div>
           </div>
         </motion.div>
