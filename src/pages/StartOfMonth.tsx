@@ -10,7 +10,7 @@ import { Debt, getDebtEmoji } from '@/types/debt';
 import { supabase } from '@/integrations/supabase/client';
 import { getBudgetStatus } from '@/utils/format';
 import { EXPENSE_CATEGORIES, CATEGORY_EMOJIS } from '@/types/finance';
-import { TrendingUp, TrendingDown, CreditCard, BarChart3, Check, X, Plus, AlertTriangle } from 'lucide-react';
+import { TrendingUp, TrendingDown, CreditCard, BarChart3, Check, X, Plus, AlertTriangle, Lightbulb } from 'lucide-react';
 import AddBudgetModal from '@/components/AddBudgetModal';
 
 const STORAGE_KEY_PREFIX = 'finehome_start_month_';
@@ -403,96 +403,113 @@ const StartOfMonth = () => {
           )}
         </motion.div>
 
-        {/* Step 4: Budgets */}
-        {(() => {
-          const remainingToBudget = availableAfterSavings - totalBudgetLimit;
-          const budgetCoverage = availableAfterSavings > 0 ? Math.round((totalBudgetLimit / availableAfterSavings) * 100) : 0;
-          const isFullyCovered = remainingToBudget <= 0 || budgetCoverage >= 95;
-          const budgetedCategories = new Set(budgetData.map(b => b.category));
-
-          return (
-            <motion.div variants={fade} className="rounded-2xl bg-card border border-border overflow-hidden">
-              <StepHeader stepNum={4} title="Budgets variables" subtitle="Vérifie et complète tes budgets" icon={BarChart3} done={step4Done} total={budgetData.length > 0 ? formatAmount(totalBudgetLimit) : '—'} />
-              
-              {/* Unbudgeted warning */}
-              {!isFullyCovered && availableAfterSavings > 0 && (
-                <div className="px-4 py-3 bg-warning/10 border-b border-warning/20">
-                  <div className="flex items-start gap-2.5">
-                    <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-warning">
-                        {formatAmount(remainingToBudget)} reste à budgéter
-                      </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Tes budgets couvrent {budgetCoverage}% de ton disponible ({formatAmount(availableAfterSavings)}). Crée des budgets pour mieux contrôler tes dépenses.
-                      </p>
-                    </div>
-                  </div>
+        <motion.div variants={fade} className="rounded-2xl bg-card border border-border overflow-hidden">
+          <StepHeader stepNum={4} title="Budgets variables" subtitle="Alloue ton disponible à des budgets" icon={BarChart3} done={step4Done} total={budgetData.length > 0 ? formatAmount(totalBudgetLimit) : '—'} />
+          
+          {/* Unbudgeted warning */}
+          {!isFullyCovered && availableAfterSavings > 0 && (
+            <div className="px-4 py-3 bg-warning/10 border-b border-warning/20">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-warning">
+                    {formatAmount(remainingToBudget)} reste à budgéter
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Tes budgets couvrent {budgetCoverage}% de ton disponible ({formatAmount(availableAfterSavings)}).
+                  </p>
                 </div>
-              )}
-              {isFullyCovered && budgetData.length > 0 && (
-                <div className="px-4 py-3 bg-success/10 border-b border-success/20">
-                  <div className="flex items-center gap-2.5">
-                    <Check className="w-4 h-4 text-success shrink-0" />
-                    <p className="text-sm font-medium text-success">Budget complet ! Tout ton disponible est alloué.</p>
-                  </div>
-                </div>
-              )}
-
-              <div className="divide-y divide-border/30">
-                {budgetData.length === 0 ? (
-                  <div className="text-center py-4 px-4">
-                    <p className="text-sm text-muted-foreground mb-2">Aucun budget configuré</p>
-                    <p className="text-xs text-muted-foreground">Crée des budgets pour suivre tes dépenses variables</p>
-                  </div>
-                ) : budgetData.map(b => {
-                  const checked = checkedBudgets.has(b.id);
-                  const pct = Math.min(Math.round((b.spent / b.limit) * 100), 100);
-                  const status = getBudgetStatus(b.spent, b.limit);
-                  return (
-                    <div key={b.id} className="px-4 py-2.5">
-                      <div className="flex items-center gap-3">
-                        <Checkbox checked={checked} onClick={() => toggle(checkedBudgets, setCheckedBudgets, b.id)} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium">{b.emoji} {b.category}</p>
-                            <span className="text-xs text-muted-foreground font-mono-amount">{formatAmount(b.spent)} / {formatAmount(b.limit)}</span>
-                          </div>
-                          <div className="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all ${status === 'over' ? 'bg-destructive' : status === 'warning' ? 'bg-warning' : 'bg-primary'}`}
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          {status === 'over' && (
-                            <p className="text-[10px] text-destructive mt-1">⚠️ Dépassé de {formatAmount(b.spent - b.limit)}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
-
-              {/* Add budget button */}
-              <div className="px-4 py-3 border-t border-border/50">
-                <button
-                  onClick={() => setShowAddBudget(true)}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-primary/40 text-primary text-sm font-medium hover:bg-primary/5 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Créer un budget
-                </button>
+            </div>
+          )}
+          {isFullyCovered && budgetData.length > 0 && (
+            <div className="px-4 py-3 bg-success/10 border-b border-success/20">
+              <div className="flex items-center gap-2.5">
+                <Check className="w-4 h-4 text-success shrink-0" />
+                <p className="text-sm font-medium text-success">Budget complet ! Tout ton disponible est alloué.</p>
               </div>
+            </div>
+          )}
 
-              {step4Done && budgetData.length > 0 && (
-                <div className="px-4 py-2 bg-primary/5 text-center border-t border-border/30">
-                  <p className="text-xs font-medium text-primary">✓ Budgets vérifiés</p>
-                </div>
-              )}
-            </motion.div>
-          );
-        })()}
+          {/* Existing budgets (read-only, no checkboxes) */}
+          {budgetData.length > 0 && (
+            <div className="divide-y divide-border/30">
+              {budgetData.map(b => {
+                const pct = Math.min(Math.round((b.spent / b.limit) * 100), 100);
+                const status = getBudgetStatus(b.spent, b.limit);
+                return (
+                  <div key={b.id} className="px-4 py-2.5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium">{b.emoji} {b.category}</p>
+                      <span className="text-xs text-muted-foreground font-mono-amount">{formatAmount(b.spent)} / {formatAmount(b.limit)}</span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${status === 'over' ? 'bg-destructive' : status === 'warning' ? 'bg-warning' : 'bg-primary'}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    {status === 'over' && (
+                      <p className="text-[10px] text-destructive mt-1">⚠️ Dépassé de {formatAmount(b.spent - b.limit)}</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {budgetData.length === 0 && (
+            <div className="text-center py-4 px-4">
+              <p className="text-sm text-muted-foreground">Aucun budget configuré</p>
+              <p className="text-xs text-muted-foreground mt-1">Crée des budgets pour suivre tes dépenses variables</p>
+            </div>
+          )}
+
+          {/* Budget suggestions */}
+          {budgetSuggestions.length > 0 && !isFullyCovered && (
+            <div className="px-4 py-3 border-t border-border/50">
+              <div className="flex items-center gap-2 mb-2">
+                <Lightbulb className="w-3.5 h-3.5 text-primary" />
+                <p className="text-xs font-semibold text-muted-foreground">Suggestions</p>
+              </div>
+              <div className="space-y-2">
+                {budgetSuggestions.map(s => (
+                  <button
+                    key={s.category}
+                    onClick={() => setShowAddBudget(true)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-muted/50 hover:bg-primary/5 transition-colors text-left"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm">{s.emoji}</span>
+                      <span className="text-xs font-medium truncate">{s.category}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[11px] text-muted-foreground font-mono-amount">~{formatAmount(s.suggestedAmount)}</span>
+                      <Plus className="w-3.5 h-3.5 text-primary" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Add budget button */}
+          <div className="px-4 py-3 border-t border-border/50">
+            <button
+              onClick={() => setShowAddBudget(true)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-primary/40 text-primary text-sm font-medium hover:bg-primary/5 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Créer un budget
+            </button>
+          </div>
+
+          {step4Done && (
+            <div className="px-4 py-2 bg-primary/5 text-center border-t border-border/30">
+              <p className="text-xs font-medium text-primary">✓ Budgets complets</p>
+            </div>
+          )}
+        </motion.div>
 
         {/* Summary card */}
         <motion.div variants={fade} className="rounded-2xl bg-muted/50 border border-border p-4">
