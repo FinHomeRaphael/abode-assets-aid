@@ -115,90 +115,132 @@ const LoginPage = () => {
         </div>
 
         <div className="card-elevated p-8">
-          <div className="flex mb-6 bg-muted rounded-xl p-1">
-            <button onClick={() => setIsRegister(false)} className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${!isRegister ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
-              Connexion
-            </button>
-            <button onClick={() => setIsRegister(true)} className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${isRegister ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
-              Inscription
-            </button>
-          </div>
+          {isForgotPassword ? (
+            <>
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold mb-1">Mot de passe oublié</h2>
+                <p className="text-sm text-muted-foreground">Entrez votre email pour recevoir un lien de réinitialisation.</p>
+              </div>
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Email</label>
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="thomas@finhome.app" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                </div>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
+                >
+                  {isLoading ? '...' : 'Envoyer le lien'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsForgotPassword(false)}
+                  className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  ← Retour à la connexion
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <div className="flex mb-6 bg-muted rounded-xl p-1">
+                <button onClick={() => setIsRegister(false)} className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${!isRegister ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
+                  Connexion
+                </button>
+                <button onClick={() => setIsRegister(true)} className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all ${isRegister ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground'}`}>
+                  Inscription
+                </button>
+              </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {isRegister && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-4">
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium mb-1.5">Nom</label>
-                    <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Dupont" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium mb-1.5">Prénom</label>
-                    <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Thomas" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
-                  </div>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {isRegister && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="space-y-4">
+                    <div className="flex gap-3">
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium mb-1.5">Nom</label>
+                        <input type="text" value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Dupont" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium mb-1.5">Prénom</label>
+                        <input type="text" value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="Thomas" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">Devise principale</label>
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrencyPicker(!showCurrencyPicker)}
+                        className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-ring"
+                      >
+                        <span>{CURRENCY_SYMBOLS[currency] || currency} {currency} {CURRENCY_NAMES[currency] ? `— ${CURRENCY_NAMES[currency]}` : ''}</span>
+                        <span className="text-muted-foreground">{showCurrencyPicker ? '▲' : '▼'}</span>
+                      </button>
+                      {showCurrencyPicker && (
+                        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-2 border border-input rounded-xl overflow-hidden bg-background">
+                          <input
+                            value={currencySearch}
+                            onChange={e => setCurrencySearch(e.target.value)}
+                            placeholder="🔍 Rechercher..."
+                            className="w-full px-4 py-2.5 text-sm border-b border-input focus:outline-none"
+                          />
+                          <div className="max-h-36 overflow-y-auto">
+                            {filteredCurrencies.map(c => (
+                              <button
+                                key={c}
+                                type="button"
+                                onClick={() => { setCurrency(c); setShowCurrencyPicker(false); setCurrencySearch(''); }}
+                                className={`w-full flex items-center justify-between px-4 py-2 text-sm text-left transition-all ${
+                                  currency === c ? 'bg-primary/10 text-primary font-semibold' : 'hover:bg-muted'
+                                }`}
+                              >
+                                <span>
+                                  <span className="font-medium">{CURRENCY_SYMBOLS[c] || c}</span>
+                                  <span className="ml-2 text-muted-foreground">{c}</span>
+                                  {CURRENCY_NAMES[c] && <span className="ml-2 text-xs text-muted-foreground">— {CURRENCY_NAMES[c]}</span>}
+                                </span>
+                                {currency === c && <span className="text-primary">✓</span>}
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Email</label>
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="thomas@finhome.app" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1.5">Devise principale</label>
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrencyPicker(!showCurrencyPicker)}
-                    className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <span>{CURRENCY_SYMBOLS[currency] || currency} {currency} {CURRENCY_NAMES[currency] ? `— ${CURRENCY_NAMES[currency]}` : ''}</span>
-                    <span className="text-muted-foreground">{showCurrencyPicker ? '▲' : '▼'}</span>
-                  </button>
-                  {showCurrencyPicker && (
-                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-2 border border-input rounded-xl overflow-hidden bg-background">
-                      <input
-                        value={currencySearch}
-                        onChange={e => setCurrencySearch(e.target.value)}
-                        placeholder="🔍 Rechercher..."
-                        className="w-full px-4 py-2.5 text-sm border-b border-input focus:outline-none"
-                      />
-                      <div className="max-h-36 overflow-y-auto">
-                        {filteredCurrencies.map(c => (
-                          <button
-                            key={c}
-                            type="button"
-                            onClick={() => { setCurrency(c); setShowCurrencyPicker(false); setCurrencySearch(''); }}
-                            className={`w-full flex items-center justify-between px-4 py-2 text-sm text-left transition-all ${
-                              currency === c ? 'bg-primary/10 text-primary font-semibold' : 'hover:bg-muted'
-                            }`}
-                          >
-                            <span>
-                              <span className="font-medium">{CURRENCY_SYMBOLS[c] || c}</span>
-                              <span className="ml-2 text-muted-foreground">{c}</span>
-                              {CURRENCY_NAMES[c] && <span className="ml-2 text-xs text-muted-foreground">— {CURRENCY_NAMES[c]}</span>}
-                            </span>
-                            {currency === c && <span className="text-primary">✓</span>}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
+                  <label className="block text-sm font-medium mb-1.5">Mot de passe</label>
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
                 </div>
-              </motion.div>
-            )}
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Email</label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="thomas@finehome.app" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Mot de passe</label>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" className="w-full px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
-            </div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
-            >
-              {isLoading ? '...' : (isRegister ? "Créer mon compte" : "Se connecter")}
-            </button>
-          </form>
+                {!isRegister && (
+                  <div className="text-right">
+                    <button
+                      type="button"
+                      onClick={() => setIsForgotPassword(true)}
+                      className="text-sm text-primary hover:text-primary/80 transition-colors"
+                    >
+                      Mot de passe oublié ?
+                    </button>
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
+                >
+                  {isLoading ? '...' : (isRegister ? "Créer mon compte" : "Se connecter")}
+                </button>
+              </form>
+            </>
+          )}
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-6">
-          {isRegister ? 'Votre nom de famille sera utilisé comme nom de foyer' : 'Créez un compte pour commencer à gérer vos finances'}
+          {isForgotPassword ? 'Vérifiez vos spams si vous ne recevez pas l\'email' : isRegister ? 'Votre nom de famille sera utilisé comme nom de foyer' : 'Créez un compte pour commencer à gérer vos finances'}
         </p>
       </motion.div>
     </div>
