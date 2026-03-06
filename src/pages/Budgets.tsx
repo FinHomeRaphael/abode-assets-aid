@@ -33,6 +33,7 @@ const Budgets = () => {
   // Create modal state
   const [newCategory, setNewCategory] = useState('');
   const [newLimit, setNewLimit] = useState('');
+  const [newPeriod, setNewPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [newIsRecurring, setNewIsRecurring] = useState(true);
   const [newAlerts, setNewAlerts] = useState(true);
 
@@ -308,7 +309,7 @@ const Budgets = () => {
     addBudget({
       category: newCategory,
       limit: parseFloat(newLimit),
-      period: 'monthly',
+      period: newPeriod,
       emoji: CATEGORY_EMOJIS[newCategory] || '📌',
       alertsEnabled: newAlerts,
       recurring: effectiveRecurring,
@@ -319,6 +320,7 @@ const Budgets = () => {
     setShowCreate(false);
     setNewCategory('');
     setNewLimit('');
+    setNewPeriod('monthly');
   };
 
   const handleCreateFromSuggestion = (category: string, suggestedAmount?: number) => {
@@ -1020,14 +1022,24 @@ const Budgets = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium mb-1">Montant</label>
+                    <label className="block text-xs font-medium mb-1">Période</label>
+                    <div className="flex gap-2">
+                      <button onClick={() => setNewPeriod('monthly')} className={`flex-1 py-2 rounded-xl border text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${newPeriod === 'monthly' ? 'border-primary bg-primary/5 text-primary' : 'border-border/30 bg-secondary/20 hover:bg-secondary/40'}`}>Mensuel</button>
+                      <button onClick={() => setNewPeriod('yearly')} className={`flex-1 py-2 rounded-xl border text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${newPeriod === 'yearly' ? 'border-primary bg-primary/5 text-primary' : 'border-border/30 bg-secondary/20 hover:bg-secondary/40'}`}>Annuel</button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Montant {newPeriod === 'yearly' ? 'annuel' : ''}</label>
                     <input
                       type="number"
                       value={newLimit}
                       onChange={e => setNewLimit(e.target.value)}
-                      placeholder="500"
+                      placeholder={newPeriod === 'yearly' ? '6000' : '500'}
                       className="w-full px-3 py-2.5 rounded-xl border border-border/30 bg-secondary/20 text-sm font-mono-amount focus:outline-none focus:ring-2 focus:ring-ring"
                     />
+                    {newPeriod === 'yearly' && newLimit && (
+                      <p className="text-[10px] text-muted-foreground mt-1">≈ {formatAmount(parseFloat(newLimit) / 12)} / mois</p>
+                    )}
                   </div>
 
                   {/* Remaining hint */}
