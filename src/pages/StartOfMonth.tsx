@@ -131,7 +131,7 @@ const StartOfMonth = () => {
     [getBudgetsForMonth, getBudgetSpent]);
 
   // Checklist state
-  const initial = useMemo(() => loadChecklist(monthYear), [monthYear]);
+  const initial = useMemo(() => loadChecklist(monthYear, financeScope), [monthYear, financeScope]);
   const [checkedIncomes, setCheckedIncomes] = useState<Set<string>>(() => new Set(initial.checkedIncomes));
   const [checkedExpenses, setCheckedExpenses] = useState<Set<string>>(() => new Set(initial.checkedExpenses));
   const [checkedDebts, setCheckedDebts] = useState<Set<string>>(() => new Set(initial.checkedDebts));
@@ -142,7 +142,7 @@ const StartOfMonth = () => {
 
   // Persist
   useEffect(() => {
-    saveChecklist(monthYear, {
+    saveChecklist(monthYear, financeScope, {
       checkedIncomes: Array.from(checkedIncomes),
       checkedExpenses: Array.from(checkedExpenses),
       checkedDebts: Array.from(checkedDebts),
