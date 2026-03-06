@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,7 +9,7 @@ import { formatDateLong, formatAmount as formatAmountRaw } from '@/utils/format'
 import { DEFAULT_EXCHANGE_RATES } from '@/types/finance';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Trash2, Pencil, Save, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Trash2, Pencil, Save, X, Camera, ImageIcon } from 'lucide-react';
 import { recalculateScheduleFromRow } from '@/utils/recalculateSchedule';
 
 interface ScheduleRow {
@@ -139,6 +139,38 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
   const [editInterest, setEditInterest] = useState('');
   const [editPrincipal, setEditPrincipal] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Photo state
+  const [photoUrl, setPhotoUrl] = useState(debt.photoUrl || '');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !householdId) return;
+    setUploadingPhoto(true);
+    const ext = file.name.split('.').pop();
+    const path = `${householdId}/${debt.id}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from('debt-photos').upload(path, file, { upsert: true });
+    if (uploadError) { toast.error('Erreur upload'); setUploadingPhoto(false); return; }
+    const { data: urlData } = supabase.storage.from('debt-photos').getPublicUrl(path);
+    const url = urlData.publicUrl + '?t=' + Date.now();
+    await supabase.from('debts').update({ photo_url: url }).eq('id', debt.id);
+    setPhotoUrl(url);
+    setUploadingPhoto(false);
+    toast.success('Photo ajoutée');
+    onUpdated(true);
+  };
+
+  const handlePhotoRemove = async () => {
+    if (!householdId) return;
+    setUploadingPhoto(true);
+    await supabase.from('debts').update({ photo_url: null }).eq('id', debt.id);
+    setPhotoUrl('');
+    setUploadingPhoto(false);
+    toast.success('Photo supprimée');
+    onUpdated(true);
+  };
 
   const fetchSchedule = useCallback(async () => {
     setLoadingSchedule(true);
@@ -385,7 +417,33 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
         </div>
       </div>
 
-      {/* Progress */}
+      {/* Photo */}
+      <div className="relative">
+        {photoUrl ? (
+          <div className="relative rounded-xl overflow-hidden border border-border">
+            <img src={photoUrl} alt={debt.name} className="w-full h-40 object-cover" />
+            <div className="absolute bottom-2 right-2 flex gap-1.5">
+              <button onClick={() => fileInputRef.current?.click()} disabled={uploadingPhoto} className="p-1.5 rounded-lg bg-background/80 backdrop-blur-sm border border-border text-xs hover:bg-background transition-colors">
+                <Camera className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={handlePhotoRemove} disabled={uploadingPhoto} className="p-1.5 rounded-lg bg-background/80 backdrop-blur-sm border border-border text-xs hover:bg-background transition-colors text-destructive">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingPhoto}
+            className="w-full py-3 rounded-xl border border-dashed border-border bg-muted/20 text-muted-foreground text-xs font-medium hover:bg-muted/40 transition-colors flex items-center justify-center gap-2"
+          >
+            <ImageIcon className="w-4 h-4" />
+            {uploadingPhoto ? 'Upload…' : 'Ajouter une photo'}
+          </button>
+        )}
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+      </div>
+
       <div className="bg-card border border-border rounded-xl p-4">
         <div className="flex items-center justify-between text-sm mb-2">
           <span className="text-muted-foreground">Remboursé</span>

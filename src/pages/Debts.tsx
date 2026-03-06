@@ -115,6 +115,7 @@ const Debts = () => {
         hasInterest: d.has_interest !== false,
         hasSchedule: d.has_schedule !== false,
         notes: d.notes || undefined,
+        photoUrl: d.photo_url || undefined,
       })));
     }
     if (error) console.error('Fetch debts error:', error);
