@@ -689,13 +689,13 @@ Revenus: ${incomeCategories || 'Aucune'}`;
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Pose ta question..."
-              disabled={isLoading}
+              placeholder={coachLimitReached ? "Limite atteinte ce mois" : "Pose ta question..."}
+              disabled={isLoading || coachLimitReached}
               className="flex-1 px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
             />
             <button
               onClick={sendMessage}
-              disabled={!input.trim() || isLoading}
+              disabled={!input.trim() || isLoading || coachLimitReached}
               className="px-5 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
             >
               Envoyer
