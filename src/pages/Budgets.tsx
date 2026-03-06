@@ -219,8 +219,10 @@ const Budgets = () => {
   };
 
   const totalBudgeted = useMemo(() => {
-    return filteredBudgets.reduce((s, b) => s + b.limit, 0);
-  }, [filteredBudgets]);
+    const monthlyTotal = filteredBudgets.reduce((s, b) => s + b.limit, 0);
+    const annualMonthlyEquiv = annualBudgets.reduce((s, b) => s + b.limit / 12, 0);
+    return monthlyTotal + annualMonthlyEquiv;
+  }, [filteredBudgets, annualBudgets]);
 
   // Available to budget = income - max(savings target, actual savings) - budgeted
   const effectiveSavingsTarget = savingsTarget ?? 0;
