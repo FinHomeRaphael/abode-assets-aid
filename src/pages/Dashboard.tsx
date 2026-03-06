@@ -175,11 +175,15 @@ const Dashboard = () => {
 
   // Check if month is prepared (from StartOfMonth localStorage flag)
   const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const isMonthPrepared = useMemo(() => {
-    try {
-      return localStorage.getItem(`finehome_month_prepared_${financeScope}_${monthYear}`) === 'true';
-    } catch { return false; }
-  }, [financeScope, monthYear]);
+  const [isMonthPrepared, setIsMonthPrepared] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      try {
+        setIsMonthPrepared(localStorage.getItem(`finehome_month_prepared_${financeScope}_${monthYear}`) === 'true');
+      } catch { setIsMonthPrepared(false); }
+    };
+    check();
+  }, [financeScope, monthYear, transactions]);
 
   const quickActions = [
     { icon: Calendar, label: 'Préparer', onClick: () => navigate('/start-of-month'), done: isMonthPrepared },
