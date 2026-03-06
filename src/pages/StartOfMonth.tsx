@@ -433,10 +433,10 @@ const StartOfMonth = () => {
                 <span className="text-muted-foreground">Revenus</span>
                 <span className="font-mono-amount font-medium">{formatAmount(totalIncome)}</span>
               </div>
-              {savingsTarget > 0 && (
+              {savingsDeduction > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Objectif d'épargne</span>
-                  <span className="font-mono-amount font-medium text-primary">-{formatAmount(savingsTarget)}</span>
+                  <span className="text-muted-foreground">{Math.abs(monthSavingsNet) > savingsTarget ? 'Épargne réelle' : 'Objectif d\'épargne'}</span>
+                  <span className="font-mono-amount font-medium text-primary">-{formatAmount(savingsDeduction)}</span>
                 </div>
               )}
               <div className="flex justify-between">
