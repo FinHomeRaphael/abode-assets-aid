@@ -371,6 +371,7 @@ export type Database = {
           payment_amount: number
           payment_day: number
           payment_frequency: string
+          photo_url: string | null
           property_value: number | null
           purchase_price: number | null
           rate_end_date: string | null
@@ -424,6 +425,7 @@ export type Database = {
           payment_amount: number
           payment_day?: number
           payment_frequency?: string
+          photo_url?: string | null
           property_value?: number | null
           purchase_price?: number | null
           rate_end_date?: string | null
@@ -477,6 +479,7 @@ export type Database = {
           payment_amount?: number
           payment_day?: number
           payment_frequency?: string
+          photo_url?: string | null
           property_value?: number | null
           purchase_price?: number | null
           rate_end_date?: string | null
