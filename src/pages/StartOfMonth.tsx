@@ -140,6 +140,17 @@ const StartOfMonth = () => {
   const [cancelledExpenses, setCancelledExpenses] = useState<Set<string>>(() => new Set(initial.cancelledExpenses));
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
 
+  // Reset checklist state when scope changes
+  useEffect(() => {
+    const loaded = loadChecklist(monthYear, financeScope);
+    setCheckedIncomes(new Set(loaded.checkedIncomes));
+    setCheckedExpenses(new Set(loaded.checkedExpenses));
+    setCheckedDebts(new Set(loaded.checkedDebts));
+    setCheckedBudgets(new Set(loaded.checkedBudgets));
+    setCancelledIncomes(new Set(loaded.cancelledIncomes));
+    setCancelledExpenses(new Set(loaded.cancelledExpenses));
+  }, [monthYear, financeScope]);
+
   // Persist
   useEffect(() => {
     saveChecklist(monthYear, financeScope, {
@@ -150,7 +161,7 @@ const StartOfMonth = () => {
       cancelledIncomes: Array.from(cancelledIncomes),
       cancelledExpenses: Array.from(cancelledExpenses),
     });
-  }, [monthYear, checkedIncomes, checkedExpenses, checkedDebts, checkedBudgets, cancelledIncomes, cancelledExpenses]);
+  }, [monthYear, financeScope, checkedIncomes, checkedExpenses, checkedDebts, checkedBudgets, cancelledIncomes, cancelledExpenses]);
 
   const toggle = (set: Set<string>, setter: React.Dispatch<React.SetStateAction<Set<string>>>, id: string) => {
     setter(prev => {
