@@ -404,7 +404,7 @@ const Budgets = () => {
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min(budgetPercentage, 100)}%` }}
                   transition={{ duration: 0.8, ease: 'easeOut' }}
-                  className={`h-full rounded-full ${remainingToBudget < 0 ? 'bg-destructive' : 'bg-primary-foreground/60'}`}
+                  className={`h-full rounded-full ${remainingToBudget < 0 ? 'bg-warning' : 'bg-primary-foreground/60'}`}
                 />
               </div>
               <span className="text-xs text-primary-foreground/60 font-mono-amount">{Math.round(budgetPercentage)}%</span>
