@@ -8,6 +8,7 @@ import {
   Head,
   Heading,
   Html,
+  Img,
   Preview,
   Text,
 } from 'npm:@react-email/components@0.0.22'
@@ -16,19 +17,29 @@ interface ReauthenticationEmailProps {
   token: string
 }
 
+const LOGO_URL = 'https://ptcuiawjfhvgnubpathd.supabase.co/storage/v1/object/public/email-assets/logo.png'
+
 export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => (
-  <Html lang="en" dir="ltr">
+  <Html lang="fr" dir="ltr">
     <Head />
-    <Preview>Your verification code</Preview>
+    <Preview>Votre code de vérification FinHome</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Confirm reauthentication</Heading>
-        <Text style={text}>Use the code below to confirm your identity:</Text>
-        <Text style={codeStyle}>{token}</Text>
+        <div style={logoContainer}>
+          <Img src={LOGO_URL} alt="FinHome" style={logo} />
+        </div>
+        <div style={card}>
+          <Heading style={h1}>Vérification d'identité 🔐</Heading>
+          <div style={divider} />
+          <Text style={text}>
+            Utilisez le code ci-dessous pour confirmer votre identité :
+          </Text>
+          <Text style={codeStyle}>{token}</Text>
+        </div>
         <Text style={footer}>
-          This code will expire shortly. If you didn't request this, you can
-          safely ignore this email.
+          Ce code expirera dans quelques minutes. Si vous n'avez pas fait cette demande, ignorez cet email.
         </Text>
+        <Text style={copyright}>© 2026 FinHome · Gestion de finances familiales</Text>
       </Container>
     </Body>
   </Html>
@@ -36,25 +47,14 @@ export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => 
 
 export default ReauthenticationEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
-const codeStyle = {
-  fontFamily: 'Courier, monospace',
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 30px',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+const main = { backgroundColor: '#ffffff', fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }
+const container = { maxWidth: '520px', margin: '0 auto', padding: '40px 24px' }
+const logoContainer = { textAlign: 'center' as const, marginBottom: '32px' }
+const logo = { height: '48px', width: 'auto', margin: '0 auto' }
+const card = { background: '#f8fafb', border: '1px solid #e8eeef', borderRadius: '12px', padding: '32px', marginBottom: '24px' }
+const h1 = { fontSize: '22px', fontWeight: 'bold' as const, color: '#1c2127', margin: '0 0 8px', textAlign: 'center' as const }
+const divider = { width: '40px', height: '3px', background: '#4d9e8e', margin: '16px auto 20px', borderRadius: '2px' }
+const text = { fontSize: '15px', color: '#4b5563', lineHeight: '1.6', margin: '0 0 16px', textAlign: 'center' as const }
+const codeStyle = { fontFamily: "'JetBrains Mono', Courier, monospace", fontSize: '28px', fontWeight: 'bold' as const, color: '#4d9e8e', margin: '8px 0 0', textAlign: 'center' as const, letterSpacing: '4px' }
+const footer = { fontSize: '12px', color: '#9ca3af', textAlign: 'center' as const, lineHeight: '1.5', margin: '0 0 8px' }
+const copyright = { fontSize: '11px', color: '#d1d5db', textAlign: 'center' as const, margin: '16px 0 0' }
