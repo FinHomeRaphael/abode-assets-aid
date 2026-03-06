@@ -167,7 +167,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           name: d.name ?? prev.name,
           currency: d.default_currency ?? prev.currency,
           plan: d.plan ?? prev.plan,
-          monthlySavingsTarget: d.monthly_savings_target ?? prev.monthlySavingsTarget,
+          // Important: preserve explicit NULL updates (e.g. deleting savings target)
+          monthlySavingsTarget: d.monthly_savings_target !== undefined
+            ? d.monthly_savings_target
+            : prev.monthlySavingsTarget,
         }));
       })
       .subscribe();
