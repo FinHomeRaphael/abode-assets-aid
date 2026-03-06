@@ -110,7 +110,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'onboarding@resend.dev',
+        from: 'FineHome <noreply@fin-home.io>',
         to: email,
         subject: `${inviterName} vous invite à rejoindre son foyer sur FineHome`,
         html: htmlContent,
