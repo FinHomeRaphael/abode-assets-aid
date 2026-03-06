@@ -21,7 +21,7 @@ import AddDebtModal from '@/components/AddDebtModal';
 import DebtDetailModal from '@/components/DebtDetailModal';
 import { toast } from 'sonner';
 import { useSubscription } from '@/hooks/useSubscription';
-import { PremiumGate } from '@/components/PremiumPaywall';
+import { PlanGate } from '@/components/PlanGate';
 import { CreditCard, Plus, ArrowLeft, CalendarDays, ChevronDown, ChevronUp, TrendingDown, Landmark, CheckCircle, AlertTriangle, Clock, Shield, Fuel, Wrench, Phone, Car, Snowflake, Info, Percent } from 'lucide-react';
 
 interface UpcomingPayment {
@@ -268,20 +268,20 @@ const Debts = () => {
   if (selectedDebt) {
     return (
       <Layout>
-        <PremiumGate feature="les dettes & crédits" description="Gérez tous vos crédits, prêts et dettes avec un suivi détaillé des remboursements.">
+        <PlanGate requiredPlan="foyer" message="Gérez tous vos crédits, prêts et dettes avec un suivi détaillé des remboursements.">
           <DebtDetailModal
             debt={selectedDebt}
             onClose={() => setSelectedDebtId(null)}
             onUpdated={handleDebtUpdated}
           />
-        </PremiumGate>
+        </PlanGate>
       </Layout>
     );
   }
 
   return (
     <Layout>
-      <PremiumGate feature="les dettes & crédits" description="Gérez tous vos crédits, prêts et dettes avec un suivi détaillé des remboursements.">
+      <PlanGate requiredPlan="foyer" message="Gérez tous vos crédits, prêts et dettes avec un suivi détaillé des remboursements.">
       <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-primary/5 via-transparent to-transparent h-64" />
       <motion.div variants={stagger} initial="hidden" animate="show" className="relative space-y-5">
 
@@ -797,7 +797,7 @@ const Debts = () => {
       </motion.div>
 
       <AddDebtModal open={showAdd} onClose={() => setShowAdd(false)} onAdded={handleDebtAdded} />
-      </PremiumGate>
+      </PlanGate>
     </Layout>
   );
 };
