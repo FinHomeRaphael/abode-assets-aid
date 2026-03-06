@@ -468,9 +468,15 @@ const StartOfMonth = () => {
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Budgété</span>
-                <span className="font-mono-amount font-medium text-primary">-{formatAmount(totalBudgetLimit)}</span>
+                <span className="text-muted-foreground">Budgets mensuels</span>
+                <span className="font-mono-amount font-medium text-primary">-{formatAmount(budgetData.reduce((s, b) => s + b.limit, 0))}</span>
               </div>
+              {annualBudgetData.length > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Budgets annuels ÷12</span>
+                  <span className="font-mono-amount font-medium text-primary">-{formatAmount(totalAnnualMonthlyEquiv)}</span>
+                </div>
+              )}
               <div className="h-px bg-border/40" />
               <div className="flex justify-between font-medium">
                 <span className={remainingToBudget > 0 ? 'text-warning' : 'text-primary'}>
