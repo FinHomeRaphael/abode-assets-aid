@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useApp } from '@/context/AppContext';
 import { toast } from 'sonner';
+import { useSubscription, FREEMIUM_LIMITS, FOYER_LIMITS, FAMILLE_LIMITS } from '@/hooks/useSubscription';
 
 interface Props {
   open: boolean;
@@ -12,6 +13,7 @@ interface Props {
 
 const InviteMemberModal = ({ open, onClose, onInviteSent }: Props) => {
   const { householdId, currentUser, household } = useApp();
+  const { plan } = useSubscription();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -24,6 +26,21 @@ const InviteMemberModal = ({ open, onClose, onInviteSent }: Props) => {
 
     setLoading(true);
     try {
+      // Check member limit (existing members + pending invitations)
+      const memberLimit = plan === 'famille' ? FAMILLE_LIMITS.members : plan === 'foyer' ? FOYER_LIMITS.members : FREEMIUM_LIMITS.members;
+      
+      const [{ count: memberCount }, { count: pendingCount }] = await Promise.all([
+        supabase.from('household_members').select('*', { count: 'exact', head: true }).eq('household_id', householdId),
+        supabase.from('invitations').select('*', { count: 'exact', head: true }).eq('household_id', householdId).eq('status', 'pending'),
+      ]);
+
+      const totalSlots = (memberCount || 0) + (pendingCount || 0);
+      if (totalSlots >= memberLimit) {
+        const planName = plan === 'famille' ? 'Famille' : plan === 'foyer' ? 'Foyer' : 'Gratuit';
+        toast.error(`Limite de ${memberLimit} membre(s) atteinte pour le plan ${planName} (invitations en attente incluses).`);
+        setLoading(false);
+        return;
+      }
       const token = crypto.randomUUID();
       const { error } = await supabase.from('invitations').insert({
         household_id: householdId,
