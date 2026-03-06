@@ -210,6 +210,12 @@ const StartOfMonth = () => {
   const progressPct = Math.round((completedSteps / totalSteps) * 100);
   const allDone = completedSteps === totalSteps;
 
+  // Persist month prepared status for Dashboard
+  useEffect(() => {
+    const key = `finehome_month_prepared_${financeScope}_${monthYear}`;
+    localStorage.setItem(key, allDone ? 'true' : 'false');
+  }, [allDone, financeScope, monthYear]);
+
   // Budget suggestions: categories with spending but no budget
   const budgetedCategories = useMemo(() => new Set([...budgetData.map(b => b.category), ...annualBudgetData.map(b => b.category)]), [budgetData, annualBudgetData]);
   const budgetSuggestions = useMemo(() => {

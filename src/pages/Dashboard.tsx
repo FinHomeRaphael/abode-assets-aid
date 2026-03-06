@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Debt, getDebtEmoji, calculateNextPaymentDate } from '@/types/debt';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
-import { Calendar, Sparkles, Camera, BarChart3, ArrowRight, ChevronRight, ChevronDown, Lock, HeartPulse, TrendingUp, TrendingDown, Plus, MoreHorizontal, Wallet, Receipt, PiggyBank, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Calendar, Sparkles, Camera, BarChart3, ArrowRight, ChevronRight, ChevronDown, Lock, HeartPulse, TrendingUp, TrendingDown, Plus, MoreHorizontal, Wallet, Receipt, PiggyBank, CheckCircle2, AlertTriangle, Check } from 'lucide-react';
 import HealthScoreGauge from '@/components/HealthScoreGauge';
 import { CategoryIcon, DebtIcon } from '@/utils/categoryIcons';
 import { useHealthScore, useSaveHealthScore } from '@/hooks/useHealthScore';
@@ -173,8 +173,16 @@ const Dashboard = () => {
   const totalBudgetSpent = budgetData.reduce((s, b) => s + b.spent, 0);
   const budgetUsagePct = totalBudgetLimit > 0 ? Math.round((totalBudgetSpent / totalBudgetLimit) * 100) : 0;
 
+  // Check if month is prepared (from StartOfMonth localStorage flag)
+  const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const isMonthPrepared = useMemo(() => {
+    try {
+      return localStorage.getItem(`finehome_month_prepared_${financeScope}_${monthYear}`) === 'true';
+    } catch { return false; }
+  }, [financeScope, monthYear]);
+
   const quickActions = [
-    { icon: Calendar, label: 'Préparer', onClick: () => navigate('/start-of-month') },
+    { icon: Calendar, label: 'Préparer', onClick: () => navigate('/start-of-month'), done: isMonthPrepared },
     { icon: Sparkles, label: 'Coach IA', onClick: () => isPremium ? navigate('/chat') : setPaywallFeature({ feature: 'le Coach IA', description: 'Accédez à votre coach financier personnel propulsé par l\'IA.' }), locked: !subLoading && !isPremium },
     { icon: Camera, label: 'Scanner', onClick: () => setShowScan(true) },
     { icon: BarChart3, label: 'Rapport', onClick: () => isPremium ? setShowReport(true) : setPaywallFeature({ feature: 'le rapport mensuel', description: 'Obtenez un rapport détaillé de vos finances chaque mois.' }), locked: !subLoading && !isPremium },
@@ -288,10 +296,17 @@ const Dashboard = () => {
               className="flex flex-col items-center gap-1.5 group relative"
             >
               {item.locked && <Lock className="w-2.5 h-2.5 text-warning absolute -top-0.5 -right-0.5 z-10" />}
-              <div className="w-12 h-12 rounded-2xl bg-card border border-border flex items-center justify-center group-hover:bg-muted/50 group-active:scale-95 transition-all shadow-sm">
-                <item.icon className="w-5 h-5 text-primary" />
+              {(item as any).done && (
+                <div className="absolute -top-1 -right-1 z-10 w-4 h-4 rounded-full bg-success flex items-center justify-center">
+                  <Check className="w-2.5 h-2.5 text-success-foreground" />
+                </div>
+              )}
+              <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center group-hover:bg-muted/50 group-active:scale-95 transition-all shadow-sm ${(item as any).done ? 'bg-success/10 border-success/30' : 'bg-card border-border'}`}>
+                <item.icon className={`w-5 h-5 ${(item as any).done ? 'text-success' : 'text-primary'}`} />
               </div>
-              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{item.label}</span>
+              <span className={`text-[10px] font-medium uppercase tracking-wide ${(item as any).done ? 'text-success' : 'text-muted-foreground'}`}>
+                {(item as any).done ? 'Vu ✓' : item.label}
+              </span>
             </button>
           ))}
         </motion.div>
