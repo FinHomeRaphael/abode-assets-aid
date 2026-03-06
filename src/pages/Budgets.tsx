@@ -437,9 +437,15 @@ const Budgets = () => {
                       </div>
                     )}
                     <div className="flex items-center justify-between text-xs text-primary-foreground/80">
-                      <span className="flex items-center gap-1.5"><Minus className="w-3 h-3" /> Budgété</span>
-                      <span className="font-mono-amount font-semibold">- {formatAmount(totalBudgeted)}</span>
+                      <span className="flex items-center gap-1.5"><Minus className="w-3 h-3" /> Budgets mensuels</span>
+                      <span className="font-mono-amount font-semibold">- {formatAmount(filteredBudgets.reduce((s, b) => s + b.limit, 0))}</span>
                     </div>
+                    {annualBudgets.length > 0 && (
+                      <div className="flex items-center justify-between text-xs text-primary-foreground/80">
+                        <span className="flex items-center gap-1.5"><Minus className="w-3 h-3" /> Budgets annuels ÷12</span>
+                        <span className="font-mono-amount font-semibold">- {formatAmount(annualBudgets.reduce((s, b) => s + b.limit / 12, 0))}</span>
+                      </div>
+                    )}
                     <div className="border-t border-primary-foreground/20 pt-1.5 flex items-center justify-between text-xs text-primary-foreground font-bold">
                       <span className="flex items-center gap-1.5"><Equal className="w-3 h-3" /> Disponible</span>
                       <span className="font-mono-amount">{formatAmount(remainingToBudget)}</span>
