@@ -417,7 +417,33 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
         </div>
       </div>
 
-      {/* Progress */}
+      {/* Photo */}
+      <div className="relative">
+        {photoUrl ? (
+          <div className="relative rounded-xl overflow-hidden border border-border">
+            <img src={photoUrl} alt={debt.name} className="w-full h-40 object-cover" />
+            <div className="absolute bottom-2 right-2 flex gap-1.5">
+              <button onClick={() => fileInputRef.current?.click()} disabled={uploadingPhoto} className="p-1.5 rounded-lg bg-background/80 backdrop-blur-sm border border-border text-xs hover:bg-background transition-colors">
+                <Camera className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={handlePhotoRemove} disabled={uploadingPhoto} className="p-1.5 rounded-lg bg-background/80 backdrop-blur-sm border border-border text-xs hover:bg-background transition-colors text-destructive">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingPhoto}
+            className="w-full py-3 rounded-xl border border-dashed border-border bg-muted/20 text-muted-foreground text-xs font-medium hover:bg-muted/40 transition-colors flex items-center justify-center gap-2"
+          >
+            <ImageIcon className="w-4 h-4" />
+            {uploadingPhoto ? 'Upload…' : 'Ajouter une photo'}
+          </button>
+        )}
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+      </div>
+
       <div className="bg-card border border-border rounded-xl p-4">
         <div className="flex items-center justify-between text-sm mb-2">
           <span className="text-muted-foreground">Remboursé</span>
