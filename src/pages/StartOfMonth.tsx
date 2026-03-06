@@ -25,16 +25,16 @@ interface ChecklistState {
   cancelledExpenses: string[];
 }
 
-function loadChecklist(monthYear: string): ChecklistState {
+function loadChecklist(monthYear: string, scope: string): ChecklistState {
   try {
-    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${monthYear}`);
+    const raw = localStorage.getItem(getScopeKey(monthYear, scope));
     if (raw) return JSON.parse(raw);
   } catch {}
   return { checkedIncomes: [], checkedExpenses: [], checkedDebts: [], checkedBudgets: [], cancelledIncomes: [], cancelledExpenses: [] };
 }
 
-function saveChecklist(monthYear: string, state: ChecklistState) {
-  localStorage.setItem(`${STORAGE_KEY_PREFIX}${monthYear}`, JSON.stringify(state));
+function saveChecklist(monthYear: string, scope: string, state: ChecklistState) {
+  localStorage.setItem(getScopeKey(monthYear, scope), JSON.stringify(state));
 }
 
 const StartOfMonth = () => {
