@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Debt, getDebtEmoji, calculateNextPaymentDate } from '@/types/debt';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
+import { PlanGate } from '@/components/PlanGate';
 import { Calendar, Sparkles, Camera, BarChart3, ArrowRight, ChevronRight, ChevronDown, Lock, HeartPulse, TrendingUp, TrendingDown, Plus, MoreHorizontal, Wallet, Receipt, PiggyBank, CheckCircle2, AlertTriangle, Check } from 'lucide-react';
 import HealthScoreGauge from '@/components/HealthScoreGauge';
 import { CategoryIcon, DebtIcon } from '@/utils/categoryIcons';
@@ -188,7 +189,7 @@ const Dashboard = () => {
   const quickActions = [
     { icon: Calendar, label: 'Préparer', onClick: () => navigate('/start-of-month'), done: isMonthPrepared },
     { icon: Sparkles, label: 'Coach IA', onClick: () => isPremium ? navigate('/chat') : setPaywallFeature({ feature: 'le Coach IA', description: 'Accédez à votre coach financier personnel propulsé par l\'IA.' }), locked: !subLoading && !isPremium },
-    { icon: Camera, label: 'Scanner', onClick: () => setShowScan(true) },
+    { icon: Camera, label: 'Scanner', onClick: () => isPremium ? setShowScan(true) : setPaywallFeature({ feature: 'le scanner de tickets', description: 'Scannez vos tickets de caisse pour ajouter automatiquement vos dépenses.' }), locked: !subLoading && !isPremium },
     { icon: BarChart3, label: 'Rapport', onClick: () => isPremium ? setShowReport(true) : setPaywallFeature({ feature: 'le rapport mensuel', description: 'Obtenez un rapport détaillé de vos finances chaque mois.' }), locked: !subLoading && !isPremium },
   ];
 

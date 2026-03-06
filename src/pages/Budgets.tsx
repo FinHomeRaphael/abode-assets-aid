@@ -8,6 +8,7 @@ import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CATEGORY_EMOJIS, DEFAULT_EXCHANG
 import { getPeriodsPerYear, getDebtEmoji, PaymentFrequency } from '@/types/debt';
 import { toast } from 'sonner';
 import { PaywallModal } from '@/components/PremiumPaywall';
+import { LimitMessage } from '@/components/PlanGate';
 import Layout from '@/components/Layout';
 import MonthSelector from '@/components/MonthSelector';
 import { useSubscription } from '@/hooks/useSubscription';
