@@ -197,10 +197,11 @@ const Budgets = () => {
     return filteredBudgets.reduce((s, b) => s + b.limit, 0);
   }, [filteredBudgets]);
 
-  // Available to budget = income - savings target - budgeted
+  // Available to budget = income - max(savings target, actual savings) - budgeted
   const effectiveSavingsTarget = savingsTarget ?? 0;
   const totalSavingsDeducted = Math.abs(monthSavingsNet);
-  const totalAllocated = totalBudgeted + effectiveSavingsTarget;
+  const savingsDeduction = Math.max(effectiveSavingsTarget, totalSavingsDeducted);
+  const totalAllocated = totalBudgeted + savingsDeduction;
   const remainingToBudget = totalIncome - totalAllocated;
   const budgetPercentage = totalIncome > 0 ? Math.min((totalAllocated / totalIncome) * 100, 100) : 0;
 
@@ -402,10 +403,10 @@ const Budgets = () => {
                       <span className="flex items-center gap-1.5"><TrendingUp className="w-3 h-3" /> Revenus</span>
                       <span className="font-mono-amount font-semibold">{formatAmount(totalIncome)}</span>
                     </div>
-                    {effectiveSavingsTarget > 0 && (
+                    {savingsDeduction > 0 && (
                       <div className="flex items-center justify-between text-xs text-primary-foreground/80">
-                        <span className="flex items-center gap-1.5"><Target className="w-3 h-3" /> Objectif d'épargne</span>
-                        <span className="font-mono-amount font-semibold">- {formatAmount(effectiveSavingsTarget)}</span>
+                        <span className="flex items-center gap-1.5"><Target className="w-3 h-3" /> {totalSavingsDeducted > effectiveSavingsTarget ? 'Épargne réelle' : 'Objectif d\'épargne'}</span>
+                        <span className="font-mono-amount font-semibold">- {formatAmount(savingsDeduction)}</span>
                       </div>
                     )}
                     <div className="flex items-center justify-between text-xs text-primary-foreground/80">
