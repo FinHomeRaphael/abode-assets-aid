@@ -162,6 +162,10 @@ const Budgets = () => {
     return getBudgetsForMonth(currentMonth).filter(b => b.period === 'monthly');
   }, [getBudgetsForMonth, currentMonth]);
 
+  const annualBudgets = useMemo(() => {
+    return getBudgetsForMonth(currentMonth).filter(b => b.period === 'annual');
+  }, [getBudgetsForMonth, currentMonth]);
+
   // === Income calculations ===
   const incomeTransactions = useMemo(() => {
     return monthTx.filter(t => t.type === 'income' && t.category !== 'Transfert');
