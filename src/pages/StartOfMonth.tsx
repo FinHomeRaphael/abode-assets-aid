@@ -14,6 +14,7 @@ import { TrendingUp, TrendingDown, CreditCard, BarChart3, Check, X, Plus, AlertT
 import AddBudgetModal from '@/components/AddBudgetModal';
 
 const STORAGE_KEY_PREFIX = 'finehome_start_month_';
+const getScopeKey = (monthYear: string, scope: string) => `${STORAGE_KEY_PREFIX}${scope}_${monthYear}`;
 
 interface ChecklistState {
   checkedIncomes: string[];
