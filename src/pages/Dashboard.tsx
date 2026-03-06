@@ -296,10 +296,17 @@ const Dashboard = () => {
               className="flex flex-col items-center gap-1.5 group relative"
             >
               {item.locked && <Lock className="w-2.5 h-2.5 text-warning absolute -top-0.5 -right-0.5 z-10" />}
-              <div className="w-12 h-12 rounded-2xl bg-card border border-border flex items-center justify-center group-hover:bg-muted/50 group-active:scale-95 transition-all shadow-sm">
-                <item.icon className="w-5 h-5 text-primary" />
+              {(item as any).done && (
+                <div className="absolute -top-1 -right-1 z-10 w-4 h-4 rounded-full bg-success flex items-center justify-center">
+                  <Check className="w-2.5 h-2.5 text-success-foreground" />
+                </div>
+              )}
+              <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center group-hover:bg-muted/50 group-active:scale-95 transition-all shadow-sm ${(item as any).done ? 'bg-success/10 border-success/30' : 'bg-card border-border'}`}>
+                <item.icon className={`w-5 h-5 ${(item as any).done ? 'text-success' : 'text-primary'}`} />
               </div>
-              <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">{item.label}</span>
+              <span className={`text-[10px] font-medium uppercase tracking-wide ${(item as any).done ? 'text-success' : 'text-muted-foreground'}`}>
+                {(item as any).done ? 'Vu ✓' : item.label}
+              </span>
             </button>
           ))}
         </motion.div>
