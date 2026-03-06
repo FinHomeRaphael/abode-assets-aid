@@ -533,14 +533,12 @@ const Budgets = () => {
               <Target className="w-4 h-4 text-primary" />
               <span className="text-sm font-semibold">Épargne mensuelle</span>
             </div>
-            {isHouseholdScope && (
-              <button
-                onClick={() => { setSavingsTargetInput(savingsTarget ? String(savingsTarget) : ''); setShowSavingsTargetEdit(true); }}
-                className="text-primary hover:text-primary/80 transition-colors"
-              >
-                {savingsTarget ? <Pencil className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-              </button>
-            )}
+            <button
+              onClick={() => { setSavingsTargetInput(savingsTarget ? String(savingsTarget) : ''); setShowSavingsTargetEdit(true); }}
+              className="text-primary hover:text-primary/80 transition-colors"
+            >
+              {savingsTarget ? <Pencil className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+            </button>
           </div>
 
           <div className="flex items-center justify-between text-xs">
@@ -550,7 +548,7 @@ const Budgets = () => {
             </span>
           </div>
 
-          {isHouseholdScope && savingsTarget && savingsTarget > 0 && (
+          {savingsTarget && savingsTarget > 0 && (
             <>
               <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <motion.div
