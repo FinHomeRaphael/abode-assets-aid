@@ -46,8 +46,20 @@ const Budgets = () => {
   // Savings target state
   const [showSavingsTargetEdit, setShowSavingsTargetEdit] = useState(false);
   const [savingsTargetInput, setSavingsTargetInput] = useState('');
+  const [personalSavingsTarget, setPersonalSavingsTarget] = useState<number | null>(null);
 
-  const savingsTarget = household.monthlySavingsTarget;
+  // Fetch personal savings target from profile
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const fetchPersonalTarget = async () => {
+      const { data } = await supabase.from('profiles').select('monthly_savings_target').eq('id', session.user.id).single();
+      if (data) setPersonalSavingsTarget((data as any).monthly_savings_target ?? null);
+    };
+    fetchPersonalTarget();
+  }, [session?.user?.id]);
+
+  const isHouseholdScope = financeScope === 'household';
+  const savingsTarget = isHouseholdScope ? household.monthlySavingsTarget : personalSavingsTarget;
 
   // === Debt monthly total for budget suggestion ===
   const [debtMonthlyTotal, setDebtMonthlyTotal] = useState(0);
