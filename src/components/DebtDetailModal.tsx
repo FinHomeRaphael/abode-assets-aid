@@ -28,7 +28,7 @@ interface ScheduleRow {
 interface Props {
   debt: Debt;
   onClose: () => void;
-  onUpdated: () => void;
+  onUpdated: (keepOpen?: boolean) => void;
 }
 
 // Inline km update component
@@ -449,7 +449,7 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
                   </div>
                 )}
                 {/* Update km button */}
-                <UpdateKmButton debt={debt} onUpdated={onUpdated} formatAmount={formatAmount} />
+                <UpdateKmButton debt={debt} onUpdated={() => onUpdated(true)} formatAmount={formatAmount} />
               </div>
             );
           })()}
