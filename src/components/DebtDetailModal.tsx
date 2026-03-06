@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,7 +9,7 @@ import { formatDateLong, formatAmount as formatAmountRaw } from '@/utils/format'
 import { DEFAULT_EXCHANGE_RATES } from '@/types/finance';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Trash2, Pencil, Save, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ChevronUp, Trash2, Pencil, Save, X, Camera, ImageIcon } from 'lucide-react';
 import { recalculateScheduleFromRow } from '@/utils/recalculateSchedule';
 
 interface ScheduleRow {

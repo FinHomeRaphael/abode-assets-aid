@@ -66,6 +66,7 @@ export interface Debt {
   hasInterest?: boolean;
   hasSchedule?: boolean;
   notes?: string;
+  photoUrl?: string;
 }
 
 export const DEBT_TYPES: { value: DebtType; label: string; emoji: string }[] = [
