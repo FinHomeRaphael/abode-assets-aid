@@ -7,6 +7,7 @@ import logo from '@/assets/logo.png';
 
 const LoginPage = () => {
   const [isRegister, setIsRegister] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
