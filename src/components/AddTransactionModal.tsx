@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '@/context/AppContext';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, CURRENCIES, CATEGORY_EMOJIS, EMOJI_LIST } from '@/types/finance';
@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { formatLocalDate } from '@/utils/format';
 import MoneyInput from '@/components/ui/money-input';
+import { useSubscription, FREEMIUM_LIMITS } from '@/hooks/useSubscription';
+import { Lock } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -19,7 +21,7 @@ interface Props {
 }
 
 const AddTransactionModal = ({ open, onClose, defaultType }: Props) => {
-  const { addTransaction, household, customCategories, addCustomCategory, getActiveAccounts, currentUser } = useApp();
+  const { addTransaction, household, customCategories, addCustomCategory, getActiveAccounts, currentUser, scopedTransactions } = useApp();
   const navigate = useNavigate();
   const [type, setType] = useState<'income' | 'expense'>(defaultType || 'expense');
 
