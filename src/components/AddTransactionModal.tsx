@@ -40,6 +40,13 @@ const AddTransactionModal = ({ open, onClose, defaultType }: Props) => {
   const [notes, setNotes] = useState('');
   const [isRecurring, setIsRecurring] = useState(false);
   const [accountId, setAccountId] = useState('');
+  const { plan } = useSubscription();
+
+  const recurringCount = useMemo(() =>
+    scopedTransactions.filter(t => t.isRecurring && !t.recurringSourceId).length,
+    [scopedTransactions]
+  );
+  const canAddRecurring = plan !== 'free' || recurringCount < FREEMIUM_LIMITS.recurringTransactions;
 
   // Custom category creation
   const [showCreateCat, setShowCreateCat] = useState(false);
