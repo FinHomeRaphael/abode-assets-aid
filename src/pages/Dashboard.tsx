@@ -13,7 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Debt, getDebtEmoji, calculateNextPaymentDate } from '@/types/debt';
 import { useSubscription } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
-import { Calendar, Sparkles, Camera, BarChart3, ArrowRight, ChevronRight, ChevronDown, Lock, HeartPulse, TrendingUp, TrendingDown, Plus, MoreHorizontal, Wallet, Receipt, PiggyBank, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Calendar, Sparkles, Camera, BarChart3, ArrowRight, ChevronRight, ChevronDown, Lock, HeartPulse, TrendingUp, TrendingDown, Plus, MoreHorizontal, Wallet, Receipt, PiggyBank, CheckCircle2, AlertTriangle, Check } from 'lucide-react';
 import HealthScoreGauge from '@/components/HealthScoreGauge';
 import { CategoryIcon, DebtIcon } from '@/utils/categoryIcons';
 import { useHealthScore, useSaveHealthScore } from '@/hooks/useHealthScore';
