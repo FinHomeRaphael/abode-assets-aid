@@ -17,6 +17,24 @@ const LoginPage = () => {
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) { toast.error('Veuillez entrer votre adresse email'); return; }
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) { toast.error(error.message); return; }
+      toast.success('Un email de réinitialisation vous a été envoyé');
+      setIsForgotPassword(false);
+    } catch {
+      toast.error('Une erreur est survenue');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) { toast.error('Veuillez remplir tous les champs'); return; }
@@ -40,12 +58,8 @@ const LoginPage = () => {
           return;
         }
 
-        // If auto-confirmed, create household immediately
         if (signUpData.session) {
           await createHousehold(signUpData.session.user.id, lastName, currency);
-          // silent
-        } else {
-          // silent
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -59,7 +73,6 @@ const LoginPage = () => {
           }
           return;
         }
-        // silent
       }
     } catch (err: any) {
       toast.error('Une erreur est survenue');
