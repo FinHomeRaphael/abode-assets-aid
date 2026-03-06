@@ -137,7 +137,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: 'FineHome <noreply@fin-home.io>',
         to: email,
-        subject: `${inviterName} vous invite à rejoindre son foyer sur FineHome`,
+        subject: `${inviterName} vous invite sur FinHome 🏠`,
         html: htmlContent,
       }),
     });
