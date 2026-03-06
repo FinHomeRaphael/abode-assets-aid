@@ -163,7 +163,7 @@ const Budgets = () => {
   }, [getBudgetsForMonth, currentMonth]);
 
   const annualBudgets = useMemo(() => {
-    return getBudgetsForMonth(currentMonth).filter(b => b.period === 'annual');
+    return getBudgetsForMonth(currentMonth).filter(b => b.period === 'yearly');
   }, [getBudgetsForMonth, currentMonth]);
 
   // === Income calculations ===
