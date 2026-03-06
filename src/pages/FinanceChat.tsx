@@ -239,7 +239,7 @@ const FinanceChat = () => {
     const healthHistoryLines = healthHistory.map(h => `- ${h.month_year}: ${h.total_score}/100`).join('\n');
 
     // Monthly savings target
-    const savingsTarget = household.monthlySavingsTarget;
+    const savingsTarget = financeScope === 'personal' ? personalSavingsTarget : household.monthlySavingsTarget;
 
     // 2 months before for trend
     const twoMonthsAgo = new Date(now); twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
@@ -509,7 +509,7 @@ Revenus: ${incomeCategories || 'Aucune'}`;
     }
 
     // Objectif d'épargne
-    const savingsTarget = household.monthlySavingsTarget;
+    const savingsTarget = financeScope === 'personal' ? personalSavingsTarget : household.monthlySavingsTarget;
     const monthSavings = getMonthSavings(now);
     if (savingsTarget && monthSavings < savingsTarget) {
       contextual.push({ emoji: '🎯', text: `Comment atteindre mon objectif d'épargne de ${formatAmount(savingsTarget)} ce mois ?`, priority: 5 });
