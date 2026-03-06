@@ -403,10 +403,10 @@ const Budgets = () => {
                       <span className="flex items-center gap-1.5"><TrendingUp className="w-3 h-3" /> Revenus</span>
                       <span className="font-mono-amount font-semibold">{formatAmount(totalIncome)}</span>
                     </div>
-                    {effectiveSavingsTarget > 0 && (
+                    {savingsDeduction > 0 && (
                       <div className="flex items-center justify-between text-xs text-primary-foreground/80">
-                        <span className="flex items-center gap-1.5"><Target className="w-3 h-3" /> Objectif d'épargne</span>
-                        <span className="font-mono-amount font-semibold">- {formatAmount(effectiveSavingsTarget)}</span>
+                        <span className="flex items-center gap-1.5"><Target className="w-3 h-3" /> {totalSavingsDeducted > effectiveSavingsTarget ? 'Épargne réelle' : 'Objectif d\'épargne'}</span>
+                        <span className="font-mono-amount font-semibold">- {formatAmount(savingsDeduction)}</span>
                       </div>
                     )}
                     <div className="flex items-center justify-between text-xs text-primary-foreground/80">
