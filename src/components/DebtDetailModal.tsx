@@ -28,7 +28,7 @@ interface ScheduleRow {
 interface Props {
   debt: Debt;
   onClose: () => void;
-  onUpdated: () => void;
+  onUpdated: (keepOpen?: boolean) => void;
 }
 
 // Inline km update component
