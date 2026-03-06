@@ -198,7 +198,9 @@ const Budgets = () => {
   }, [filteredBudgets]);
 
   // Available to budget = income - max(savings target, actual savings) - budgeted
-  const effectiveSavingsTarget = savingsTarget ?? 0;
+  // In personal scope, savings target is not used (it's a household concept)
+  const isHouseholdScope = financeScope === 'household';
+  const effectiveSavingsTarget = isHouseholdScope ? (savingsTarget ?? 0) : 0;
   const totalSavingsDeducted = Math.abs(monthSavingsNet);
   const savingsDeduction = Math.max(effectiveSavingsTarget, totalSavingsDeducted);
   const totalAllocated = totalBudgeted + savingsDeduction;
