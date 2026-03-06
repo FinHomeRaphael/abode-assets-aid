@@ -404,7 +404,7 @@ const Budgets = () => {
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min(budgetPercentage, 100)}%` }}
                   transition={{ duration: 0.8, ease: 'easeOut' }}
-                  className={`h-full rounded-full ${remainingToBudget < 0 ? 'bg-destructive' : 'bg-primary-foreground/60'}`}
+                  className={`h-full rounded-full ${remainingToBudget < 0 ? 'bg-warning' : 'bg-primary-foreground/60'}`}
                 />
               </div>
               <span className="text-xs text-primary-foreground/60 font-mono-amount">{Math.round(budgetPercentage)}%</span>
@@ -458,8 +458,8 @@ const Budgets = () => {
             </AnimatePresence>
             {remainingToBudget < 0 && totalIncome > 0 && (
               <div className="flex items-center gap-1.5 mt-2">
-                <AlertTriangle className="w-3.5 h-3.5 text-primary-foreground/80" />
-                <span className="text-xs text-primary-foreground/80">Dépassement de {formatAmount(Math.abs(remainingToBudget))}</span>
+                <AlertTriangle className="w-3.5 h-3.5 text-warning" />
+                <span className="text-xs text-warning">Surplus budgété de {formatAmount(Math.abs(remainingToBudget))}</span>
               </div>
             )}
             {remainingToBudget === 0 && totalIncome > 0 && (

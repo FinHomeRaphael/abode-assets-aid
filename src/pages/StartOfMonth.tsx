@@ -479,10 +479,10 @@ const StartOfMonth = () => {
               )}
               <div className="h-px bg-border/40" />
               <div className="flex justify-between font-medium">
-                <span className={remainingToBudget > 0 ? 'text-warning' : 'text-primary'}>
+                <span className={remainingToBudget > 0 ? 'text-warning' : 'text-warning'}>
                   {remainingToBudget > 0 ? 'Non budgété' : 'Surplus budgété'}
                 </span>
-                <span className={`font-mono-amount font-semibold ${remainingToBudget > 0 ? 'text-warning' : 'text-primary'}`}>
+                <span className={`font-mono-amount font-semibold ${remainingToBudget > 0 ? 'text-warning' : 'text-warning'}`}>
                   {formatAmount(Math.abs(remainingToBudget))}
                 </span>
               </div>
