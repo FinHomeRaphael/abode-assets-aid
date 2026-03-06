@@ -31,37 +31,93 @@ interface Props {
   onUpdated: (keepOpen?: boolean) => void;
 }
 
-// Inline km update component
+// Inline km update component with history
 const UpdateKmButton = ({ debt, onUpdated, formatAmount }: { debt: Debt; onUpdated: () => void; formatAmount: (n: number) => string }) => {
+  const { householdId } = useApp();
   const [editing, setEditing] = useState(false);
   const [km, setKm] = useState(String(debt.currentKm || 0));
   const [saving, setSaving] = useState(false);
+  const [history, setHistory] = useState<{ id: string; km: number; recorded_at: string }[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  const fetchHistory = async () => {
+    if (!householdId) return;
+    setLoadingHistory(true);
+    const { data } = await supabase
+      .from('debt_km_history')
+      .select('id, km, recorded_at')
+      .eq('debt_id', debt.id)
+      .order('recorded_at', { ascending: false })
+      .limit(20);
+    setHistory(data || []);
+    setLoadingHistory(false);
+  };
+
+  const toggleHistory = () => {
+    if (!showHistory && history.length === 0) fetchHistory();
+    setShowHistory(!showHistory);
+  };
 
   const handleSave = async () => {
+    if (!householdId) return;
     setSaving(true);
-    const { error } = await supabase.from('debts').update({ current_km: parseInt(km) || 0 }).eq('id', debt.id);
+    const newKm = parseInt(km) || 0;
+    const { error } = await supabase.from('debts').update({ current_km: newKm }).eq('id', debt.id);
+    if (error) { setSaving(false); toast.error('Erreur'); return; }
+    // Save to history
+    await supabase.from('debt_km_history').insert({
+      debt_id: debt.id,
+      household_id: householdId,
+      km: newKm,
+      recorded_at: new Date().toISOString().slice(0, 10),
+    });
     setSaving(false);
-    if (error) { toast.error('Erreur'); return; }
-    // silent
     setEditing(false);
+    // Refresh history if visible
+    if (showHistory) fetchHistory();
     onUpdated();
   };
 
-  if (!editing) {
-    return (
-      <button onClick={() => setEditing(true)} className="mt-2 w-full py-1.5 rounded-xl bg-muted/50 text-muted-foreground text-xs font-medium hover:bg-muted transition-colors">
-        ✏️ Mettre à jour le kilométrage
-      </button>
-    );
-  }
-
   return (
-    <div className="mt-2 flex gap-2 items-center">
-      <input type="number" value={km} onChange={e => setKm(e.target.value)} className="flex-1 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-mono focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Km actuel" />
-      <button onClick={handleSave} disabled={saving} className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50">
-        {saving ? '...' : 'OK'}
-      </button>
-      <button onClick={() => setEditing(false)} className="px-2 py-1.5 rounded-lg border border-border text-xs">✕</button>
+    <div className="mt-2">
+      {!editing ? (
+        <div className="flex gap-2">
+          <button onClick={() => setEditing(true)} className="flex-1 py-1.5 rounded-xl bg-muted/50 text-muted-foreground text-xs font-medium hover:bg-muted transition-colors">
+            ✏️ Mettre à jour
+          </button>
+          <button onClick={toggleHistory} className="py-1.5 px-3 rounded-xl bg-muted/50 text-muted-foreground text-xs font-medium hover:bg-muted transition-colors">
+            {showHistory ? '▲' : '📋'} Historique
+          </button>
+        </div>
+      ) : (
+        <div className="flex gap-2 items-center">
+          <input type="number" value={km} onChange={e => setKm(e.target.value)} className="flex-1 px-3 py-1.5 rounded-lg border border-border bg-background text-xs font-mono focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Km actuel" />
+          <button onClick={handleSave} disabled={saving} className="px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50">
+            {saving ? '...' : 'OK'}
+          </button>
+          <button onClick={() => setEditing(false)} className="px-2 py-1.5 rounded-lg border border-border text-xs">✕</button>
+        </div>
+      )}
+      {showHistory && (
+        <div className="mt-2 rounded-lg border border-border bg-muted/20 overflow-hidden">
+          <div className="px-3 py-1.5 text-[10px] font-semibold text-muted-foreground border-b border-border flex justify-between">
+            <span>Date</span><span>Kilométrage</span>
+          </div>
+          {loadingHistory ? (
+            <div className="px-3 py-2 text-[10px] text-muted-foreground">Chargement…</div>
+          ) : history.length === 0 ? (
+            <div className="px-3 py-2 text-[10px] text-muted-foreground">Aucun historique</div>
+          ) : (
+            history.map((h, i) => (
+              <div key={h.id} className={`px-3 py-1.5 flex justify-between text-[11px] ${i > 0 ? 'border-t border-border/50' : ''}`}>
+                <span className="text-muted-foreground">{new Date(h.recorded_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                <span className="font-mono font-medium">{h.km.toLocaleString('fr-FR')} km</span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 };
