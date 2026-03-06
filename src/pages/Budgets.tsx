@@ -46,8 +46,20 @@ const Budgets = () => {
   // Savings target state
   const [showSavingsTargetEdit, setShowSavingsTargetEdit] = useState(false);
   const [savingsTargetInput, setSavingsTargetInput] = useState('');
+  const [personalSavingsTarget, setPersonalSavingsTarget] = useState<number | null>(null);
 
-  const savingsTarget = household.monthlySavingsTarget;
+  // Fetch personal savings target from profile
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    const fetchPersonalTarget = async () => {
+      const { data } = await supabase.from('profiles').select('monthly_savings_target').eq('id', session.user.id).single();
+      if (data) setPersonalSavingsTarget((data as any).monthly_savings_target ?? null);
+    };
+    fetchPersonalTarget();
+  }, [session?.user?.id]);
+
+  const isHouseholdScope = financeScope === 'household';
+  const savingsTarget = isHouseholdScope ? household.monthlySavingsTarget : personalSavingsTarget;
 
   // === Debt monthly total for budget suggestion ===
   const [debtMonthlyTotal, setDebtMonthlyTotal] = useState(0);
@@ -121,16 +133,25 @@ const Budgets = () => {
   const handleSaveSavingsTarget = async () => {
     const value = parseFloat(savingsTargetInput);
     if (isNaN(value) || value <= 0) { toast.error('Montant invalide'); return; }
-    await supabase.from('households').update({ monthly_savings_target: value } as any).eq('id', householdId);
-    // Optimistic update via household reference
-    (household as any).monthlySavingsTarget = value;
+    if (isHouseholdScope) {
+      await supabase.from('households').update({ monthly_savings_target: value } as any).eq('id', householdId);
+      (household as any).monthlySavingsTarget = value;
+    } else {
+      await supabase.from('profiles').update({ monthly_savings_target: value } as any).eq('id', session?.user?.id);
+      setPersonalSavingsTarget(value);
+    }
     setShowSavingsTargetEdit(false);
     toast.success('Objectif d\'épargne mis à jour');
   };
 
   const handleRemoveSavingsTarget = async () => {
-    await supabase.from('households').update({ monthly_savings_target: null } as any).eq('id', householdId);
-    (household as any).monthlySavingsTarget = null;
+    if (isHouseholdScope) {
+      await supabase.from('households').update({ monthly_savings_target: null } as any).eq('id', householdId);
+      (household as any).monthlySavingsTarget = null;
+    } else {
+      await supabase.from('profiles').update({ monthly_savings_target: null } as any).eq('id', session?.user?.id);
+      setPersonalSavingsTarget(null);
+    }
     setShowSavingsTargetEdit(false);
     toast.success('Objectif supprimé');
   };
@@ -198,9 +219,7 @@ const Budgets = () => {
   }, [filteredBudgets]);
 
   // Available to budget = income - max(savings target, actual savings) - budgeted
-  // In personal scope, savings target is not used (it's a household concept)
-  const isHouseholdScope = financeScope === 'household';
-  const effectiveSavingsTarget = isHouseholdScope ? (savingsTarget ?? 0) : 0;
+  const effectiveSavingsTarget = savingsTarget ?? 0;
   const totalSavingsDeducted = Math.abs(monthSavingsNet);
   const savingsDeduction = Math.max(effectiveSavingsTarget, totalSavingsDeducted);
   const totalAllocated = totalBudgeted + savingsDeduction;
@@ -514,14 +533,12 @@ const Budgets = () => {
               <Target className="w-4 h-4 text-primary" />
               <span className="text-sm font-semibold">Épargne mensuelle</span>
             </div>
-            {isHouseholdScope && (
-              <button
-                onClick={() => { setSavingsTargetInput(savingsTarget ? String(savingsTarget) : ''); setShowSavingsTargetEdit(true); }}
-                className="text-primary hover:text-primary/80 transition-colors"
-              >
-                {savingsTarget ? <Pencil className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-              </button>
-            )}
+            <button
+              onClick={() => { setSavingsTargetInput(savingsTarget ? String(savingsTarget) : ''); setShowSavingsTargetEdit(true); }}
+              className="text-primary hover:text-primary/80 transition-colors"
+            >
+              {savingsTarget ? <Pencil className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+            </button>
           </div>
 
           <div className="flex items-center justify-between text-xs">
@@ -531,7 +548,7 @@ const Budgets = () => {
             </span>
           </div>
 
-          {isHouseholdScope && savingsTarget && savingsTarget > 0 && (
+          {savingsTarget && savingsTarget > 0 && (
             <>
               <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <motion.div

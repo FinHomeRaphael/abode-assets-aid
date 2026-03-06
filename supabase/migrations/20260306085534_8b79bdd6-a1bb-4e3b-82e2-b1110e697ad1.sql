@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN monthly_savings_target numeric DEFAULT NULL;
