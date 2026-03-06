@@ -130,6 +130,10 @@ const StartOfMonth = () => {
     getBudgetsForMonth(now).filter(b => b.period === 'monthly').map(b => ({ ...b, spent: getBudgetSpent(b) })),
     [getBudgetsForMonth, getBudgetSpent]);
 
+  const annualBudgetData = useMemo(() =>
+    getBudgetsForMonth(now).filter(b => b.period === 'yearly').map(b => ({ ...b, spent: getBudgetSpent(b) })),
+    [getBudgetsForMonth, getBudgetSpent]);
+
   // Checklist state
   const initial = useMemo(() => loadChecklist(monthYear, financeScope), [monthYear, financeScope]);
   const [checkedIncomes, setCheckedIncomes] = useState<Set<string>>(() => new Set(initial.checkedIncomes));
@@ -182,7 +186,8 @@ const StartOfMonth = () => {
   const totalRecurringIncome = recurringIncomes.filter(t => !cancelledIncomes.has(t.id)).reduce((s, t) => s + t.convertedAmount, 0);
   const totalRecurringExpense = recurringExpenses.filter(t => !cancelledExpenses.has(t.id)).reduce((s, t) => s + t.convertedAmount, 0);
   const totalDebtPayments = debts.reduce((s, d) => s + d.paymentAmount, 0);
-  const totalBudgetLimit = budgetData.reduce((s, b) => s + b.limit, 0);
+  const totalAnnualMonthlyEquiv = annualBudgetData.reduce((s, b) => s + b.limit / 12, 0);
+  const totalBudgetLimit = budgetData.reduce((s, b) => s + b.limit, 0) + totalAnnualMonthlyEquiv;
 
   // Month-level totals (all transactions, for hero summary)
   const totalMonthExpenses = useMemo(() =>
@@ -206,7 +211,7 @@ const StartOfMonth = () => {
   const allDone = completedSteps === totalSteps;
 
   // Budget suggestions: categories with spending but no budget
-  const budgetedCategories = useMemo(() => new Set(budgetData.map(b => b.category)), [budgetData]);
+  const budgetedCategories = useMemo(() => new Set([...budgetData.map(b => b.category), ...annualBudgetData.map(b => b.category)]), [budgetData, annualBudgetData]);
   const budgetSuggestions = useMemo(() => {
     const expenseTx = monthTx.filter(t => t.type === 'expense' && t.category !== 'Transfert');
     const catSpent = new Map<string, number>();
@@ -448,7 +453,7 @@ const StartOfMonth = () => {
         </StepCard>
 
         {/* Step 4: Budgets */}
-        <StepCard stepNum={4} title="Budgets variables" subtitle="Alloue ton disponible à des budgets" icon={BarChart3} done={step4Done} total={budgetData.length > 0 ? formatAmount(totalBudgetLimit) : '—'}>
+        <StepCard stepNum={4} title="Budgets variables" subtitle="Alloue ton disponible à des budgets" icon={BarChart3} done={step4Done} total={budgetData.length > 0 || annualBudgetData.length > 0 ? formatAmount(totalBudgetLimit) : '—'}>
           {/* Budget summary breakdown */}
           <div className="mx-4 mt-2 mb-1 px-3 py-2.5 rounded-xl bg-muted/40 border border-border/30">
             <div className="space-y-1.5 text-[11px]">
@@ -463,9 +468,15 @@ const StartOfMonth = () => {
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Budgété</span>
-                <span className="font-mono-amount font-medium text-primary">-{formatAmount(totalBudgetLimit)}</span>
+                <span className="text-muted-foreground">Budgets mensuels</span>
+                <span className="font-mono-amount font-medium text-primary">-{formatAmount(budgetData.reduce((s, b) => s + b.limit, 0))}</span>
               </div>
+              {annualBudgetData.length > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Budgets annuels ÷12</span>
+                  <span className="font-mono-amount font-medium text-primary">-{formatAmount(totalAnnualMonthlyEquiv)}</span>
+                </div>
+              )}
               <div className="h-px bg-border/40" />
               <div className="flex justify-between font-medium">
                 <span className={remainingToBudget > 0 ? 'text-warning' : 'text-primary'}>
@@ -492,9 +503,10 @@ const StartOfMonth = () => {
             </div>
           )}
 
-          {/* Budget list */}
-          {budgetData.length > 0 ? (
+          {/* Monthly budget list */}
+          {budgetData.length > 0 && (
             <div className="px-4 py-2 space-y-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Mensuels</p>
               {budgetData.map(b => {
                 const pct = Math.min(Math.round((b.spent / b.limit) * 100), 100);
                 const status = getBudgetStatus(b.spent, b.limit);
@@ -517,7 +529,35 @@ const StartOfMonth = () => {
                 );
               })}
             </div>
-          ) : (
+          )}
+
+          {/* Annual budget list */}
+          {annualBudgetData.length > 0 && (
+            <div className="px-4 py-2 space-y-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Annuels</p>
+              {annualBudgetData.map(b => {
+                const monthlyEquiv = b.limit / 12;
+                const pct = Math.min(Math.round((b.spent / b.limit) * 100), 100);
+                const status = getBudgetStatus(b.spent, b.limit);
+                return (
+                  <div key={b.id} className="py-1.5">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[12px] font-medium">{b.emoji} {b.category}</p>
+                      <span className="text-[11px] text-muted-foreground font-mono-amount">{formatAmount(b.spent)} / {formatAmount(b.limit)} <span className="text-[9px]">(≈{formatAmount(monthlyEquiv)}/m)</span></span>
+                    </div>
+                    <div className="h-1 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${status === 'over' ? 'bg-destructive' : status === 'warning' ? 'bg-warning' : 'bg-primary'}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {budgetData.length === 0 && annualBudgetData.length === 0 && (
             <div className="text-center py-4 px-4">
               <p className="text-[12px] text-muted-foreground">Aucun budget configuré</p>
             </div>
