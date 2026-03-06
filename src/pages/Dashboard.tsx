@@ -173,8 +173,16 @@ const Dashboard = () => {
   const totalBudgetSpent = budgetData.reduce((s, b) => s + b.spent, 0);
   const budgetUsagePct = totalBudgetLimit > 0 ? Math.round((totalBudgetSpent / totalBudgetLimit) * 100) : 0;
 
+  // Check if month is prepared (from StartOfMonth localStorage flag)
+  const monthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const isMonthPrepared = useMemo(() => {
+    try {
+      return localStorage.getItem(`finehome_month_prepared_${financeScope}_${monthYear}`) === 'true';
+    } catch { return false; }
+  }, [financeScope, monthYear]);
+
   const quickActions = [
-    { icon: Calendar, label: 'Préparer', onClick: () => navigate('/start-of-month') },
+    { icon: Calendar, label: 'Préparer', onClick: () => navigate('/start-of-month'), done: isMonthPrepared },
     { icon: Sparkles, label: 'Coach IA', onClick: () => isPremium ? navigate('/chat') : setPaywallFeature({ feature: 'le Coach IA', description: 'Accédez à votre coach financier personnel propulsé par l\'IA.' }), locked: !subLoading && !isPremium },
     { icon: Camera, label: 'Scanner', onClick: () => setShowScan(true) },
     { icon: BarChart3, label: 'Rapport', onClick: () => isPremium ? setShowReport(true) : setPaywallFeature({ feature: 'le rapport mensuel', description: 'Obtenez un rapport détaillé de vos finances chaque mois.' }), locked: !subLoading && !isPremium },
