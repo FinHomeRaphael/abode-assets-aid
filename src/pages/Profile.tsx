@@ -11,7 +11,7 @@ import BackHeader from '@/components/BackHeader';
 import ConvertedAmount from '@/components/ConvertedAmount';
 import InviteMemberModal from '@/components/InviteMemberModal';
 import { supabase } from '@/integrations/supabase/client';
-import { useSubscription, PlanType } from '@/hooks/useSubscription';
+import { useSubscription, PlanType, FREEMIUM_LIMITS, FOYER_LIMITS, FAMILLE_LIMITS } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
 import { CategoryIcon } from '@/utils/categoryIcons';
 import { Crown, Pencil, Check, X } from 'lucide-react';
@@ -236,11 +236,20 @@ const Profile = () => {
         <div className="card-elevated p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold">
-              Membres ({household.members.length})
+              Membres ({household.members.length}{(() => {
+                const limit = plan === 'famille' ? FAMILLE_LIMITS.members : plan === 'foyer' ? FOYER_LIMITS.members : FREEMIUM_LIMITS.members;
+                return limit !== Infinity ? `/${limit}` : '';
+              })()})
             </h2>
-            {currentUser?.role === 'admin' && (
-              <button onClick={() => setShowInviteModal(true)} className="text-sm text-primary font-medium hover:underline">+ Inviter un membre</button>
-            )}
+            {currentUser?.role === 'admin' && (() => {
+              const limit = plan === 'famille' ? FAMILLE_LIMITS.members : plan === 'foyer' ? FOYER_LIMITS.members : FREEMIUM_LIMITS.members;
+              const atLimit = household.members.length >= limit;
+              return atLimit ? (
+                <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">Limite atteinte</span>
+              ) : (
+                <button onClick={() => setShowInviteModal(true)} className="text-sm text-primary font-medium hover:underline">+ Inviter un membre</button>
+              );
+            })()}
           </div>
           <div className="space-y-3">
             {household.members.map(m => (
