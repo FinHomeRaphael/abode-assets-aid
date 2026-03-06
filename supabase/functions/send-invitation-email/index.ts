@@ -79,28 +79,53 @@ serve(async (req) => {
     const safeInviterName = escapeHtml(inviterName);
     const safeHouseholdName = escapeHtml(householdName);
 
+    const logoUrl = 'https://ptcuiawjfhvgnubpathd.supabase.co/storage/v1/object/public/email-assets/logo.png';
+
     const htmlContent = `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 20px;">
-        <div style="text-align: center; margin-bottom: 24px;">
-          <span style="font-size: 48px;">🏠</span>
-          <h1 style="font-size: 24px; font-weight: 700; margin: 8px 0 0;">FineHome</h1>
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+      <body style="margin: 0; padding: 0; background-color: #ffffff; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <div style="max-width: 520px; margin: 0 auto; padding: 40px 24px;">
+          <!-- Logo -->
+          <div style="text-align: center; margin-bottom: 32px;">
+            <img src="${logoUrl}" alt="FinHome" style="height: 48px; width: auto;" />
+          </div>
+
+          <!-- Main Card -->
+          <div style="background: #f8fafb; border: 1px solid #e8eeef; border-radius: 12px; padding: 32px; margin-bottom: 24px;">
+            <h1 style="font-size: 22px; font-weight: 700; color: #1c2127; margin: 0 0 8px; text-align: center;">
+              Vous êtes invité(e) ! 🎉
+            </h1>
+            <div style="width: 40px; height: 3px; background: hsl(168, 30%, 45%); margin: 16px auto 20px; border-radius: 2px;"></div>
+            <p style="color: #4b5563; font-size: 15px; line-height: 1.6; margin: 0 0 16px; text-align: center;">
+              <strong>${safeInviterName}</strong> vous invite à rejoindre le foyer
+            </p>
+            <div style="background: #ffffff; border: 1px solid #e8eeef; border-radius: 8px; padding: 12px 16px; margin: 0 0 20px; text-align: center;">
+              <span style="font-size: 16px; font-weight: 600; color: hsl(168, 30%, 45%);">🏠 ${safeHouseholdName}</span>
+            </div>
+            <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 0 0 24px; text-align: center;">
+              Gérez vos finances en famille : dépenses, budgets et objectifs d'épargne, ensemble sur FinHome.
+            </p>
+            <div style="text-align: center;">
+              <a href="${escapeHtml(inviteUrl)}" style="display: inline-block; background: hsl(168, 30%, 45%); color: #f0faf5; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 15px; letter-spacing: 0.01em;">
+                Accepter l'invitation
+              </a>
+            </div>
+          </div>
+
+          <!-- Footer -->
+          <div style="text-align: center; padding-top: 8px;">
+            <p style="color: #9ca3af; font-size: 12px; line-height: 1.5; margin: 0;">
+              Ce lien expire dans 7 jours.<br/>Si vous n'avez pas demandé cette invitation, ignorez cet email.
+            </p>
+            <p style="color: #d1d5db; font-size: 11px; margin: 16px 0 0;">
+              © ${new Date().getFullYear()} FinHome · Gestion de finances familiales
+            </p>
+          </div>
         </div>
-        <div style="background: #f8f9fa; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-          <h2 style="font-size: 18px; margin: 0 0 8px;">Vous avez été invité(e) !</h2>
-          <p style="color: #6b7280; font-size: 14px; margin: 0 0 16px;">
-            <strong>${safeInviterName}</strong> vous invite à rejoindre le foyer <strong>"${safeHouseholdName}"</strong> sur FineHome.
-          </p>
-          <p style="color: #6b7280; font-size: 14px; margin: 0 0 20px;">
-            FineHome est une application de gestion de finances familiales. En rejoignant ce foyer, vous pourrez suivre les dépenses, budgets et objectifs d'épargne ensemble.
-          </p>
-          <a href="${escapeHtml(inviteUrl)}" style="display: inline-block; background: #2563eb; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; font-size: 14px;">
-            Accepter l'invitation
-          </a>
-        </div>
-        <p style="color: #9ca3af; font-size: 12px; text-align: center;">
-          Ce lien expire dans 7 jours. Si vous n'avez pas demandé cette invitation, ignorez cet email.
-        </p>
-      </div>
+      </body>
+      </html>
     `;
 
     const res = await fetch('https://api.resend.com/emails', {
@@ -112,7 +137,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: 'FineHome <noreply@fin-home.io>',
         to: email,
-        subject: `${inviterName} vous invite à rejoindre son foyer sur FineHome`,
+        subject: `${inviterName} vous invite sur FinHome 🏠`,
         html: htmlContent,
       }),
     });
