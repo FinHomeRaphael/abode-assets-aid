@@ -645,6 +645,8 @@ export type Database = {
         Row: {
           ai_advice_count_this_week: number
           ai_advice_last_date: string | null
+          coach_ia_conversations_count: number
+          coach_ia_reset_date: string | null
           created_at: string | null
           default_currency: string | null
           id: string
@@ -660,6 +662,8 @@ export type Database = {
         Insert: {
           ai_advice_count_this_week?: number
           ai_advice_last_date?: string | null
+          coach_ia_conversations_count?: number
+          coach_ia_reset_date?: string | null
           created_at?: string | null
           default_currency?: string | null
           id?: string
@@ -675,6 +679,8 @@ export type Database = {
         Update: {
           ai_advice_count_this_week?: number
           ai_advice_last_date?: string | null
+          coach_ia_conversations_count?: number
+          coach_ia_reset_date?: string | null
           created_at?: string | null
           default_currency?: string | null
           id?: string
