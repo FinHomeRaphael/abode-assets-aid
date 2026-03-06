@@ -197,10 +197,11 @@ const Budgets = () => {
     return filteredBudgets.reduce((s, b) => s + b.limit, 0);
   }, [filteredBudgets]);
 
-  // Available to budget = income - savings target - budgeted
+  // Available to budget = income - max(savings target, actual savings) - budgeted
   const effectiveSavingsTarget = savingsTarget ?? 0;
   const totalSavingsDeducted = Math.abs(monthSavingsNet);
-  const totalAllocated = totalBudgeted + effectiveSavingsTarget;
+  const savingsDeduction = Math.max(effectiveSavingsTarget, totalSavingsDeducted);
+  const totalAllocated = totalBudgeted + savingsDeduction;
   const remainingToBudget = totalIncome - totalAllocated;
   const budgetPercentage = totalIncome > 0 ? Math.min((totalAllocated / totalIncome) * 100, 100) : 0;
 

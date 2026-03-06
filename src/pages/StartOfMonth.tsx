@@ -170,7 +170,8 @@ const StartOfMonth = () => {
   const step1Done = recurringIncomes.length === 0 || recurringIncomes.every(t => checkedIncomes.has(t.id) || cancelledIncomes.has(t.id));
   const step2Done = recurringExpenses.length === 0 || recurringExpenses.every(t => checkedExpenses.has(t.id) || cancelledExpenses.has(t.id));
   const step3Done = debts.length === 0 || debts.every(d => checkedDebts.has(d.id));
-  const remainingToBudget = totalIncome - totalBudgetLimit - savingsTarget;
+  const savingsDeduction = Math.max(savingsTarget, Math.abs(monthSavingsNet));
+  const remainingToBudget = totalIncome - totalBudgetLimit - savingsDeduction;
   const budgetCoverage = totalIncome > 0 ? Math.round(((totalBudgetLimit + savingsTarget) / totalIncome) * 100) : 0;
   const isFullyCovered = remainingToBudget <= 0 || budgetCoverage >= 95;
   const step4Done = budgetData.length > 0 && isFullyCovered;
