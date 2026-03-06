@@ -130,6 +130,10 @@ const StartOfMonth = () => {
     getBudgetsForMonth(now).filter(b => b.period === 'monthly').map(b => ({ ...b, spent: getBudgetSpent(b) })),
     [getBudgetsForMonth, getBudgetSpent]);
 
+  const annualBudgetData = useMemo(() =>
+    getBudgetsForMonth(now).filter(b => b.period === 'yearly').map(b => ({ ...b, spent: getBudgetSpent(b) })),
+    [getBudgetsForMonth, getBudgetSpent]);
+
   // Checklist state
   const initial = useMemo(() => loadChecklist(monthYear, financeScope), [monthYear, financeScope]);
   const [checkedIncomes, setCheckedIncomes] = useState<Set<string>>(() => new Set(initial.checkedIncomes));
