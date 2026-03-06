@@ -9,8 +9,28 @@ const corsHeaders = {
 
 const PRICE_ID_REGEX = /^price_[a-zA-Z0-9]{8,}$/;
 
-// Lifetime price ID for one-time payment mode
-const LIFETIME_PRICE_ID = "price_1T4FBGIw2TO0HaPOMvqQhLx4";
+// Lifetime price IDs for one-time payment mode
+const LIFETIME_PRICE_IDS = [
+  "price_1T7y3XIw2TO0HaPO5RiFbGbI",  // Foyer lifetime
+  "price_1T7y4KIw2TO0HaPOu1OaQ0GA",  // Famille lifetime
+];
+
+// Price to plan mapping
+const FOYER_PRICE_IDS = [
+  "price_1T7y2OIw2TO0HaPOo83XMPEP",
+  "price_1T7y2iIw2TO0HaPODsF2b5RZ",
+  "price_1T7y3XIw2TO0HaPO5RiFbGbI",
+];
+const FAMILLE_PRICE_IDS = [
+  "price_1T7y3pIw2TO0HaPOgN0KYjLa",
+  "price_1T7y49Iw2TO0HaPOtNSRk9Lg",
+  "price_1T7y4KIw2TO0HaPOu1OaQ0GA",
+];
+
+function getPlanType(priceId: string): string {
+  if (FAMILLE_PRICE_IDS.includes(priceId)) return "famille";
+  return "foyer";
+}
 
 function validateRequest(body: unknown): { priceId: string } {
   if (!body || typeof body !== "object") throw new Error("Invalid request body");
@@ -29,7 +49,6 @@ serve(async (req) => {
   }
 
   try {
-    // Auth validation
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -44,14 +63,6 @@ serve(async (req) => {
     );
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabaseClient.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Get full user for email
     const { data } = await supabaseClient.auth.getUser(token);
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated");
@@ -66,7 +77,8 @@ serve(async (req) => {
     }
 
     const { priceId } = validateRequest(rawBody);
-    const isLifetime = priceId === LIFETIME_PRICE_ID;
+    const isLifetime = LIFETIME_PRICE_IDS.includes(priceId);
+    const planType = getPlanType(priceId);
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", { apiVersion: "2025-08-27.basil" });
     
@@ -76,7 +88,7 @@ serve(async (req) => {
       customerId = customers.data[0].id;
     }
 
-    const origin = req.headers.get("origin") || "https://hearth-finance-flow.lovable.app";
+    const origin = req.headers.get("origin") || "https://abode-assets-aid.lovable.app";
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -84,8 +96,8 @@ serve(async (req) => {
       line_items: [{ price: priceId, quantity: 1 }],
       mode: isLifetime ? "payment" : "subscription",
       success_url: `${origin}/profile?checkout=success`,
-      cancel_url: `${origin}/profile?checkout=cancel`,
-      metadata: { user_id: user.id, plan_type: isLifetime ? 'lifetime' : 'subscription' },
+      cancel_url: `${origin}/pricing?checkout=cancel`,
+      metadata: { user_id: user.id, plan_type: planType, is_lifetime: isLifetime ? 'true' : 'false' },
     });
 
     return new Response(JSON.stringify({ url: session.url }), {

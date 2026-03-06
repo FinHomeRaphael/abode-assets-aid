@@ -18,6 +18,7 @@ import FinanceChat from "./pages/FinanceChat";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import NotFound from "./pages/NotFound";
+import Pricing from "./pages/Pricing";
 
 import HealthScore from "./pages/HealthScore";
 import Aide from "./pages/Aide";
@@ -155,6 +156,7 @@ const AppRoutes = () => (
       <Route path="/account/:id" element={<ProtectedRoute><AccountDetail /></ProtectedRoute>} />
       <Route path="/start-of-month" element={<ProtectedRoute><StartOfMonth /></ProtectedRoute>} />
       <Route path="/chat" element={<ProtectedRoute><FinanceChat /></ProtectedRoute>} />
+      <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
       <Route path="/aide" element={<ProtectedRoute><Aide /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />

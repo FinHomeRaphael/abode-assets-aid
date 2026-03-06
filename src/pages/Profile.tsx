@@ -11,7 +11,7 @@ import BackHeader from '@/components/BackHeader';
 import ConvertedAmount from '@/components/ConvertedAmount';
 import InviteMemberModal from '@/components/InviteMemberModal';
 import { supabase } from '@/integrations/supabase/client';
-import { useSubscription } from '@/hooks/useSubscription';
+import { useSubscription, PlanType } from '@/hooks/useSubscription';
 import { PaywallModal } from '@/components/PremiumPaywall';
 import { CategoryIcon } from '@/utils/categoryIcons';
 import { Crown, Pencil, Check, X } from 'lucide-react';
@@ -66,7 +66,7 @@ const Profile = () => {
   const { formatAmount, currency } = useCurrency();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { isPremium, subscriptionEnd, startCheckout, openPortal, checkSubscription } = useSubscription();
+  const { plan, isPremium, subscriptionEnd, startCheckout, openPortal, checkSubscription } = useSubscription();
   const [showPaywall, setShowPaywall] = useState(false);
   
 
@@ -170,27 +170,39 @@ const Profile = () => {
         </div>
 
 
-        {/* Subscription — only for premium users */}
-        {isPremium && (
-          <div className="card-elevated p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold flex items-center gap-2">
-                <Crown className="w-4 h-4 text-amber-500" />
-                Abonnement
-              </h2>
-              <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-semibold">Premium</span>
-            </div>
-            <div className="space-y-2">
-              {subscriptionEnd && <p className="text-sm text-muted-foreground">Renouvellement : {formatDateLong(subscriptionEnd)}</p>}
-              <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 rounded-lg px-3 py-2">
-                👨‍👩‍👧‍👦 Le Premium est partagé avec tous les membres du foyer.
+        {/* Subscription */}
+        <div className="card-elevated p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold flex items-center gap-2">
+              <Crown className="w-4 h-4 text-amber-500" />
+              Abonnement
+            </h2>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+              plan === 'famille' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
+              plan === 'foyer' ? 'bg-primary/10 text-primary' :
+              'bg-muted text-muted-foreground'
+            }`}>
+              {plan === 'famille' ? 'Famille' : plan === 'foyer' ? 'Foyer' : 'Gratuit'}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {isPremium && subscriptionEnd && <p className="text-sm text-muted-foreground">Renouvellement : {formatDateLong(subscriptionEnd)}</p>}
+            {isPremium && (
+              <p className="text-xs text-primary bg-primary/10 rounded-lg px-3 py-2">
+                👨‍👩‍👧‍👦 Le plan {plan === 'famille' ? 'Famille' : 'Foyer'} est partagé avec tous les membres du foyer.
               </p>
+            )}
+            {isPremium ? (
               <button onClick={openPortal} className="w-full py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted transition-colors">
                 Gérer mon abonnement
               </button>
-            </div>
+            ) : (
+              <button onClick={() => navigate('/pricing')} className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors">
+                Passer au plan Foyer →
+              </button>
+            )}
           </div>
-        )}
+        </div>
 
         {/* Household */}
         {currentUser?.role === 'admin' ? (

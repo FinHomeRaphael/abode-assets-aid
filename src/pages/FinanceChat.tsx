@@ -6,9 +6,9 @@ import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import Layout from '@/components/Layout';
 import BackHeader from '@/components/BackHeader';
-import { useSubscription } from '@/hooks/useSubscription';
+import { useSubscription, FOYER_LIMITS } from '@/hooks/useSubscription';
 import { supabase } from '@/integrations/supabase/client';
-import { PremiumGate } from '@/components/PremiumPaywall';
+import { PlanGate } from '@/components/PlanGate';
 import { formatLocalDate } from '@/utils/format';
 import { Debt, DEBT_TYPES, getDebtEmoji, estimateEndDate, getPeriodsPerYear } from '@/types/debt';
 import { useHealthScore } from '@/hooks/useHealthScore';
@@ -28,7 +28,7 @@ const FinanceChat = () => {
     customCategories, customAccountTypes, getGoalDeposits,
   } = useApp();
   const { formatAmount } = useCurrency();
-  const { isPremium } = useSubscription(householdId, currentUser?.id);
+  const { plan, isPremium } = useSubscription(householdId, currentUser?.id);
 
   // Personal savings target for scope-aware usage
   const [personalSavingsTarget, setPersonalSavingsTarget] = useState<number | null>(null);
@@ -320,13 +320,44 @@ Dépenses: ${expenseCategories || 'Aucune'}
 Revenus: ${incomeCategories || 'Aucune'}`;
   }, [transactions, budgets, savingsGoals, savingsDeposits, household, currentUser, getTransactionsForMonth, getBudgetSpent, getGoalSaved, getGoalDeposits, getMonthSavings, getTotalSavings, getBudgetsForMonth, formatAmount, debts, debtSchedules, scopedAccounts, getAccountBalance, getRecurringTransactions, financeScope, customCategories, healthScore, healthHistory]);
 
+  // Coach IA usage tracking
+  const [coachUsage, setCoachUsage] = useState<{ count: number; resetDate: string | null }>({ count: 0, resetDate: null });
+
+  useEffect(() => {
+    if (!householdId) return;
+    supabase.from('households').select('coach_ia_conversations_count, coach_ia_reset_date').eq('id', householdId).single().then(({ data }) => {
+      if (data) {
+        setCoachUsage({
+          count: (data as any).coach_ia_conversations_count || 0,
+          resetDate: (data as any).coach_ia_reset_date || null,
+        });
+      }
+    });
+  }, [householdId]);
+
+  const coachLimitReached = plan === 'foyer' && coachUsage.count >= FOYER_LIMITS.coachIa;
+
   const checkAiLimit = useCallback(async (): Promise<boolean> => {
+    if (plan === 'famille') return true;
+    if (plan === 'free') return false;
+    // foyer: check limit
+    const { data } = await supabase.from('households').select('coach_ia_conversations_count').eq('id', householdId).single();
+    const count = (data as any)?.coach_ia_conversations_count || 0;
+    if (count >= FOYER_LIMITS.coachIa) {
+      setCoachUsage(prev => ({ ...prev, count }));
+      return false;
+    }
     return true;
-  }, []);
+  }, [plan, householdId]);
 
   const incrementAiCount = useCallback(async () => {
-    // No limits
-  }, []);
+    if (plan !== 'foyer' || !householdId) return;
+    const { data } = await supabase.from('households').select('coach_ia_conversations_count').eq('id', householdId).single();
+    const current = (data as any)?.coach_ia_conversations_count || 0;
+    const newCount = current + 1;
+    await supabase.from('households').update({ coach_ia_conversations_count: newCount } as any).eq('id', householdId);
+    setCoachUsage(prev => ({ ...prev, count: newCount }));
+  }, [plan, householdId]);
 
   const sendMessage = async () => {
     const text = input.trim();
@@ -548,10 +579,10 @@ Revenus: ${incomeCategories || 'Aucune'}`;
   return (
     <>
     <Layout>
-      <PremiumGate feature="le Coach IA" description="Obtiens des conseils financiers personnalisés grâce à l'intelligence artificielle.">
+      <PlanGate requiredPlan="foyer" message="Le Coach IA est disponible avec le plan Foyer. Obtiens des conseils personnalisés basés sur tes finances." ctaText="Découvrir le plan Foyer →">
       <div className="max-w-2xl mx-auto flex flex-col h-[calc(100dvh-8rem)] md:h-[calc(100dvh-8rem)] -mb-32 md:mb-0">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-2">
           <BackHeader />
           <div className="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center">
             <span className="text-xl">✨</span>
@@ -569,6 +600,29 @@ Revenus: ${incomeCategories || 'Aucune'}`;
             <span>{financeScope === 'personal' ? 'Personnel' : 'Foyer'}</span>
           </div>
         </div>
+
+        {/* Coach IA usage counter (foyer only) */}
+        {plan === 'foyer' && (
+          <div className="mb-3">
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="text-muted-foreground">{coachUsage.count}/{FOYER_LIMITS.coachIa} conversations ce mois</span>
+              {coachUsage.count >= 25 && coachUsage.count < 30 && (
+                <span className="text-warning font-medium">Plus que {30 - coachUsage.count} disponibles</span>
+              )}
+              {coachUsage.count >= 30 && (
+                <span className="text-destructive font-medium">Limite atteinte</span>
+              )}
+            </div>
+            <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  coachUsage.count >= 30 ? 'bg-destructive' : coachUsage.count >= 25 ? 'bg-warning' : 'bg-primary'
+                }`}
+                style={{ width: `${Math.min((coachUsage.count / 30) * 100, 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 min-h-0 pb-3">
@@ -635,13 +689,13 @@ Revenus: ${incomeCategories || 'Aucune'}`;
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Pose ta question..."
-              disabled={isLoading}
+              placeholder={coachLimitReached ? "Limite atteinte ce mois" : "Pose ta question..."}
+              disabled={isLoading || coachLimitReached}
               className="flex-1 px-4 py-3 rounded-xl border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
             />
             <button
               onClick={sendMessage}
-              disabled={!input.trim() || isLoading}
+              disabled={!input.trim() || isLoading || coachLimitReached}
               className="px-5 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
             >
               Envoyer
@@ -657,7 +711,7 @@ Revenus: ${incomeCategories || 'Aucune'}`;
           )}
         </div>
       </div>
-      </PremiumGate>
+      </PlanGate>
     </Layout>
     </>
   );

@@ -1,24 +1,51 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-export const PREMIUM_PRICES = {
-  monthly: { priceId: 'price_1T4F9nIw2TO0HaPOEQYTWkeY', amount: 5.99 },
-  yearly: { priceId: 'price_1T4FB0Iw2TO0HaPOynh4aLeb', amount: 59.90 },
-  lifetime: { priceId: 'price_1T4FBGIw2TO0HaPOMvqQhLx4', amount: 119.80 },
+export type PlanType = 'free' | 'foyer' | 'famille';
+
+export const PLAN_PRICES = {
+  foyer: {
+    monthly: { priceId: 'price_1T7y2OIw2TO0HaPOo83XMPEP', amount: 7.99 },
+    yearly: { priceId: 'price_1T7y2iIw2TO0HaPODsF2b5RZ', amount: 69.90 },
+    lifetime: { priceId: 'price_1T7y3XIw2TO0HaPO5RiFbGbI', amount: 149.90 },
+  },
+  famille: {
+    monthly: { priceId: 'price_1T7y3pIw2TO0HaPOgN0KYjLa', amount: 12.99 },
+    yearly: { priceId: 'price_1T7y49Iw2TO0HaPOtNSRk9Lg', amount: 119.90 },
+    lifetime: { priceId: 'price_1T7y4KIw2TO0HaPOu1OaQ0GA', amount: 249.90 },
+  },
 } as const;
 
-// Backward compat
-export const PREMIUM_PRICE_MONTHLY = PREMIUM_PRICES.monthly.priceId;
-export const PREMIUM_PRICE_YEARLY = PREMIUM_PRICES.yearly.priceId;
+// All price IDs for lifetime detection
+const LIFETIME_PRICE_IDS = [
+  PLAN_PRICES.foyer.lifetime.priceId,
+  PLAN_PRICES.famille.lifetime.priceId,
+];
+
+// Backward compat exports
+export const PREMIUM_PRICES = PLAN_PRICES.foyer;
+export const PREMIUM_PRICE_MONTHLY = PLAN_PRICES.foyer.monthly.priceId;
+export const PREMIUM_PRICE_YEARLY = PLAN_PRICES.foyer.yearly.priceId;
 
 export const FREEMIUM_LIMITS = {
   accounts: 1,
-  savingsGoals: 1,
+  savingsGoals: Infinity,
   budgets: 2,
+  members: 1,
+};
+
+export const FOYER_LIMITS = {
+  members: 2,
+  coachIa: 30,
+};
+
+export const FAMILLE_LIMITS = {
+  members: 5,
+  coachIa: Infinity,
 };
 
 export function useSubscription(householdId?: string, _userId?: string) {
-  const [subscribed, setSubscribed] = useState(false);
+  const [plan, setPlan] = useState<PlanType>('free');
   const [loading, setLoading] = useState(true);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
 
@@ -26,7 +53,7 @@ export function useSubscription(householdId?: string, _userId?: string) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        setSubscribed(false);
+        setPlan('free');
         setLoading(false);
         return;
       }
@@ -37,14 +64,15 @@ export function useSubscription(householdId?: string, _userId?: string) {
 
       if (error) {
         console.error('check-subscription error:', error);
-        setSubscribed(false);
+        setPlan('free');
       } else {
-        setSubscribed(data?.subscribed === true);
+        const planType = data?.plan_type as PlanType;
+        setPlan(planType === 'foyer' || planType === 'famille' ? planType : (data?.subscribed ? 'foyer' : 'free'));
         setSubscriptionEnd(data?.subscription_end || null);
       }
     } catch (err) {
       console.error('Subscription check failed:', err);
-      setSubscribed(false);
+      setPlan('free');
     } finally {
       setLoading(false);
     }
@@ -56,19 +84,32 @@ export function useSubscription(householdId?: string, _userId?: string) {
     return () => clearInterval(interval);
   }, [checkSubscription]);
 
-  const isPremium = subscribed;
+  const isPremium = plan !== 'free';
+  const subscribed = isPremium;
 
   const canAdd = useCallback((resource: string, currentCount: number) => {
-    if (isPremium) return true;
+    if (plan === 'famille') return true;
+    if (plan === 'foyer') {
+      if (resource === 'members') return currentCount < FOYER_LIMITS.members;
+      return true; // unlimited accounts, budgets, etc.
+    }
+    // free
     const limit = FREEMIUM_LIMITS[resource as keyof typeof FREEMIUM_LIMITS];
     if (limit === undefined) return true;
     return currentCount < limit;
-  }, [isPremium]);
+  }, [plan]);
 
   const getLimit = useCallback((resource: string) => {
-    if (isPremium) return Infinity;
+    if (plan === 'famille') {
+      if (resource === 'members') return FAMILLE_LIMITS.members;
+      return Infinity;
+    }
+    if (plan === 'foyer') {
+      if (resource === 'members') return FOYER_LIMITS.members;
+      return Infinity;
+    }
     return FREEMIUM_LIMITS[resource as keyof typeof FREEMIUM_LIMITS] ?? Infinity;
-  }, [isPremium]);
+  }, [plan]);
 
   const startCheckout = useCallback(async (priceId: string) => {
     try {
@@ -108,7 +149,7 @@ export function useSubscription(householdId?: string, _userId?: string) {
   }, []);
 
   return {
-    plan: isPremium ? 'premium' as const : 'free' as const,
+    plan,
     subscribed,
     subscriptionEnd,
     loading,
