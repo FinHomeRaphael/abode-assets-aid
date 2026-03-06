@@ -140,6 +140,38 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
   const [editPrincipal, setEditPrincipal] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Photo state
+  const [photoUrl, setPhotoUrl] = useState(debt.photoUrl || '');
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !householdId) return;
+    setUploadingPhoto(true);
+    const ext = file.name.split('.').pop();
+    const path = `${householdId}/${debt.id}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from('debt-photos').upload(path, file, { upsert: true });
+    if (uploadError) { toast.error('Erreur upload'); setUploadingPhoto(false); return; }
+    const { data: urlData } = supabase.storage.from('debt-photos').getPublicUrl(path);
+    const url = urlData.publicUrl + '?t=' + Date.now();
+    await supabase.from('debts').update({ photo_url: url }).eq('id', debt.id);
+    setPhotoUrl(url);
+    setUploadingPhoto(false);
+    toast.success('Photo ajoutée');
+    onUpdated(true);
+  };
+
+  const handlePhotoRemove = async () => {
+    if (!householdId) return;
+    setUploadingPhoto(true);
+    await supabase.from('debts').update({ photo_url: null }).eq('id', debt.id);
+    setPhotoUrl('');
+    setUploadingPhoto(false);
+    toast.success('Photo supprimée');
+    onUpdated(true);
+  };
+
   const fetchSchedule = useCallback(async () => {
     setLoadingSchedule(true);
     const { data, error } = await supabase
