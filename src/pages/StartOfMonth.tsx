@@ -503,9 +503,10 @@ const StartOfMonth = () => {
             </div>
           )}
 
-          {/* Budget list */}
-          {budgetData.length > 0 ? (
+          {/* Monthly budget list */}
+          {budgetData.length > 0 && (
             <div className="px-4 py-2 space-y-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Mensuels</p>
               {budgetData.map(b => {
                 const pct = Math.min(Math.round((b.spent / b.limit) * 100), 100);
                 const status = getBudgetStatus(b.spent, b.limit);
@@ -528,7 +529,35 @@ const StartOfMonth = () => {
                 );
               })}
             </div>
-          ) : (
+          )}
+
+          {/* Annual budget list */}
+          {annualBudgetData.length > 0 && (
+            <div className="px-4 py-2 space-y-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Annuels</p>
+              {annualBudgetData.map(b => {
+                const monthlyEquiv = b.limit / 12;
+                const pct = Math.min(Math.round((b.spent / b.limit) * 100), 100);
+                const status = getBudgetStatus(b.spent, b.limit);
+                return (
+                  <div key={b.id} className="py-1.5">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[12px] font-medium">{b.emoji} {b.category}</p>
+                      <span className="text-[11px] text-muted-foreground font-mono-amount">{formatAmount(b.spent)} / {formatAmount(b.limit)} <span className="text-[9px]">(≈{formatAmount(monthlyEquiv)}/m)</span></span>
+                    </div>
+                    <div className="h-1 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${status === 'over' ? 'bg-destructive' : status === 'warning' ? 'bg-warning' : 'bg-primary'}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {budgetData.length === 0 && annualBudgetData.length === 0 && (
             <div className="text-center py-4 px-4">
               <p className="text-[12px] text-muted-foreground">Aucun budget configuré</p>
             </div>
