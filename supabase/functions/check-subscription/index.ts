@@ -7,6 +7,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Map price IDs to plan types
+const FOYER_PRICE_IDS = [
+  "price_1T7y2OIw2TO0HaPOo83XMPEP", // monthly
+  "price_1T7y2iIw2TO0HaPODsF2b5RZ", // yearly
+  "price_1T7y3XIw2TO0HaPO5RiFbGbI", // lifetime
+];
+const FAMILLE_PRICE_IDS = [
+  "price_1T7y3pIw2TO0HaPOgN0KYjLa", // monthly
+  "price_1T7y49Iw2TO0HaPOtNSRk9Lg", // yearly
+  "price_1T7y4KIw2TO0HaPOu1OaQ0GA", // lifetime
+];
+
+function getPlanFromPriceId(priceId: string): string {
+  if (FAMILLE_PRICE_IDS.includes(priceId)) return "famille";
+  if (FOYER_PRICE_IDS.includes(priceId)) return "foyer";
+  return "foyer"; // default for legacy
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -16,7 +34,6 @@ serve(async (req) => {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
-    // Auth validation
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -31,44 +48,21 @@ serve(async (req) => {
     );
 
     const token = authHeader.replace("Bearer ", "");
-    
-    // Use getUser which handles token validation gracefully
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError || !userData?.user?.email) {
-      // Session expired or invalid - return graceful fallback instead of 500
-      console.log("Auth validation failed (possibly expired JWT):", userError?.message);
-      return new Response(JSON.stringify({ subscribed: false }), {
+      console.log("Auth validation failed:", userError?.message);
+      return new Response(JSON.stringify({ subscribed: false, plan_type: "free" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
     const user = userData.user;
 
-    // Check DB plan override first
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
-
-    // Check user-level plan override (solo premium)
-    const { data: profileRow } = await adminClient
-      .from('profiles')
-      .select('plan')
-      .eq('id', user.id)
-      .single();
-
-    if (profileRow?.plan === 'premium') {
-      return new Response(JSON.stringify({
-        subscribed: true,
-        plan_type: 'solo',
-        subscription_end: null,
-        customer_id: null,
-      }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    }
 
     const { data: memberRow } = await adminClient
       .from('household_members')
@@ -83,25 +77,27 @@ serve(async (req) => {
         .eq('id', memberRow.household_id)
         .single();
 
-      // If household plan is manually set to premium in DB, honor it
-      if (household?.plan === 'premium' && household?.subscription_status === 'active') {
-        return new Response(JSON.stringify({
-          subscribed: true,
-          plan_type: 'foyer',
-          subscription_end: household.subscription_end_date,
-          customer_id: null,
-        }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        });
+      // If household plan is set in DB and active, honor it
+      if (household && (household.plan === 'foyer' || household.plan === 'famille')) {
+        if (household.subscription_status === 'active' || household.subscription_status === 'lifetime') {
+          return new Response(JSON.stringify({
+            subscribed: true,
+            plan_type: household.plan,
+            subscription_end: household.subscription_end_date,
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
       }
     }
 
+    // Check Stripe for active subscriptions
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
 
     if (customers.data.length === 0) {
-      return new Response(JSON.stringify({ subscribed: false }), {
+      return new Response(JSON.stringify({ subscribed: false, plan_type: "free" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
@@ -116,7 +112,7 @@ serve(async (req) => {
 
     const hasActiveSub = subscriptions.data.length > 0;
     let subscriptionEnd = null;
-    let subscriptionId = null;
+    let planType = "free";
 
     if (hasActiveSub) {
       const subscription = subscriptions.data[0];
@@ -126,15 +122,19 @@ serve(async (req) => {
           subscriptionEnd = endDate.toISOString();
         }
       }
-      subscriptionId = subscription.id;
 
+      // Determine plan from price
+      const priceId = subscription.items.data[0]?.price?.id;
+      planType = priceId ? getPlanFromPriceId(priceId) : "foyer";
+
+      // Sync to DB
       if (memberRow) {
         await adminClient
           .from('households')
           .update({
-            plan: 'premium',
+            plan: planType,
             stripe_customer_id: customerId,
-            stripe_subscription_id: subscriptionId,
+            stripe_subscription_id: subscription.id,
             subscription_status: 'active',
             subscription_end_date: subscriptionEnd,
           })
@@ -144,8 +144,8 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       subscribed: hasActiveSub,
+      plan_type: planType,
       subscription_end: subscriptionEnd,
-      customer_id: customerId,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
