@@ -14,6 +14,7 @@ import { TrendingUp, TrendingDown, CreditCard, BarChart3, Check, X, Plus, AlertT
 import AddBudgetModal from '@/components/AddBudgetModal';
 
 const STORAGE_KEY_PREFIX = 'finehome_start_month_';
+const getScopeKey = (monthYear: string, scope: string) => `${STORAGE_KEY_PREFIX}${scope}_${monthYear}`;
 
 interface ChecklistState {
   checkedIncomes: string[];
@@ -24,16 +25,16 @@ interface ChecklistState {
   cancelledExpenses: string[];
 }
 
-function loadChecklist(monthYear: string): ChecklistState {
+function loadChecklist(monthYear: string, scope: string): ChecklistState {
   try {
-    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${monthYear}`);
+    const raw = localStorage.getItem(getScopeKey(monthYear, scope));
     if (raw) return JSON.parse(raw);
   } catch {}
   return { checkedIncomes: [], checkedExpenses: [], checkedDebts: [], checkedBudgets: [], cancelledIncomes: [], cancelledExpenses: [] };
 }
 
-function saveChecklist(monthYear: string, state: ChecklistState) {
-  localStorage.setItem(`${STORAGE_KEY_PREFIX}${monthYear}`, JSON.stringify(state));
+function saveChecklist(monthYear: string, scope: string, state: ChecklistState) {
+  localStorage.setItem(getScopeKey(monthYear, scope), JSON.stringify(state));
 }
 
 const StartOfMonth = () => {
@@ -111,7 +112,18 @@ const StartOfMonth = () => {
 
   // Available to budget = income - savings target - budgeted
   const totalSavingsDeducted = Math.abs(monthSavingsNet);
-  const savingsTarget = household.monthlySavingsTarget ?? 0;
+
+  // Savings target — scope-aware
+  const isHouseholdScope = financeScope === 'household';
+  const [personalSavingsTarget, setPersonalSavingsTarget] = useState<number | null>(null);
+  useEffect(() => {
+    if (!isHouseholdScope && session?.user?.id) {
+      supabase.from('profiles').select('monthly_savings_target').eq('id', session.user.id).single().then(({ data }) => {
+        setPersonalSavingsTarget(data?.monthly_savings_target != null ? Number(data.monthly_savings_target) : null);
+      });
+    }
+  }, [isHouseholdScope, session?.user?.id]);
+  const savingsTarget = isHouseholdScope ? (household.monthlySavingsTarget ?? 0) : (personalSavingsTarget ?? 0);
 
   // Budgets — use getBudgetsForMonth to only get budgets active for current month
   const budgetData = useMemo(() =>
@@ -119,7 +131,7 @@ const StartOfMonth = () => {
     [getBudgetsForMonth, getBudgetSpent]);
 
   // Checklist state
-  const initial = useMemo(() => loadChecklist(monthYear), [monthYear]);
+  const initial = useMemo(() => loadChecklist(monthYear, financeScope), [monthYear, financeScope]);
   const [checkedIncomes, setCheckedIncomes] = useState<Set<string>>(() => new Set(initial.checkedIncomes));
   const [checkedExpenses, setCheckedExpenses] = useState<Set<string>>(() => new Set(initial.checkedExpenses));
   const [checkedDebts, setCheckedDebts] = useState<Set<string>>(() => new Set(initial.checkedDebts));
@@ -128,9 +140,20 @@ const StartOfMonth = () => {
   const [cancelledExpenses, setCancelledExpenses] = useState<Set<string>>(() => new Set(initial.cancelledExpenses));
   const [confirmCancel, setConfirmCancel] = useState<string | null>(null);
 
+  // Reset checklist state when scope changes
+  useEffect(() => {
+    const loaded = loadChecklist(monthYear, financeScope);
+    setCheckedIncomes(new Set(loaded.checkedIncomes));
+    setCheckedExpenses(new Set(loaded.checkedExpenses));
+    setCheckedDebts(new Set(loaded.checkedDebts));
+    setCheckedBudgets(new Set(loaded.checkedBudgets));
+    setCancelledIncomes(new Set(loaded.cancelledIncomes));
+    setCancelledExpenses(new Set(loaded.cancelledExpenses));
+  }, [monthYear, financeScope]);
+
   // Persist
   useEffect(() => {
-    saveChecklist(monthYear, {
+    saveChecklist(monthYear, financeScope, {
       checkedIncomes: Array.from(checkedIncomes),
       checkedExpenses: Array.from(checkedExpenses),
       checkedDebts: Array.from(checkedDebts),
@@ -138,7 +161,7 @@ const StartOfMonth = () => {
       cancelledIncomes: Array.from(cancelledIncomes),
       cancelledExpenses: Array.from(cancelledExpenses),
     });
-  }, [monthYear, checkedIncomes, checkedExpenses, checkedDebts, checkedBudgets, cancelledIncomes, cancelledExpenses]);
+  }, [monthYear, financeScope, checkedIncomes, checkedExpenses, checkedDebts, checkedBudgets, cancelledIncomes, cancelledExpenses]);
 
   const toggle = (set: Set<string>, setter: React.Dispatch<React.SetStateAction<Set<string>>>, id: string) => {
     setter(prev => {

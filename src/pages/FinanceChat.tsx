@@ -30,6 +30,16 @@ const FinanceChat = () => {
   const { formatAmount } = useCurrency();
   const { isPremium } = useSubscription(householdId, currentUser?.id);
 
+  // Personal savings target for scope-aware usage
+  const [personalSavingsTarget, setPersonalSavingsTarget] = useState<number | null>(null);
+  useEffect(() => {
+    if (financeScope === 'personal' && session?.user?.id) {
+      supabase.from('profiles').select('monthly_savings_target').eq('id', session.user.id).single().then(({ data }) => {
+        setPersonalSavingsTarget(data?.monthly_savings_target != null ? Number(data.monthly_savings_target) : null);
+      });
+    }
+  }, [financeScope, session?.user?.id]);
+
   // Fetch debts
   const [debts, setDebts] = useState<Debt[]>([]);
   useEffect(() => {
@@ -229,7 +239,7 @@ const FinanceChat = () => {
     const healthHistoryLines = healthHistory.map(h => `- ${h.month_year}: ${h.total_score}/100`).join('\n');
 
     // Monthly savings target
-    const savingsTarget = household.monthlySavingsTarget;
+    const savingsTarget = financeScope === 'personal' ? personalSavingsTarget : household.monthlySavingsTarget;
 
     // 2 months before for trend
     const twoMonthsAgo = new Date(now); twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
@@ -499,7 +509,7 @@ Revenus: ${incomeCategories || 'Aucune'}`;
     }
 
     // Objectif d'épargne
-    const savingsTarget = household.monthlySavingsTarget;
+    const savingsTarget = financeScope === 'personal' ? personalSavingsTarget : household.monthlySavingsTarget;
     const monthSavings = getMonthSavings(now);
     if (savingsTarget && monthSavings < savingsTarget) {
       contextual.push({ emoji: '🎯', text: `Comment atteindre mon objectif d'épargne de ${formatAmount(savingsTarget)} ce mois ?`, priority: 5 });
