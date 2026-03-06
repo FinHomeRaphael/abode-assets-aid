@@ -711,7 +711,7 @@ Revenus: ${incomeCategories || 'Aucune'}`;
           )}
         </div>
       </div>
-      </PremiumGate>
+      </PlanGate>
     </Layout>
     </>
   );
