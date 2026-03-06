@@ -30,6 +30,16 @@ const FinanceChat = () => {
   const { formatAmount } = useCurrency();
   const { isPremium } = useSubscription(householdId, currentUser?.id);
 
+  // Personal savings target for scope-aware usage
+  const [personalSavingsTarget, setPersonalSavingsTarget] = useState<number | null>(null);
+  useEffect(() => {
+    if (financeScope === 'personal' && session?.user?.id) {
+      supabase.from('profiles').select('monthly_savings_target').eq('id', session.user.id).single().then(({ data }) => {
+        setPersonalSavingsTarget(data?.monthly_savings_target != null ? Number(data.monthly_savings_target) : null);
+      });
+    }
+  }, [financeScope, session?.user?.id]);
+
   // Fetch debts
   const [debts, setDebts] = useState<Debt[]>([]);
   useEffect(() => {
