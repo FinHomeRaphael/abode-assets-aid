@@ -696,6 +696,7 @@ export type Database = {
           first_name: string
           id: string
           last_name: string | null
+          monthly_savings_target: number | null
           onboarding_done: boolean
           plan: string
           updated_at: string | null
@@ -707,6 +708,7 @@ export type Database = {
           first_name: string
           id: string
           last_name?: string | null
+          monthly_savings_target?: number | null
           onboarding_done?: boolean
           plan?: string
           updated_at?: string | null
@@ -718,6 +720,7 @@ export type Database = {
           first_name?: string
           id?: string
           last_name?: string | null
+          monthly_savings_target?: number | null
           onboarding_done?: boolean
           plan?: string
           updated_at?: string | null
