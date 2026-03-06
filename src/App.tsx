@@ -114,7 +114,7 @@ function InvitationChecker({ children }: { children: React.ReactNode }) {
       }
     }
     setChecked(true);
-  }, [session, householdId]);
+  }, [session, householdId, isResetPasswordPage]);
 
   useEffect(() => {
     if (isLoggedIn) {
