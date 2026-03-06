@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AppProvider, useApp } from "@/context/AppContext";
 import React, { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,11 +45,15 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 function InvitationChecker({ children }: { children: React.ReactNode }) {
   const { isLoggedIn, session, householdId } = useApp();
+  const location = useLocation();
   const [invitationData, setInvitationData] = useState<any>(null);
   const [checked, setChecked] = useState(false);
 
+  // Skip invitation check on reset-password page
+  const isResetPasswordPage = location.pathname === '/reset-password';
+
   const checkInvitations = useCallback(async () => {
-    if (!session?.user) { setChecked(true); return; }
+    if (!session?.user || isResetPasswordPage) { setChecked(true); return; }
 
     // Check user metadata for invitation_id (from signup)
     const invitationId = session.user.user_metadata?.invitation_id;
@@ -110,7 +114,7 @@ function InvitationChecker({ children }: { children: React.ReactNode }) {
       }
     }
     setChecked(true);
-  }, [session, householdId]);
+  }, [session, householdId, isResetPasswordPage]);
 
   useEffect(() => {
     if (isLoggedIn) {
