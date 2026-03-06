@@ -220,17 +220,28 @@ const AddTransactionModal = ({ open, onClose, defaultType }: Props) => {
               )}
 
               {/* Recurring toggle */}
-              <div className="flex items-center justify-between py-2 px-3 rounded-md border border-border bg-secondary/30">
+              <div className={`flex items-center justify-between py-2 px-3 rounded-md border border-border bg-secondary/30 ${!canAddRecurring && !isRecurring ? 'opacity-60' : ''}`}>
                 <div>
                   <p className="text-sm font-medium">🔄 Transaction récurrente</p>
-                  <p className="text-xs text-muted-foreground">Se répète automatiquement chaque mois le {date.getDate()}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {!canAddRecurring && !isRecurring
+                      ? `Limite atteinte (${FREEMIUM_LIMITS.recurringTransactions} récurrente max en gratuit)`
+                      : `Se répète automatiquement chaque mois le ${date.getDate()}`}
+                  </p>
                 </div>
-                <button
-                  onClick={() => setIsRecurring(!isRecurring)}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${isRecurring ? 'bg-primary' : 'bg-muted'}`}
-                >
-                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isRecurring ? 'translate-x-5' : ''}`} />
-                </button>
+                {!canAddRecurring && !isRecurring ? (
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-medium">
+                    <Lock className="w-3 h-3" />
+                    <span>Premium</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsRecurring(!isRecurring)}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${isRecurring ? 'bg-primary' : 'bg-muted'}`}
+                  >
+                    <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${isRecurring ? 'translate-x-5' : ''}`} />
+                  </button>
+                )}
               </div>
 
               <div>
