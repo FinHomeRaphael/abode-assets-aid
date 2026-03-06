@@ -112,7 +112,18 @@ const StartOfMonth = () => {
 
   // Available to budget = income - savings target - budgeted
   const totalSavingsDeducted = Math.abs(monthSavingsNet);
-  const savingsTarget = household.monthlySavingsTarget ?? 0;
+
+  // Savings target — scope-aware
+  const isHouseholdScope = financeScope === 'household';
+  const [personalSavingsTarget, setPersonalSavingsTarget] = useState<number | null>(null);
+  useEffect(() => {
+    if (!isHouseholdScope && session?.user?.id) {
+      supabase.from('profiles').select('monthly_savings_target').eq('id', session.user.id).single().then(({ data }) => {
+        setPersonalSavingsTarget(data?.monthly_savings_target != null ? Number(data.monthly_savings_target) : null);
+      });
+    }
+  }, [isHouseholdScope, session?.user?.id]);
+  const savingsTarget = isHouseholdScope ? (household.monthlySavingsTarget ?? 0) : (personalSavingsTarget ?? 0);
 
   // Budgets — use getBudgetsForMonth to only get budgets active for current month
   const budgetData = useMemo(() =>
