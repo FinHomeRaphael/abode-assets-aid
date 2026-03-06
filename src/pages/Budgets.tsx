@@ -261,7 +261,7 @@ const Budgets = () => {
     return [...base, ...customs].filter(c => c !== EPARGNE_CATEGORY);
   }, [customCategories]);
 
-  const budgetedCategories = new Set(filteredBudgets.map(b => b.category));
+  const budgetedCategories = new Set([...filteredBudgets.map(b => b.category), ...annualBudgets.map(b => b.category)]);
 
   const categoriesWithoutBudget = useMemo(() => {
     const expenseTx = monthTx.filter(t => t.type === 'expense' && t.category !== 'Transfert');
