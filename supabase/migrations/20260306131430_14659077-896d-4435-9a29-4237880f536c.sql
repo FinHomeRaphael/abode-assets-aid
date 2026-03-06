@@ -1,0 +1,1 @@
+UPDATE public.households SET plan = 'free', stripe_customer_id = NULL, stripe_subscription_id = NULL, subscription_status = NULL, subscription_end_date = NULL WHERE id = 'c86f9f9d-45c7-43e3-af2a-03f7d18ec201';
