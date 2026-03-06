@@ -453,7 +453,7 @@ const StartOfMonth = () => {
         </StepCard>
 
         {/* Step 4: Budgets */}
-        <StepCard stepNum={4} title="Budgets variables" subtitle="Alloue ton disponible à des budgets" icon={BarChart3} done={step4Done} total={budgetData.length > 0 ? formatAmount(totalBudgetLimit) : '—'}>
+        <StepCard stepNum={4} title="Budgets variables" subtitle="Alloue ton disponible à des budgets" icon={BarChart3} done={step4Done} total={budgetData.length > 0 || annualBudgetData.length > 0 ? formatAmount(totalBudgetLimit) : '—'}>
           {/* Budget summary breakdown */}
           <div className="mx-4 mt-2 mb-1 px-3 py-2.5 rounded-xl bg-muted/40 border border-border/30">
             <div className="space-y-1.5 text-[11px]">
