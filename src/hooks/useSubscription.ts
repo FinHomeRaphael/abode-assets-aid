@@ -32,6 +32,7 @@ export const FREEMIUM_LIMITS = {
   savingsGoals: Infinity,
   budgets: 2,
   members: 1,
+  recurringTransactions: 1,
 };
 
 export const FOYER_LIMITS = {
