@@ -186,7 +186,8 @@ const StartOfMonth = () => {
   const totalRecurringIncome = recurringIncomes.filter(t => !cancelledIncomes.has(t.id)).reduce((s, t) => s + t.convertedAmount, 0);
   const totalRecurringExpense = recurringExpenses.filter(t => !cancelledExpenses.has(t.id)).reduce((s, t) => s + t.convertedAmount, 0);
   const totalDebtPayments = debts.reduce((s, d) => s + d.paymentAmount, 0);
-  const totalBudgetLimit = budgetData.reduce((s, b) => s + b.limit, 0);
+  const totalAnnualMonthlyEquiv = annualBudgetData.reduce((s, b) => s + b.limit / 12, 0);
+  const totalBudgetLimit = budgetData.reduce((s, b) => s + b.limit, 0) + totalAnnualMonthlyEquiv;
 
   // Month-level totals (all transactions, for hero summary)
   const totalMonthExpenses = useMemo(() =>
@@ -210,7 +211,7 @@ const StartOfMonth = () => {
   const allDone = completedSteps === totalSteps;
 
   // Budget suggestions: categories with spending but no budget
-  const budgetedCategories = useMemo(() => new Set(budgetData.map(b => b.category)), [budgetData]);
+  const budgetedCategories = useMemo(() => new Set([...budgetData.map(b => b.category), ...annualBudgetData.map(b => b.category)]), [budgetData, annualBudgetData]);
   const budgetSuggestions = useMemo(() => {
     const expenseTx = monthTx.filter(t => t.type === 'expense' && t.category !== 'Transfert');
     const catSpent = new Map<string, number>();
