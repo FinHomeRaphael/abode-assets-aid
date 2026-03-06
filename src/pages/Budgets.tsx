@@ -668,7 +668,69 @@ const Budgets = () => {
           )}
         </motion.div>
 
-        {/* Debt budget suggestion */}
+        {/* Annual Budgets Section */}
+        {annualBudgets.length > 0 && (
+          <motion.div variants={fade} className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold">Budgets annuels</h2>
+                <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full font-medium">
+                  /12 dans le calcul
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-card border border-border/30 rounded-2xl overflow-hidden divide-y divide-border/30">
+              {annualBudgets.map(b => {
+                const spent = getSpentForBudget(b);
+                const pct = b.limit > 0 ? (spent / b.limit) * 100 : 0;
+                const clampedPct = Math.min(pct, 100);
+                const remaining = b.limit - spent;
+                const monthlyEquiv = b.limit / 12;
+
+                return (
+                  <div
+                    key={b.id}
+                    className="px-4 py-3.5 cursor-pointer hover:bg-muted/30 transition-colors active:scale-[0.99]"
+                    onClick={() => openEditModal(b)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2.5">
+                        <CategoryIcon category={b.category} size="sm" />
+                        <div>
+                          <span className="font-semibold text-sm">{b.category}</span>
+                          <p className="text-[10px] text-muted-foreground">≈ {formatAmount(monthlyEquiv)}/mois</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono-amount font-semibold">{formatAmount(spent)}</span>
+                        <span className="text-[10px] text-muted-foreground">/</span>
+                        <span className="text-xs font-mono-amount text-muted-foreground">{formatAmount(b.limit)}</span>
+                        {getStatusIcon(pct)}
+                      </div>
+                    </div>
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${clampedPct}%` }}
+                        transition={{ duration: 0.6, ease: 'easeOut' }}
+                        className={`h-full rounded-full ${getProgressColor(pct)}`}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between mt-1.5">
+                      <span className="text-[10px] font-mono-amount text-muted-foreground">{Math.round(pct)}%</span>
+                      {remaining >= 0 ? (
+                        <span className="text-[10px] text-muted-foreground">Reste <span className="font-mono-amount font-medium">{formatAmount(remaining)}</span></span>
+                      ) : (
+                        <span className="text-[10px] text-destructive font-medium">Dépassé de <span className="font-mono-amount">{formatAmount(Math.abs(remaining))}</span></span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
         {debtMonthlyTotal > 0 && !budgetedCategories.has('Dettes') && (
           <motion.div variants={fade} className="bg-card border border-primary/20 rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-3">
