@@ -170,6 +170,48 @@ export type Database = {
           },
         ]
       }
+      debt_km_history: {
+        Row: {
+          created_at: string | null
+          debt_id: string
+          household_id: string
+          id: string
+          km: number
+          recorded_at: string
+        }
+        Insert: {
+          created_at?: string | null
+          debt_id: string
+          household_id: string
+          id?: string
+          km: number
+          recorded_at?: string
+        }
+        Update: {
+          created_at?: string | null
+          debt_id?: string
+          household_id?: string
+          id?: string
+          km?: number
+          recorded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debt_km_history_debt_id_fkey"
+            columns: ["debt_id"]
+            isOneToOne: false
+            referencedRelation: "debts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debt_km_history_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       debt_payment_overrides: {
         Row: {
           created_at: string | null
