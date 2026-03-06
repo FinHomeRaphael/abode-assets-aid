@@ -198,7 +198,9 @@ const Budgets = () => {
   }, [filteredBudgets]);
 
   // Available to budget = income - max(savings target, actual savings) - budgeted
-  const effectiveSavingsTarget = savingsTarget ?? 0;
+  // In personal scope, savings target is not used (it's a household concept)
+  const isHouseholdScope = financeScope === 'household';
+  const effectiveSavingsTarget = isHouseholdScope ? (savingsTarget ?? 0) : 0;
   const totalSavingsDeducted = Math.abs(monthSavingsNet);
   const savingsDeduction = Math.max(effectiveSavingsTarget, totalSavingsDeducted);
   const totalAllocated = totalBudgeted + savingsDeduction;
@@ -512,12 +514,14 @@ const Budgets = () => {
               <Target className="w-4 h-4 text-primary" />
               <span className="text-sm font-semibold">Épargne mensuelle</span>
             </div>
-            <button
-              onClick={() => { setSavingsTargetInput(savingsTarget ? String(savingsTarget) : ''); setShowSavingsTargetEdit(true); }}
-              className="text-primary hover:text-primary/80 transition-colors"
-            >
-              {savingsTarget ? <Pencil className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-            </button>
+            {isHouseholdScope && (
+              <button
+                onClick={() => { setSavingsTargetInput(savingsTarget ? String(savingsTarget) : ''); setShowSavingsTargetEdit(true); }}
+                className="text-primary hover:text-primary/80 transition-colors"
+              >
+                {savingsTarget ? <Pencil className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+              </button>
+            )}
           </div>
 
           <div className="flex items-center justify-between text-xs">
@@ -527,7 +531,7 @@ const Budgets = () => {
             </span>
           </div>
 
-          {savingsTarget && savingsTarget > 0 && (
+          {isHouseholdScope && savingsTarget && savingsTarget > 0 && (
             <>
               <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                 <motion.div
