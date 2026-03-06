@@ -429,11 +429,16 @@ const DebtDetailModal = ({ debt, onClose, onUpdated }: Props) => {
             const kmPct = totalKm > 0 ? Math.min((currentKm / totalKm) * 100, 100) : 0;
             const isOver = diff > 0;
             
+            const monthlyKmAllowance = Math.round(debt.annualKm / 12);
+            
             return (
               <div className="mt-3 pt-2 border-t border-amber-200 dark:border-amber-900/30">
                 <div className="flex justify-between text-xs text-muted-foreground mb-1">
                   <span>📍 Kilométrage</span>
                   <span>{currentKm.toLocaleString('fr-FR')} / {totalKm.toLocaleString('fr-FR')} km</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground mb-1">
+                  📏 Droit : {monthlyKmAllowance.toLocaleString('fr-FR')} km/mois · {debt.annualKm.toLocaleString('fr-FR')} km/an · Attendu à ce stade : ~{Math.round(expectedKm).toLocaleString('fr-FR')} km
                 </div>
                 <Progress value={kmPct} className="h-2" />
                 {currentKm > 0 && (
