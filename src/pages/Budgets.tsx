@@ -133,16 +133,25 @@ const Budgets = () => {
   const handleSaveSavingsTarget = async () => {
     const value = parseFloat(savingsTargetInput);
     if (isNaN(value) || value <= 0) { toast.error('Montant invalide'); return; }
-    await supabase.from('households').update({ monthly_savings_target: value } as any).eq('id', householdId);
-    // Optimistic update via household reference
-    (household as any).monthlySavingsTarget = value;
+    if (isHouseholdScope) {
+      await supabase.from('households').update({ monthly_savings_target: value } as any).eq('id', householdId);
+      (household as any).monthlySavingsTarget = value;
+    } else {
+      await supabase.from('profiles').update({ monthly_savings_target: value } as any).eq('id', session?.user?.id);
+      setPersonalSavingsTarget(value);
+    }
     setShowSavingsTargetEdit(false);
     toast.success('Objectif d\'épargne mis à jour');
   };
 
   const handleRemoveSavingsTarget = async () => {
-    await supabase.from('households').update({ monthly_savings_target: null } as any).eq('id', householdId);
-    (household as any).monthlySavingsTarget = null;
+    if (isHouseholdScope) {
+      await supabase.from('households').update({ monthly_savings_target: null } as any).eq('id', householdId);
+      (household as any).monthlySavingsTarget = null;
+    } else {
+      await supabase.from('profiles').update({ monthly_savings_target: null } as any).eq('id', session?.user?.id);
+      setPersonalSavingsTarget(null);
+    }
     setShowSavingsTargetEdit(false);
     toast.success('Objectif supprimé');
   };
