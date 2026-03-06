@@ -77,13 +77,25 @@ serve(async (req) => {
         .eq('id', memberRow.household_id)
         .single();
 
-      // If household plan is set in DB and active, honor it
-      if (household && (household.plan === 'foyer' || household.plan === 'famille')) {
-        if (household.subscription_status === 'active' || household.subscription_status === 'lifetime') {
+      if (household) {
+        // If household plan is set in DB and active, honor it
+        if ((household.plan === 'foyer' || household.plan === 'famille') &&
+            (household.subscription_status === 'active' || household.subscription_status === 'lifetime')) {
           return new Response(JSON.stringify({
             subscribed: true,
             plan_type: household.plan,
             subscription_end: household.subscription_end_date,
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+
+        // If plan was explicitly set to free with no subscription_status, trust the DB
+        if (household.plan === 'free' && !household.subscription_status) {
+          return new Response(JSON.stringify({
+            subscribed: false,
+            plan_type: "free",
           }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 200,
