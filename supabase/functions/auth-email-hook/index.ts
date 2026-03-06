@@ -35,7 +35,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "abode-assets-aid"
+const SITE_NAME = "FinHome"
 const SENDER_DOMAIN = "notify.fin-home.io"
 const ROOT_DOMAIN = "fin-home.io"
 const FROM_DOMAIN = "fin-home.io" // Domain shown in From address (may be root or sender subdomain)
