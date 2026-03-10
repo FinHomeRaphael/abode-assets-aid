@@ -60,6 +60,7 @@ const LoginPage = () => {
         }
 
         if (signUpData.session) {
+          trackEvent('CompleteRegistration', { currency });
           await createHousehold(signUpData.session.user.id, lastName, currency);
         }
       } else {
