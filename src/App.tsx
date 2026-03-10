@@ -148,8 +148,17 @@ function InvitationChecker({ children }: { children: React.ReactNode }) {
   );
 }
 
+function PageViewTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    trackPageView();
+  }, [location.pathname]);
+  return null;
+}
+
 const AppRoutes = () => (
   <InvitationChecker>
+    <PageViewTracker />
     <Routes>
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/reset-password" element={<ResetPassword />} />
