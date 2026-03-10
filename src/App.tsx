@@ -23,6 +23,7 @@ import Pricing from "./pages/Pricing";
 
 import HealthScore from "./pages/HealthScore";
 import Aide from "./pages/Aide";
+import AdminDashboard from "./pages/AdminDashboard";
 import InvitationChoiceModal from "./components/InvitationChoiceModal";
 
 const queryClient = new QueryClient({
@@ -165,6 +166,7 @@ const AppRoutes = () => (
       <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
       <Route path="/aide" element={<ProtectedRoute><Aide /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </InvitationChecker>
