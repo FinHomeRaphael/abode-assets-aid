@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AppProvider, useApp } from "@/context/AppContext";
 import React, { useState, useEffect, useCallback } from "react";
+import { trackPageView } from "@/utils/metaPixel";
 import { supabase } from "@/integrations/supabase/client";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
@@ -147,8 +148,17 @@ function InvitationChecker({ children }: { children: React.ReactNode }) {
   );
 }
 
+function PageViewTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    trackPageView();
+  }, [location.pathname]);
+  return null;
+}
+
 const AppRoutes = () => (
   <InvitationChecker>
+    <PageViewTracker />
     <Routes>
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/reset-password" element={<ResetPassword />} />
