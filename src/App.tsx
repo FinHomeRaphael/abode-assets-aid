@@ -166,6 +166,7 @@ const AppRoutes = () => (
       <Route path="/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
       <Route path="/aide" element={<ProtectedRoute><Aide /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+      <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   </InvitationChecker>
