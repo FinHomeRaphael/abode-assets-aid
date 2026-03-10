@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CURRENCIES, CURRENCY_NAMES, CURRENCY_SYMBOLS } from '@/types/finance';
 import logo from '@/assets/logo.png';
+import { trackEvent, trackCustomEvent } from '@/utils/metaPixel';
 
 const LoginPage = () => {
   const [isRegister, setIsRegister] = useState(false);
