@@ -13,6 +13,7 @@ import { formatLocalDate } from '@/utils/format';
 import MoneyInput from '@/components/ui/money-input';
 import { useSubscription, FREEMIUM_LIMITS } from '@/hooks/useSubscription';
 import { Lock } from 'lucide-react';
+import { trackCustomEvent } from '@/utils/metaPixel';
 
 interface Props {
   open: boolean;
@@ -84,7 +85,7 @@ const AddTransactionModal = ({ open, onClose, defaultType }: Props) => {
       recurrenceDay: isRecurring ? day : undefined,
       accountId: accountId || undefined,
     });
-    // silent
+    trackCustomEvent('AddTransaction', { type, category, currency, amount: parseFloat(amount) });
     resetAndClose();
   };
 

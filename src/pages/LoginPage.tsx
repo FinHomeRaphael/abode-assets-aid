@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { CURRENCIES, CURRENCY_NAMES, CURRENCY_SYMBOLS } from '@/types/finance';
 import logo from '@/assets/logo.png';
+import { trackEvent, trackCustomEvent } from '@/utils/metaPixel';
 
 const LoginPage = () => {
   const [isRegister, setIsRegister] = useState(false);
@@ -59,6 +60,7 @@ const LoginPage = () => {
         }
 
         if (signUpData.session) {
+          trackEvent('CompleteRegistration', { currency });
           await createHousehold(signUpData.session.user.id, lastName, currency);
         }
       } else {
@@ -73,6 +75,7 @@ const LoginPage = () => {
           }
           return;
         }
+        trackCustomEvent('Login');
       }
     } catch (err: any) {
       toast.error('Une erreur est survenue');
