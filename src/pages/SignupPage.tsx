@@ -114,7 +114,7 @@ const SignupPage = () => {
         }
         return;
       }
-      // silent
+      trackEvent('CompleteRegistration', { currency: isInvited ? invitationInfo!.household_currency : currency });
       navigate('/login');
     } catch {
       toast.error('Une erreur est survenue');

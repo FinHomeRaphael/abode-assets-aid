@@ -85,7 +85,7 @@ const AddTransactionModal = ({ open, onClose, defaultType }: Props) => {
       recurrenceDay: isRecurring ? day : undefined,
       accountId: accountId || undefined,
     });
-    // silent
+    trackCustomEvent('AddTransaction', { type, category, currency, amount: parseFloat(amount) });
     resetAndClose();
   };
 

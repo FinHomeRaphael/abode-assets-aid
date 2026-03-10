@@ -75,7 +75,7 @@ const LoginPage = () => {
           }
           return;
         }
-      }
+        trackCustomEvent('Login');
     } catch (err: any) {
       toast.error('Une erreur est survenue');
     } finally {
