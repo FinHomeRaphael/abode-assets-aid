@@ -520,6 +520,14 @@ const Dashboard = () => {
       <ScanTicketModal open={showScan} onClose={() => setShowScan(false)} />
       <MonthlyReportModal open={showReport} onClose={() => setShowReport(false)} />
       <OnboardingModal open={showOnboarding} onComplete={handleOnboardingComplete} />
+      {showProfileCompletion && session?.user?.id && (
+        <GoogleProfileCompletionModal
+          open={showProfileCompletion}
+          userId={session.user.id}
+          currentFirstName={profileFirstName}
+          onComplete={handleProfileComplete}
+        />
+      )}
       <PaywallModal open={!!paywallFeature} onClose={() => setPaywallFeature(null)} feature={paywallFeature?.feature || ''} description={paywallFeature?.description} />
     </Layout>
   );
