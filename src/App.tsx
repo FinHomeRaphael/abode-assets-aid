@@ -23,6 +23,7 @@ import Pricing from "./pages/Pricing";
 
 import HealthScore from "./pages/HealthScore";
 import Aide from "./pages/Aide";
+import AdminDashboard from "./pages/AdminDashboard";
 import InvitationChoiceModal from "./components/InvitationChoiceModal";
 
 const queryClient = new QueryClient({
