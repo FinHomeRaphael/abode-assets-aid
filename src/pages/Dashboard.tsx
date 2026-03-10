@@ -67,16 +67,31 @@ const Dashboard = () => {
   const { isPremium, loading: subLoading } = useSubscription();
   const [debts, setDebts] = useState<Debt[]>([]);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showProfileCompletion, setShowProfileCompletion] = useState(false);
+  const [profileFirstName, setProfileFirstName] = useState('');
   const [balanceExpanded, setBalanceExpanded] = useState(false);
 
   React.useEffect(() => {
     if (!currentUser?.id) return;
-    const checkOnboarding = async () => {
-      const { data } = await supabase.from('profiles').select('onboarding_done').eq('id', currentUser.id).single();
-      if (data && !data.onboarding_done) setShowOnboarding(true);
+    const checkProfile = async () => {
+      const { data } = await supabase.from('profiles').select('onboarding_done, last_name, first_name').eq('id', currentUser.id).single();
+      if (!data) return;
+      // If last_name is empty/null, user signed up via Google and needs to complete profile
+      if (!data.last_name || data.last_name.trim() === '') {
+        setProfileFirstName(data.first_name || '');
+        setShowProfileCompletion(true);
+      } else if (!data.onboarding_done) {
+        setShowOnboarding(true);
+      }
     };
-    checkOnboarding();
+    checkProfile();
   }, [currentUser?.id]);
+
+  const handleProfileComplete = () => {
+    setShowProfileCompletion(false);
+    // Reload to refresh context with updated profile/household data
+    window.location.reload();
+  };
 
   const handleOnboardingComplete = async () => {
     setShowOnboarding(false);
