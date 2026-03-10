@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Eye, EyeOff, Lock } from 'lucide-react';
+import { trackEvent } from '@/utils/metaPixel';
 
 const CURRENCY_OPTIONS = [
   { value: 'EUR', label: '🇪🇺 Euro (EUR)' },
