@@ -76,11 +76,7 @@ const Dashboard = () => {
     const checkProfile = async () => {
       const { data } = await supabase.from('profiles').select('onboarding_done, last_name, first_name').eq('id', currentUser.id).single();
       if (!data) return;
-      // If last_name is empty/null, user signed up via Google and needs to complete profile
-      if (!data.last_name || data.last_name.trim() === '') {
-        setProfileFirstName(data.first_name || '');
-        setShowProfileCompletion(true);
-      } else if (!data.onboarding_done) {
+      if (!data.onboarding_done) {
         setShowOnboarding(true);
       }
     };
