@@ -6,7 +6,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import OnboardingModal from '@/components/OnboardingModal';
-import GoogleProfileCompletionModal from '@/components/GoogleProfileCompletionModal';
+
 import ScanTicketModal from '@/components/ScanTicketModal';
 import MonthlyReportModal from '@/components/MonthlyReportModal';
 import ConvertedAmount from '@/components/ConvertedAmount';
@@ -67,8 +67,6 @@ const Dashboard = () => {
   const { isPremium, loading: subLoading } = useSubscription();
   const [debts, setDebts] = useState<Debt[]>([]);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showProfileCompletion, setShowProfileCompletion] = useState(false);
-  const [profileFirstName, setProfileFirstName] = useState('');
   const [balanceExpanded, setBalanceExpanded] = useState(false);
 
   React.useEffect(() => {
@@ -76,22 +74,14 @@ const Dashboard = () => {
     const checkProfile = async () => {
       const { data } = await supabase.from('profiles').select('onboarding_done, last_name, first_name').eq('id', currentUser.id).single();
       if (!data) return;
-      // If last_name is empty/null, user signed up via Google and needs to complete profile
-      if (!data.last_name || data.last_name.trim() === '') {
-        setProfileFirstName(data.first_name || '');
-        setShowProfileCompletion(true);
-      } else if (!data.onboarding_done) {
+      if (!data.onboarding_done) {
         setShowOnboarding(true);
       }
     };
     checkProfile();
   }, [currentUser?.id]);
 
-  const handleProfileComplete = () => {
-    setShowProfileCompletion(false);
-    // Reload to refresh context with updated profile/household data
-    window.location.reload();
-  };
+
 
   const handleOnboardingComplete = async () => {
     setShowOnboarding(false);
@@ -520,14 +510,8 @@ const Dashboard = () => {
       <ScanTicketModal open={showScan} onClose={() => setShowScan(false)} />
       <MonthlyReportModal open={showReport} onClose={() => setShowReport(false)} />
       <OnboardingModal open={showOnboarding} onComplete={handleOnboardingComplete} />
-      {showProfileCompletion && session?.user?.id && (
-        <GoogleProfileCompletionModal
-          open={showProfileCompletion}
-          userId={session.user.id}
-          currentFirstName={profileFirstName}
-          onComplete={handleProfileComplete}
-        />
-      )}
+
+
       <PaywallModal open={!!paywallFeature} onClose={() => setPaywallFeature(null)} feature={paywallFeature?.feature || ''} description={paywallFeature?.description} />
     </Layout>
   );
