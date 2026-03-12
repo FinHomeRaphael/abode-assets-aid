@@ -236,14 +236,15 @@ const Profile = () => {
         <div className="card-elevated p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold">
-              Membres ({household.members.length}{(() => {
+              Membres ({household.members.length + pendingInvitations.length}{(() => {
                 const limit = plan === 'famille' ? FAMILLE_LIMITS.members : plan === 'foyer' ? FOYER_LIMITS.members : FREEMIUM_LIMITS.members;
                 return limit !== Infinity ? `/${limit}` : '';
               })()})
             </h2>
             {currentUser?.role === 'admin' && (() => {
               const limit = plan === 'famille' ? FAMILLE_LIMITS.members : plan === 'foyer' ? FOYER_LIMITS.members : FREEMIUM_LIMITS.members;
-              const atLimit = household.members.length >= limit;
+              const totalOccupied = household.members.length + pendingInvitations.length;
+              const atLimit = totalOccupied >= limit;
               return atLimit ? (
                 <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">Limite atteinte</span>
               ) : (
