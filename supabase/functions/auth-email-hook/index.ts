@@ -36,9 +36,9 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 
 // Configuration
 const SITE_NAME = "FinHome"
-const SENDER_DOMAIN = "notify.fin-home.io"
-const ROOT_DOMAIN = "fin-home.io"
-const FROM_DOMAIN = "fin-home.io" // Domain shown in From address (may be root or sender subdomain)
+const SENDER_DOMAIN = "notify.finhome.app"
+const ROOT_DOMAIN = "finhome.app"
+const FROM_DOMAIN = "finhome.app" // Domain shown in From address (may be root or sender subdomain)
 
 // Sample data for preview mode ONLY (not used in actual email sending).
 // URLs are baked in at scaffold time from the project's real data.
