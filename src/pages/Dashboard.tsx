@@ -6,7 +6,7 @@ import { useCurrency } from '@/hooks/useCurrency';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import OnboardingModal from '@/components/OnboardingModal';
-import GoogleProfileCompletionModal from '@/components/GoogleProfileCompletionModal';
+
 import ScanTicketModal from '@/components/ScanTicketModal';
 import MonthlyReportModal from '@/components/MonthlyReportModal';
 import ConvertedAmount from '@/components/ConvertedAmount';
