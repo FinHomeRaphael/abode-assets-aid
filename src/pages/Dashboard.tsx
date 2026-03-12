@@ -67,8 +67,6 @@ const Dashboard = () => {
   const { isPremium, loading: subLoading } = useSubscription();
   const [debts, setDebts] = useState<Debt[]>([]);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [showProfileCompletion, setShowProfileCompletion] = useState(false);
-  const [profileFirstName, setProfileFirstName] = useState('');
   const [balanceExpanded, setBalanceExpanded] = useState(false);
 
   React.useEffect(() => {
