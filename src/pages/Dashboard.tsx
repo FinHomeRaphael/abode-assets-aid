@@ -83,11 +83,7 @@ const Dashboard = () => {
     checkProfile();
   }, [currentUser?.id]);
 
-  const handleProfileComplete = () => {
-    setShowProfileCompletion(false);
-    // Reload to refresh context with updated profile/household data
-    window.location.reload();
-  };
+
 
   const handleOnboardingComplete = async () => {
     setShowOnboarding(false);
