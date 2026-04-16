@@ -471,7 +471,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
 
   // Transfer count & total
   const transfers = useMemo(() => {
-    return transactions.filter(t => t.category === 'Transfert' && t.type === 'expense');
+    return transactions.filter(t => t.category === 'Transfert' && t.type === 'expense' && !isSavingsTransferCounterpart(t) && !isEpargneTx(t));
   }, [transactions]);
   const transferTotal = transfers.reduce((s, t) => s + t.convertedAmount, 0);
 
