@@ -449,6 +449,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
 
   // Expense by category
   const expensesByCategory = useMemo(() => {
+    const map: Record<string, { amount: number; emoji: string }> = {};
     const expTxs = transactions.filter(t => t.type === 'expense' && !isEpargneTx(t) && t.category !== 'Transfert');
     expTxs.forEach(t => {
       let catName = t.category;
@@ -707,9 +708,9 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                 <p className={`font-mono-amount font-bold text-xl ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
                   {balance >= 0 ? '+' : ''}{formatAmount(balance)}
                 </p>
-                {directSavingsNet !== 0 && (
+                {monthSavingsNet !== 0 && (
                   <p className="text-[9px] text-muted-foreground italic mt-1">
-                    Épargne directe ({directSavingsNet >= 0 ? '+' : ''}{formatAmount(directSavingsNet)})
+                    Épargne ({monthSavingsNet >= 0 ? '+' : ''}{formatAmount(monthSavingsNet)})
                   </p>
                 )}
               </div>
