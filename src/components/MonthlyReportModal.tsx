@@ -391,11 +391,10 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
     return map;
   }, [transactions, accounts]);
 
-  // Income & Expenses (savings transfer counterparts are included in expenses)
+  // Income & Expenses (all transfers excluded from expenses)
   const income = transactions.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
-  const expenses = transactions.filter(t => t.type === 'expense' && !isEpargneTx(t) && (t.category !== 'Transfert' || isSavingsTransferCounterpart(t))).reduce((s, t) => s + t.convertedAmount, 0);
-  const directSavingsNet = epargneDirectIn - epargneDirectOut;
-  const balance = income - expenses - Math.abs(directSavingsNet);
+  const expenses = transactions.filter(t => t.type === 'expense' && !isEpargneTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+  const balance = income - expenses - Math.abs(monthSavingsNet);
 
   // Previous period
   const prevMonth = new Date(month);
@@ -433,7 +432,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
     return match ? prevSavingsTransferIds.has(match[1]) : false;
   };
   const prevIncome = prevTransactions.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
-  const prevExpenses = prevTransactions.filter(t => t.type === 'expense' && !isEpargneTx(t) && (t.category !== 'Transfert' || isPrevSavingsTransferCounterpart(t))).reduce((s, t) => s + t.convertedAmount, 0);
+  const prevExpenses = prevTransactions.filter(t => t.type === 'expense' && !isEpargneTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
   const prevEpargneIn = prevTransactions.filter(t => t.type === 'income' && isEpargneTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
   const prevEpargneOut = prevTransactions.filter(t => t.type === 'expense' && isEpargneTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
   const prevSavingsNet = prevEpargneIn - prevEpargneOut;
@@ -450,8 +449,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
 
   // Expense by category
   const expensesByCategory = useMemo(() => {
-    const map: Record<string, { amount: number; emoji: string }> = {};
-    const expTxs = transactions.filter(t => t.type === 'expense' && !isEpargneTx(t) && (t.category !== 'Transfert' || isSavingsTransferCounterpart(t)));
+    const expTxs = transactions.filter(t => t.type === 'expense' && !isEpargneTx(t) && t.category !== 'Transfert');
     expTxs.forEach(t => {
       let catName = t.category;
       let emoji = t.emoji;
@@ -478,7 +476,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   // Transaction count
   const txCount = transactions.length;
   const incomeCount = transactions.filter(t => t.type === 'income' && t.category !== 'Transfert').length;
-  const expenseCount = transactions.filter(t => t.type === 'expense' && !isEpargneTx(t) && (t.category !== 'Transfert' || isSavingsTransferCounterpart(t))).length;
+  const expenseCount = transactions.filter(t => t.type === 'expense' && !isEpargneTx(t) && t.category !== 'Transfert').length;
 
   // Average expenses over the last 3 months (M, M-1, M-2)
   const avgExpense3m = useMemo(() => {
@@ -500,7 +498,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
         const match = t.notes.match(transferIdRegex);
         return match ? mEpargneIds.has(match[1]) : false;
       };
-      const mExp = mTxs.filter(t => t.type === 'expense' && !isEpargneTx(t) && (t.category !== 'Transfert' || isMSavingsCounterpart(t))).reduce((s, t) => s + t.convertedAmount, 0);
+      const mExp = mTxs.filter(t => t.type === 'expense' && !isEpargneTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
       months.push(mExp);
     }
     const total = months.reduce((s, v) => s + v, 0);
@@ -741,7 +739,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                   colorClass="text-destructive"
                   diff={diffPct(expenses, prevExpenses)}
                   accounts={accounts}
-                  transactions={transactions.filter(t => t.type === 'expense' && !isEpargneTx(t) && (t.category !== 'Transfert' || isSavingsTransferCounterpart(t)))}
+                  transactions={transactions.filter(t => t.type === 'expense' && !isEpargneTx(t) && t.category !== 'Transfert')}
                   formatAmount={formatAmount}
                 />
                 {/* Épargne nette */}
