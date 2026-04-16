@@ -392,7 +392,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   }, [transactions, accounts]);
 
   // Income & Expenses (savings transfer counterparts are included in expenses)
-  const income = transactions.filter(t => t.type === 'income' && t.category !== 'Transfert' && !isAnySavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
+  const income = transactions.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
   const expenses = transactions.filter(t => t.type === 'expense' && !isEpargneTx(t) && (t.category !== 'Transfert' || isSavingsTransferCounterpart(t))).reduce((s, t) => s + t.convertedAmount, 0);
   const directSavingsNet = epargneDirectIn - epargneDirectOut;
   const balance = income - expenses - Math.abs(directSavingsNet);
@@ -432,7 +432,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
     const match = t.notes.match(transferIdRegex);
     return match ? prevSavingsTransferIds.has(match[1]) : false;
   };
-  const prevIncome = prevTransactions.filter(t => t.type === 'income' && t.category !== 'Transfert' && !isPrevAnySavingsTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
+  const prevIncome = prevTransactions.filter(t => t.type === 'income' && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
   const prevExpenses = prevTransactions.filter(t => t.type === 'expense' && !isEpargneTx(t) && (t.category !== 'Transfert' || isPrevSavingsTransferCounterpart(t))).reduce((s, t) => s + t.convertedAmount, 0);
   const prevEpargneIn = prevTransactions.filter(t => t.type === 'income' && isEpargneTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
   const prevEpargneOut = prevTransactions.filter(t => t.type === 'expense' && isEpargneTx(t)).reduce((s, t) => s + t.convertedAmount, 0);
@@ -441,7 +441,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
   // Income by category
   const incomeByCategory = useMemo(() => {
     const map: Record<string, { amount: number; emoji: string }> = {};
-    transactions.filter(t => t.type === 'income' && t.category !== 'Transfert' && !isAnySavingsTx(t)).forEach(t => {
+    transactions.filter(t => t.type === 'income' && t.category !== 'Transfert').forEach(t => {
       if (!map[t.category]) map[t.category] = { amount: 0, emoji: t.emoji };
       map[t.category].amount += t.convertedAmount;
     });
@@ -477,7 +477,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
 
   // Transaction count
   const txCount = transactions.length;
-  const incomeCount = transactions.filter(t => t.type === 'income' && t.category !== 'Transfert' && !isAnySavingsTx(t)).length;
+  const incomeCount = transactions.filter(t => t.type === 'income' && t.category !== 'Transfert').length;
   const expenseCount = transactions.filter(t => t.type === 'expense' && !isEpargneTx(t) && (t.category !== 'Transfert' || isSavingsTransferCounterpart(t))).length;
 
   // Average expenses over the last 3 months (M, M-1, M-2)
@@ -728,7 +728,7 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                   colorClass="text-success"
                   diff={diffPct(income, prevIncome)}
                   accounts={accounts}
-                  transactions={transactions.filter(t => t.type === 'income' && t.category !== 'Transfert' && !isAnySavingsTx(t))}
+                  transactions={transactions.filter(t => t.type === 'income' && t.category !== 'Transfert')}
                   formatAmount={formatAmount}
                 />
                 {/* Dépenses */}
