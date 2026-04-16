@@ -495,13 +495,12 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
           if (match) mEpargneIds.add(match[1]);
         }
       });
-      const isMSavingsTx = (t: typeof transactions[0]) => {
-        if (isEpargneTx(t)) return true;
+      const isMSavingsCounterpart = (t: typeof transactions[0]) => {
         if (t.category !== 'Transfert' || !t.notes) return false;
         const match = t.notes.match(transferIdRegex);
         return match ? mEpargneIds.has(match[1]) : false;
       };
-      const mExp = mTxs.filter(t => t.type === 'expense' && !isMSavingsTx(t) && t.category !== 'Transfert').reduce((s, t) => s + t.convertedAmount, 0);
+      const mExp = mTxs.filter(t => t.type === 'expense' && !isEpargneTx(t) && (t.category !== 'Transfert' || isMSavingsCounterpart(t))).reduce((s, t) => s + t.convertedAmount, 0);
       months.push(mExp);
     }
     const total = months.reduce((s, v) => s + v, 0);
@@ -710,9 +709,9 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                 <p className={`font-mono-amount font-bold text-xl ${balance >= 0 ? 'text-success' : 'text-destructive'}`}>
                   {balance >= 0 ? '+' : ''}{formatAmount(balance)}
                 </p>
-                {monthSavingsNet > 0 && (
+                {directSavingsNet !== 0 && (
                   <p className="text-[9px] text-muted-foreground italic mt-1">
-                    Épargne (+{formatAmount(monthSavingsNet)}) non déduite
+                    Épargne directe ({directSavingsNet >= 0 ? '+' : ''}{formatAmount(directSavingsNet)})
                   </p>
                 )}
               </div>
@@ -742,13 +741,13 @@ const MonthlyReportModal = ({ open, onClose }: Props) => {
                   colorClass="text-destructive"
                   diff={diffPct(expenses, prevExpenses)}
                   accounts={accounts}
-                  transactions={transactions.filter(t => t.type === 'expense' && !isAnySavingsTx(t) && t.category !== 'Transfert')}
+                  transactions={transactions.filter(t => t.type === 'expense' && !isEpargneTx(t) && (t.category !== 'Transfert' || isSavingsTransferCounterpart(t)))}
                   formatAmount={formatAmount}
                 />
                 {/* Épargne nette */}
                 {(() => {
                   // Build savings breakdown by account (income vs expense)
-                  const savingsTxs = transactions.filter(t => isAnySavingsTx(t));
+                  const savingsTxs = transactions.filter(t => isEpargneTx(t));
                   const savingsIncByAcc: Record<string, number> = {};
                   const savingsExpByAcc: Record<string, number> = {};
                   savingsTxs.forEach(t => {
